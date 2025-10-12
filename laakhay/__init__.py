@@ -12,7 +12,8 @@ Usage:
 __version__ = "0.1.0"
 
 # Export models for data source integrations
-from .ta.models import Candle, FundingRate, MarkPrice, OpenInterest
+# Import indicators to register them (must come after imports to avoid circular deps)
+from .ta import indicators  # noqa: F401
 
 # Export core contracts
 from .ta.core.base import BaseIndicator
@@ -26,9 +27,7 @@ from .ta.core.spec import (
     RawDataRequirement,
     WindowSpec,
 )
-
-# Import indicators to register them (must come after imports to avoid circular deps)
-from .ta import indicators  # noqa: F401
+from .ta.models import Candle, FundingRate, MarkPrice, OpenInterest
 
 __all__ = [
     # Version

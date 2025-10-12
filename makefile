@@ -3,7 +3,7 @@ SHELL := /bin/sh
 # Configurable Python executable
 PY ?= python3
 
-.PHONY: help install test unit lint format coverage clean build publish
+.PHONY: help install test unit lint fix format coverage clean build publish
 
 help:
 	@echo "Make targets:"
@@ -11,6 +11,7 @@ help:
 	@echo "  test        Run all tests (alias for 'unit')."
 	@echo "  unit        Run unit test suite (tests/unit, tests/analytics, tests/signals)."
 	@echo "  lint        Run ruff lint if available."
+	@echo "  fix         Auto-fix lint errors with ruff."
 	@echo "  format      Run ruff format/black if available."
 	@echo "  coverage    Run tests with coverage report."
 	@echo "  clean       Remove caches and compiled artifacts."
@@ -41,6 +42,9 @@ coverage:
 
 lint:
 	@command -v ruff >/dev/null 2>&1 && ruff check . || echo "ruff not installed; skipping lint"
+
+fix:
+	@command -v ruff >/dev/null 2>&1 && ruff check --fix . || echo "ruff not installed; skipping fix"
 
 format:
 	@command -v ruff >/dev/null 2>&1 && ruff format . || true

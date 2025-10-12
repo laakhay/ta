@@ -4,7 +4,6 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
-
 # What kinds of raw series an indicator may consume.
 DataKind = Literal[
     "price",  # OHLCV (Candle)

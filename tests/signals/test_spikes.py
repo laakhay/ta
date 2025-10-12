@@ -3,8 +3,6 @@
 from datetime import datetime, timezone
 from decimal import Decimal
 
-import pytest
-
 from laakhay.ta.models import Candle
 from laakhay.ta.signals.spikes import (
     CombinedSpikeDetector,

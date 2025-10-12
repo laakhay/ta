@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 from decimal import Decimal
-from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -20,7 +19,7 @@ class FundingRate(BaseModel):
     symbol: str = Field(..., min_length=1, description="Trading symbol")
     funding_time: datetime = Field(..., description="Funding time (UTC)")
     funding_rate: Decimal = Field(..., description="Funding rate (decimal, not percentage)")
-    mark_price: Optional[Decimal] = Field(
+    mark_price: Decimal | None = Field(
         default=None, gt=0, description="Mark price at funding time"
     )
 
@@ -61,7 +60,7 @@ class FundingRate(BaseModel):
         """True if absolute funding rate > 0.01% (high funding pressure)."""
         return abs(self.funding_rate_percentage) > Decimal("0.01")
 
-    def get_age_seconds(self, now_ms: Optional[int] = None) -> float:
+    def get_age_seconds(self, now_ms: int | None = None) -> float:
         """Seconds since funding time.
 
         Args:

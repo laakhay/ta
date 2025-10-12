@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 from decimal import Decimal
-from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -20,16 +19,16 @@ class MarkPrice(BaseModel):
 
     symbol: str = Field(..., min_length=1, description="Trading symbol")
     mark_price: Decimal = Field(..., gt=0, description="Mark price (used for liquidations)")
-    index_price: Optional[Decimal] = Field(
+    index_price: Decimal | None = Field(
         default=None, gt=0, description="Index price (spot reference)"
     )
-    estimated_settle_price: Optional[Decimal] = Field(
+    estimated_settle_price: Decimal | None = Field(
         default=None, gt=0, description="Estimated settlement price"
     )
-    last_funding_rate: Optional[Decimal] = Field(
+    last_funding_rate: Decimal | None = Field(
         default=None, description="Last applied funding rate"
     )
-    next_funding_time: Optional[datetime] = Field(
+    next_funding_time: datetime | None = Field(
         default=None, description="Next funding time (UTC)"
     )
     timestamp: datetime = Field(..., description="Data timestamp (UTC)")
@@ -39,14 +38,14 @@ class MarkPrice(BaseModel):
     # --- Price Analysis Properties ---
 
     @property
-    def mark_index_spread(self) -> Optional[Decimal]:
+    def mark_index_spread(self) -> Decimal | None:
         """Spread between mark and index price (mark - index)."""
         if self.index_price is None:
             return None
         return self.mark_price - self.index_price
 
     @property
-    def mark_index_spread_bps(self) -> Optional[Decimal]:
+    def mark_index_spread_bps(self) -> Decimal | None:
         """Spread in basis points (10000 * (mark - index) / index)."""
         if self.index_price is None or self.index_price == 0:
             return None
@@ -54,7 +53,7 @@ class MarkPrice(BaseModel):
         return (spread / self.index_price) * Decimal("10000")
 
     @property
-    def mark_index_spread_percentage(self) -> Optional[Decimal]:
+    def mark_index_spread_percentage(self) -> Decimal | None:
         """Spread as percentage (100 * (mark - index) / index)."""
         if self.index_price is None or self.index_price == 0:
             return None
@@ -62,14 +61,14 @@ class MarkPrice(BaseModel):
         return (spread / self.index_price) * Decimal("100")
 
     @property
-    def is_premium(self) -> Optional[bool]:
+    def is_premium(self) -> bool | None:
         """True if mark price is above index (futures trading at premium)."""
         if self.mark_index_spread is None:
             return None
         return self.mark_index_spread > 0
 
     @property
-    def is_discount(self) -> Optional[bool]:
+    def is_discount(self) -> bool | None:
         """True if mark price is below index (futures trading at discount)."""
         if self.mark_index_spread is None:
             return None
