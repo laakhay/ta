@@ -1,101 +1,277 @@
 # Laakhay TA - Implementation Plan
 
-**Version**: 1.0  
+**Version**: 2.0  
+**Status**: v0.1.0 Foundation Complete  
 **Last Updated**: October 12, 2025
 
 ---
 
-## Current Status (30% Complete)
+## Current Status (v0.1.0 - 80% Complete)
 
-### ✅ Completed
-- **Core Contracts**: `BaseIndicator`, `TAInput`, `TAOutput`, `IndicatorRequirements`, `WindowSpec` (100%)
-- **Data Models**: `Candle`, `OpenInterest`, `FundingRate`, `MarkPrice` with validators (100%)
-- **Registry**: `register()`, `get_indicator()`, `list_indicators()` (100%)
-- **Utilities**: `slice_tail()`, `last_closed_ts()`, `ensure_only_closed()`, `zscore()` (100%)
-- **Planner Stubs**: `ComputeRequest`, `ExecutionPlan`, `stable_params_hash()` (50%)
+### ✅ Phase 1-3: Foundation Complete
+- **Core Infrastructure** (100%): BaseIndicator, Registry, DAG Planner, Execution Engine
+- **Data Models** (100%): Candle, OpenInterest, FundingRate, MarkPrice
+- **Testing Infrastructure** (100%): 30 tests, 79% coverage, pytest + fixtures
+- **Tier 1 Indicators** (80%): SMA, EMA, RSI, MACD, Stochastic, ATR, BBands, VWAP
 
-### 🚧 In Progress / Blocked
-- **Planner Implementation**: DAG resolution, cycle detection, `execute_plan()` (**CRITICAL PATH**)
-- **Indicators**: Empty directories, need SMA, EMA, RSI, MACD, VWAP
-- **Tests**: No test suite yet
-- **CI/CD**: No GitHub Actions
+### 🎯 Immediate Priorities
 
-### Priority Roadmap
-1. **Week 1**: Testing infrastructure (Phase 1)
-2. **Week 2**: Planner implementation (Phase 2) - **BLOCKS EVERYTHING**
-3. **Week 3**: Core indicators (Phase 3)
-4. **Week 4**: Documentation & polish (Phases 4-6)
+#### Phase 4: Production Readiness (Next 2 weeks)
+1. **PyPI Packaging** - Make installable via `pip install laakhay-ta`
+2. **Integration Layer** - Connect with laakhay-data for real-time/historical data
+3. **Performance Testing** - Benchmark indicator computation speed
+4. **CI/CD** - GitHub Actions for automated testing
+
+#### Phase 5: Tier 2 Indicators (Weeks 3-4)
+- **Trend**: Ichimoku Cloud, Parabolic SAR, Supertrend
+- **Momentum**: ADX (Directional Movement), CCI
+- **Volume**: OBV (On-Balance Volume), MFI (Money Flow Index)
+
+#### Phase 6: Advanced Features (Month 2)
+- **Streaming Indicators**: Real-time updates (not full recalculation)
+- **Multi-Timeframe**: Compute indicators across multiple timeframes
+- **Cross-Asset**: Correlation, spread analysis
+- **Signal Generation**: Crossover detection, divergence detection
+- **Plan Optimization**: Cache reuse, parallel execution
 
 ---
 
-## Phase 1: Testing Infrastructure
+## Detailed Roadmap
 
-**Goal**: Set up pytest, linting, CI/CD pipeline.
+### Phase 4: Production Ready (v0.2.0)
 
-### Commit 1.1: Initialize test structure
+**Week 1: Packaging & Integration**
 ```bash
-git checkout -b feature/testing-infrastructure
+# Commit 4.1: PyPI packaging
+- Update pyproject.toml with metadata
+- Test installation: pip install -e .
+- Publish to Test PyPI
+- Commit: "chore: Prepare PyPI packaging for v0.2.0"
+
+# Commit 4.2: laakhay-data integration
+- Create adapter: LaakhayDataAdapter(DataAdapter)
+- Implement fetch_candles() using laakhay.data.DataFeed
+- Add integration tests with real Binance data
+- Commit: "feat: Add laakhay-data integration adapter"
+
+# Commit 4.3: Example implementations
+- examples/quickstart.py (basic RSI)
+- examples/strategy.py (multi-indicator strategy)
+- examples/backtest.py (simple backtest loop)
+- Commit: "docs: Add real-world usage examples"
 ```
 
-**Create**:
+**Week 2: CI/CD & Benchmarks**
+```bash
+# Commit 4.4: GitHub Actions
+- .github/workflows/test.yml (pytest, coverage, lint)
+- .github/workflows/publish.yml (PyPI auto-publish on tag)
+- Commit: "ci: Add GitHub Actions for testing and publishing"
+
+# Commit 4.5: Performance benchmarks
+- benchmarks/indicators.py (time 10k candles for each indicator)
+- Document performance characteristics
+- Commit: "perf: Add performance benchmarks and baseline"
+```
+
+---
+
+### Phase 5: Tier 2 Indicators (v0.3.0)
+
+**Week 3: Advanced Trend & Momentum**
+```bash
+# ADX (Average Directional Index)
+laakhay/ta/indicators/momentum/adx.py
+- Requirements: High, Low, Close + 14 period smoothing
+- Returns: {"adx": value, "plus_di": value, "minus_di": value}
+- Commit: "feat(indicators): Add ADX with directional indicators"
+
+# Ichimoku Cloud
+laakhay/ta/indicators/trend/ichimoku.py
+- Requirements: 52-period lookback
+- Returns: {"tenkan": ..., "kijun": ..., "senkou_a": ..., "senkou_b": ..., "chikou": ...}
+- Commit: "feat(indicators): Add Ichimoku Cloud"
+
+# Parabolic SAR
+laakhay/ta/indicators/trend/psar.py
+- Requirements: High, Low, acceleration factor
+- Returns: Series of stop/reverse levels
+- Commit: "feat(indicators): Add Parabolic SAR"
+```
+
+**Week 4: Volume & Additional**
+```bash
+# OBV (On-Balance Volume)
+laakhay/ta/indicators/volume/obv.py
+- Requirements: Close, Volume
+- Returns: Cumulative volume-direction series
+- Commit: "feat(indicators): Add OBV"
+
+# MFI (Money Flow Index)
+laakhay/ta/indicators/volume/mfi.py
+- Requirements: High, Low, Close, Volume
+- Returns: 0-100 oscillator (volume-weighted RSI)
+- Commit: "feat(indicators): Add MFI"
+```
+
+---
+
+### Phase 6: Advanced Features (v0.4.0)
+
+**Streaming Architecture**
+```python
+# New: StreamIndicator base class
+class StreamIndicator(BaseIndicator):
+    kind: ClassVar[Literal["stream"]] = "stream"
+    
+    @classmethod
+    @abstractmethod
+    def init_state(cls, **params) -> Any:
+        """Initialize stateful computation."""
+    
+    @classmethod
+    @abstractmethod
+    def update(cls, state: Any, new_candle: Candle, **params) -> Tuple[Any, float]:
+        """Update state with new candle, return (new_state, indicator_value)."""
+
+# Example: StreamEMA
+class StreamEMA(StreamIndicator):
+    name: ClassVar[str] = "stream_ema"
+    
+    @classmethod
+    def init_state(cls, initial_candles: List[Candle], period: int) -> float:
+        """Return initial EMA from first `period` candles."""
+        closes = [float(c.close) for c in initial_candles[:period]]
+        return sum(closes) / len(closes)
+    
+    @classmethod
+    def update(cls, state: float, new_candle: Candle, period: int) -> Tuple[float, float]:
+        """Update EMA with new close."""
+        alpha = 2 / (period + 1)
+        new_ema = alpha * float(new_candle.close) + (1 - alpha) * state
+        return new_ema, new_ema
+```
+
+**Multi-Timeframe**
+```python
+# New: compute request with timeframe parameter
+req = ComputeRequest(
+    indicator_name="rsi",
+    params={"period": 14},
+    symbols=["BTCUSDT"],
+    eval_ts=datetime.now(),
+    timeframe="1h",  # NEW: aggregate raw 1m data to 1h bars
+)
+```
+
+**Cross-Asset Analysis**
+```python
+# New: Correlation indicator
+class CorrelationIndicator(BaseIndicator):
+    name: ClassVar[str] = "correlation"
+    
+    @classmethod
+    def requirements(cls) -> IndicatorRequirements:
+        return IndicatorRequirements(
+            raw=[RawDataRequirement(kind="price", price_field="close")]
+        )
+    
+    @classmethod
+    def compute(cls, input: TAInput, **params) -> TAOutput:
+        """Compute pairwise correlation between all symbols in scope."""
+        period = params.get("period", 20)
+        
+        # Build price matrix
+        price_matrix = {}
+        for sym in input.scope_symbols:
+            candles = input.candles.get(sym, [])[-period:]
+            price_matrix[sym] = [float(c.close) for c in candles]
+        
+        # Compute Pearson correlation
+        correlations = {}
+        for sym1 in input.scope_symbols:
+            for sym2 in input.scope_symbols:
+                if sym1 < sym2:  # Avoid duplicates
+                    corr = pearson(price_matrix[sym1], price_matrix[sym2])
+                    correlations[f"{sym1}_{sym2}"] = corr
+        
+        return TAOutput(name=cls.name, values=correlations)
+```
+
+---
+
+## Testing Strategy
+
+### Coverage Goals
+- **Core Modules**: 90%+ (plan.py, registry.py, spec.py)
+- **Indicators**: 80%+ (each indicator thoroughly tested)
+- **Integration**: Key workflows end-to-end
+
+### Test Categories
 ```
 tests/
-├── conftest.py          # pytest fixtures (sample_candles, multi_symbol_candles)
-├── unit/
+├── unit/                    # Fast, isolated (< 1s total)
 │   ├── core/
-│   │   ├── test_registry.py
-│   │   ├── test_spec.py
-│   │   └── test_utils.py
+│   ├── indicators/
 │   └── models/
-│       └── test_candle.py
-├── integration/
-│   └── test_planner.py
-└── property/
-    └── test_indicator_properties.py
+├── integration/             # Real data adapters (< 10s total)
+│   ├── test_laakhay_data_integration.py
+│   └── test_execution_plan_e2e.py
+└── benchmarks/              # Performance tests (run manually)
+    └── benchmark_indicators.py
 ```
 
-**Key Tests**:
-- `test_registry.py`: Register, get, list indicators
-- `test_candle.py`: Validators (high >= low, etc.), hlc3/ohlc4 properties
-- `conftest.py`: Fixtures for generating test candles
+---
 
-**Commit**: `feat: Initialize test infrastructure with pytest fixtures`
+## Release Schedule
+
+| Version | Status | Features | Target Date |
+|---------|--------|----------|-------------|
+| v0.1.0 | ✅ Complete | Core + 8 indicators + Tests | Oct 12, 2025 |
+| v0.2.0 | 🚧 Next | PyPI + Integration + CI/CD | Oct 26, 2025 |
+| v0.3.0 | 📋 Planned | Tier 2 indicators (5+) | Nov 9, 2025 |
+| v0.4.0 | 💡 Future | Streaming + Multi-TF + Cross-Asset | Dec 2025 |
 
 ---
 
-### Commit 1.2: Add CI/CD pipeline
-**Create**: `.github/workflows/test.yml`
+## Success Metrics
 
-**Jobs**:
-- Lint with Ruff
-- Format check with Black
-- Type check with mypy
-- Run pytest with coverage (Python 3.10-3.13)
+**v0.1.0** ✅
+- [x] 8 production-ready indicators
+- [x] 30 passing tests (79% coverage)
+- [x] Full documentation
+- [x] Stateless, deterministic architecture
 
-**Commit**: `ci: Add GitHub Actions workflow for testing`
+**v0.2.0** (Next)
+- [ ] PyPI installable
+- [ ] Real-time data integration
+- [ ] CI/CD automated
+- [ ] Performance benchmarked (< 1ms per indicator per symbol)
+
+**v0.3.0**
+- [ ] 15+ total indicators
+- [ ] 90%+ test coverage
+- [ ] Production usage by 3+ projects
+
+**v1.0.0** (Q1 2026)
+- [ ] Streaming indicators
+- [ ] Multi-timeframe support
+- [ ] 25+ indicators
+- [ ] 95%+ coverage
+- [ ] Production-proven at scale
 
 ---
 
-### Commit 1.3: Add unit tests for core modules
-**Tests**:
-- `test_spec.py`: WindowSpec defaults, RawDataRequirement validation
-- `test_utils.py`: `slice_tail()`, `zscore()` correctness
-- `test_io.py`: TAInput/TAOutput immutability
+## Next Actions
 
-**Commit**: `test: Add unit tests for core contracts and utilities`
+1. **Immediate**: Create PyPI release for v0.2.0
+2. **This Week**: Implement LaakhayDataAdapter
+3. **Next Week**: Set up GitHub Actions CI/CD
+4. **Month**: Add 5 Tier 2 indicators
 
----
+**Current Branch**: `main` (v0.1.0 foundation complete)  
+**Next Branch**: `feature/pypi-packaging` → v0.2.0
 
-## Phase 2: Planner Implementation (**CRITICAL PATH**)
-
-**Goal**: Implement full DAG resolution, cycle detection, execution orchestration.
-
-### Commit 2.1: Implement `build_execution_plan` (DAG resolution)
-**Edit**: `laakhay/ta/core/plan.py`
-
-**Algorithm**:
-```python
-def build_execution_plan(req: ComputeRequest) -> ExecutionPlan:
     # 1. Get target indicator class
     target_cls = get_indicator(req.indicator_name)
     if not target_cls:
