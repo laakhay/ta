@@ -1,165 +1,84 @@
-# Laakhay TA - Technical Architecture
+# Laakhay TA - Architecture
 
-**Version**: 2.0  
-**Status**: Production-Ready Foundation  
-**Last Updated**: October 12, 2025
+**Version**: 2.0 | **Status**: v0.1.0 Foundation (80%) | **Updated**: Oct 12, 2025
 
 ---
 
-## Core Principles
+## Design Principles
 
-`laakhay-ta` is a **stateless, pure-Python technical analysis engine** for deterministic, composable, exchange-agnostic computations.
+**Stateless** · **Deterministic** · **Composable** · **Dependency-Aware** · **Series-First**
 
-### Architectural Tenets
-
-1. **Stateless by Contract**: Class methods only, no instances, no state
-2. **Deterministic**: Pure functions - same input → same output
-3. **Composable**: DAG-based dependency resolution
-4. **Multi-Asset Native**: Single timeframe, multi-symbol by default
-5. **Series-First**: Returns complete time series for efficient backtesting
-6. **Zero Heavy Dependencies**: Only Pydantic for validation
+Pure functions (input → output). No internal state. DAG-based dependency resolution. Minimal coupling via adapters.
 
 ---
 
-## Current Status (v0.1.0)
-
-### ✅ Completed Components
-
-**Core Infrastructure (100%)**:
-- ✅ Stateless indicator contract (`BaseIndicator`)
-- ✅ Dependency specification system (`IndicatorRequirements`)
-- ✅ Registry with auto-discovery (`@register`)
-- ✅ DAG execution engine with cycle detection
-- ✅ Topological ordering and plan optimization
-- ✅ Series-based output for time-series analysis
-
-**Data Models (100%)**:
-- ✅ `Candle` - OHLCV with validation
-- ✅ `OpenInterest` - Futures OI tracking
-- ✅ `FundingRate` - Perpetual funding with calculations
-- ✅ `MarkPrice` - Index/mark price with spreads
-
-**Indicator Library (80%)**:
-- ✅ **Trend**: SMA, EMA, Bollinger Bands
-- ✅ **Momentum**: RSI, MACD, Stochastic, EMA
-- ✅ **Volume**: VWAP (cumulative & rolling)
-- ✅ **Volatility**: ATR, Bollinger Bands
-- ⏳ **Advanced**: ADX, Ichimoku, Parabolic SAR (planned)
-
-**Testing Infrastructure (100%)**:
-- ✅ 30 comprehensive unit tests (79% coverage)
-- ✅ Test fixtures for reusable data
-- ✅ All 8 Tier 1 indicators validated
-- ✅ Edge case testing (insufficient data, extremes)
-- ✅ Property testing (ranges, formulas, relationships)
-
----
-
-## System Architecture
-
-### Data Flow
+## System Flow
 
 ```
-ComputeRequest → Planner → DAG → Executor → TAOutput
-                    ↓
-              Data Adapter (fetch raw slices)
+ComputeRequest → build_execution_plan() → ExecutionPlan → fetch_raw_slices() → execute_plan() → TAOutput
 ```
 
-**Execution Steps**:
-1. **Plan**: Resolve dependencies into DAG, topological sort
-2. **Fetch**: Load minimal raw data per WindowSpec
-3. **Execute**: Iterate DAG nodes, call compute(), cache results
-4. **Return**: Target indicator's TAOutput with complete series
-
-**Example Flow** (RSI calculation):
-```
-Request: RSI(period=14) for BTCUSDT
-  ↓
-Plan: [raw:price:close:BTCUSDT] → [indicator:rsi:14:BTCUSDT]
-  ↓
-Execute: Load 64 candles → Compute RSI series → Return [(ts, value), ...]
-  ↓
-Result: TAOutput(name="rsi", values={"BTCUSDT": [(t1, 45.2), (t2, 48.1), ...]})
-```
+1. **Plan**: Resolve dependencies to DAG, topological sort
+2. **Fetch**: Get minimal data per WindowSpec
+3. **Execute**: Run nodes in order, cache outputs
 
 ---
 
 ## Core Contracts
 
-### BaseIndicator (base.py)
+### BaseIndicator (core/base.py)
 
 ```python
-class BaseIndicator(ABC):
-    name: ClassVar[str]  # Unique identifier (e.g., "rsi")
+class BaseIndicator(BaseModel):
+    name: ClassVar[str]  # Unique identifier
     kind: ClassVar[Literal["batch", "stream"]] = "batch"
     
     @classmethod
     @abstractmethod
     def requirements(cls) -> IndicatorRequirements:
-        """Declare dependencies (raw data + upstream indicators)."""
+        """Declare raw data + upstream indicator dependencies."""
     
     @classmethod
     @abstractmethod
     def compute(cls, input: TAInput, **params) -> TAOutput:
-        """Pure function: TAInput + params → TAOutput. NO I/O, NO state."""
+        """Pure computation: TAInput → TAOutput."""
 ```
 
-**Constraints**:
-- ❌ No `__init__`, no instances
-- ❌ No mutable class attributes
-- ❌ No I/O or global state
-- ✅ Pure computation only
+### WindowSpec (core/spec.py)
 
----
-
-### Dependency Specification (spec.py)
-
-#### DataKind
-```python
-DataKind = Literal["price", "volume", "oi", "funding", "mark_price", "trades", "orderbook"]
-```
-
-#### WindowSpec
 ```python
 class WindowSpec(BaseModel):
-    lookback_bars: int = 0  # Historical bars needed
-    min_lag_bars: int = 0   # Additional lag requirement
+    lookback_bars: int = 0      # Historical bars required
+    min_lag_bars: int = 0       # Minimum bars for warm-up
+    only_closed: bool = True    # Exclude incomplete candles
 ```
 
-#### RawDataRequirement
+### RawDataRequirement (core/spec.py)
+
 ```python
 class RawDataRequirement(BaseModel):
-    kind: DataKind
-    price_field: Optional[PriceField] = None  # For kind="price"
-    symbols: Optional[Sequence[str]] = None   # None = inherit
+    kind: Literal["price", "oi", "funding", "mark_price"]
+    price_field: Optional[Literal["open", "high", "low", "close", "volume"]] = None
     window: WindowSpec = WindowSpec()
+    symbols: Optional[Sequence[str]] = None  # None = inherit
     only_closed: bool = True
 ```
 
-#### IndicatorRef
+### IndicatorRef (core/spec.py)
+
 ```python
 class IndicatorRef(BaseModel):
-    name: str                                # Upstream indicator name
-    params: Dict[str, Any] = {}              # Its parameters
-    symbols: Optional[Sequence[str]] = None  # None = inherit
+    name: str
+    params: Dict[str, Any] = {}
+    symbols: Optional[Sequence[str]] = None
     window: WindowSpec = WindowSpec()
 ```
 
-#### IndicatorRequirements
-```python
-class IndicatorRequirements(BaseModel):
-    raw: list[RawDataRequirement] = []
-    indicators: list[IndicatorRef] = []
-```
+### TAInput (core/io.py)
 
----
-
-### I/O Contracts (io.py)
-
-#### TAInput (Engine → Indicator)
 ```python
 class TAInput(BaseModel):
-    candles: Mapping[str, Sequence[Candle]]  # Multi-symbol OHLCV
+    candles: Mapping[str, Sequence[Candle]]
     oi: Optional[Mapping[str, Sequence[OIPoint]]] = None
     funding: Optional[Mapping[str, Sequence[FundingPoint]]] = None
     mark_price: Optional[Mapping[str, Sequence[MarkPricePoint]]] = None
@@ -168,69 +87,67 @@ class TAInput(BaseModel):
     eval_ts: Optional[datetime] = None
 ```
 
-#### TAOutput (Indicator → Engine)
+### TAOutput (core/io.py)
+
 ```python
 class TAOutput(BaseModel):
     name: str
-    values: Mapping[str, Any]  # Per-symbol results (scalar/vector/dict)
+    values: Mapping[str, Any]  # Per-symbol results
     ts: Optional[datetime] = None
     meta: dict[str, Any] = {}
 ```
 
 ---
 
-### Registry (registry.py)
+## Registry (core/registry.py)
 
 ```python
 INDICATORS: Dict[str, Type[BaseIndicator]] = {}
 
 def register(indicator_cls: Type[BaseIndicator]) -> None:
-    """Register indicator class under its .name attribute."""
+    """Auto-register indicator by .name."""
 
 def get_indicator(name: str) -> Optional[Type[BaseIndicator]]:
-    """Retrieve indicator class by name."""
-
-def list_indicators() -> list[str]:
-    """List all registered indicator names."""
+    """Retrieve indicator class."""
 ```
 
 ---
 
-### Planner (plan.py)
+## Planner (core/plan.py)
 
-#### ComputeRequest
+### Key Types
+
 ```python
 class ComputeRequest(BaseModel):
     indicator_name: str
     params: Dict[str, Any] = {}
     symbols: Sequence[str]
     eval_ts: Optional[datetime] = None
-```
 
-#### ExecutionPlan
-```python
 class ExecutionPlan(BaseModel):
     nodes: List[PlanNode]  # Topologically sorted
 ```
 
-#### Key Functions
+### Core Functions
+
 ```python
 def stable_params_hash(params: Dict[str, Any]) -> str:
     """SHA256 hash of canonical JSON params (16 chars)."""
 
 def build_execution_plan(req: ComputeRequest) -> ExecutionPlan:
-    """Resolve dependencies into DAG, topological sort, detect cycles."""
+    """Resolve dependencies → DAG → topological sort → detect cycles."""
 
 def fetch_raw_slices(nodes: List[PlanNode]) -> Dict[Tuple, Any]:
-    """Fetch minimal raw series per WindowSpec."""
+    """Fetch minimal raw data per WindowSpec."""
 
 def execute_plan(plan: ExecutionPlan, raw_cache: Dict) -> TAOutput:
     """Execute DAG: assemble TAInput, call compute(), cache results."""
 ```
 
 **Algorithm** (build_execution_plan):
+
 1. Get target indicator class from registry
-2. Read `requirements()` recursively (DFS/BFS)
+2. DFS to collect dependencies recursively
 3. Build adjacency graph: node → [dependencies]
 4. Topological sort (Kahn's algorithm)
 5. Detect cycles → raise `CyclicDependencyError`
@@ -240,7 +157,8 @@ def execute_plan(plan: ExecutionPlan, raw_cache: Dict) -> TAOutput:
 
 ## Data Models (models/)
 
-### Candle (candle.py)
+### Candle
+
 ```python
 class Candle(BaseModel):
     symbol: str
@@ -253,36 +171,14 @@ class Candle(BaseModel):
     is_closed: bool = True
     
     @property
-    def hlc3(self) -> Decimal:
-        """(high + low + close) / 3"""
+    def hlc3(self) -> Decimal: ...
     
     @property
-    def ohlc4(self) -> Decimal:
-        """(open + high + low + close) / 4"""
+    def ohlc4(self) -> Decimal: ...
 ```
 
-### OpenInterest, FundingRate, MarkPrice
-```python
-class OpenInterest(BaseModel):
-    symbol: str
-    timestamp: datetime
-    open_interest: Decimal
-    open_interest_value: Optional[Decimal] = None
+### Lightweight Time-Series Points
 
-class FundingRate(BaseModel):
-    symbol: str
-    timestamp: datetime
-    rate: Decimal
-    next_funding_time: Optional[datetime] = None
-
-class MarkPrice(BaseModel):
-    symbol: str
-    timestamp: datetime
-    mark_price: Decimal
-    index_price: Optional[Decimal] = None
-```
-
-### Lightweight Time-Series Points (io.py)
 ```python
 class OIPoint(BaseModel):
     ts: datetime
@@ -302,24 +198,21 @@ class MarkPricePoint(BaseModel):
 ## Indicator Structure
 
 ### Directory Layout
+
 ```
 laakhay/ta/indicators/
-├── trend/            # SMA, EMA, Bollinger, etc.
-├── momentum/         # RSI, MACD, Stochastic, etc.
-├── volume/           # VWAP, OBV, Volume Profile
-├── volatility/       # ATR, Standard Deviation
-└── cross_asset/      # Correlation, Relative Strength
+├── trend/            # SMA, EMA, Bollinger
+├── momentum/         # RSI, MACD, Stochastic
+├── volume/           # VWAP, OBV, MFI
+├── volatility/       # ATR
+└── cross_asset/      # Correlation
 ```
 
 ### Indicator Template
-```python
-from typing import ClassVar
-from laakhay.ta.core import BaseIndicator, TAInput, TAOutput
-from laakhay.ta.core.spec import IndicatorRequirements, RawDataRequirement, WindowSpec
 
+```python
 class ExampleIndicator(BaseIndicator):
     name: ClassVar[str] = "example"
-    kind: ClassVar[Literal["batch", "stream"]] = "batch"
     
     @classmethod
     def requirements(cls) -> IndicatorRequirements:
@@ -344,17 +237,12 @@ class ExampleIndicator(BaseIndicator):
             if len(candles) < period:
                 continue
             
-            # === PURE MATH HERE ===
+            # Pure math
             closes = [float(c.close) for c in candles[-period:]]
             value = sum(closes) / len(closes)
             results[symbol] = value
         
-        return TAOutput(
-            name=cls.name,
-            values=results,
-            ts=input.eval_ts,
-            meta={"period": period}
-        )
+        return TAOutput(name=cls.name, values=results, ts=input.eval_ts)
 
 # Auto-register
 from laakhay.ta.core.registry import register
@@ -363,68 +251,36 @@ register(ExampleIndicator)
 
 ---
 
-## Operational Model
-
-### 1. Request Phase
-```python
-request = ComputeRequest(
-    indicator_name="rsi",
-    params={"period": 14},
-    symbols=["BTCUSDT", "ETHUSDT"],
-    eval_ts=datetime(2025, 10, 12, 12, 0, 0, tzinfo=timezone.utc)
-)
-```
-
-### 2. Planning Phase
-```python
-plan = build_execution_plan(request)
-# Produces: ExecutionPlan(nodes=[raw_nodes..., indicator_nodes...])
-```
-
-### 3. Fetching Phase
-```python
-raw_cache = fetch_raw_slices(plan.nodes)
-# Returns: {("price", "close", "BTCUSDT"): [Candle(...), ...], ...}
-```
-
-### 4. Execution Phase
-```python
-result = execute_plan(plan, raw_cache)
-# Returns: TAOutput(name="rsi", values={"BTCUSDT": 65.3, ...}, ...)
-```
-
----
-
 ## Error Handling
 
 ### Indicator Errors
+
 ```python
 class InsufficientDataError(Exception):
-    """Not enough data to compute indicator."""
+    """Not enough data to compute."""
 
 class InvalidParameterError(Exception):
-    """Invalid indicator params."""
+    """Invalid params."""
 ```
 
-**Best Practice**: Return empty `values` for symbols with insufficient data; raise for invalid params.
+**Best Practice**: Return empty `values` for insufficient data; raise for invalid params.
 
 ### Planner Errors
+
 ```python
 class IndicatorNotFoundError(Exception):
     """Requested indicator not in registry."""
 
 class CyclicDependencyError(Exception):
     """Dependency graph has cycles."""
-
-class IncompatibleRequirementsError(Exception):
-    """Requirements cannot be satisfied."""
 ```
 
 ---
 
-## Testing Strategy
+## Testing
 
-### Unit Tests (Per Indicator)
+### Unit Tests
+
 ```python
 def test_sma_correctness():
     candles = create_test_candles([10, 20, 30, 40, 50])
@@ -440,7 +296,8 @@ def test_sma_determinism():
     assert result1 == result2
 ```
 
-### Integration Tests (Planner)
+### Integration Tests
+
 ```python
 def test_plan_resolution():
     request = ComputeRequest(name="rsi", params={}, symbols=["BTC"])
@@ -453,35 +310,24 @@ def test_cycle_detection():
         build_execution_plan(circular_request)
 ```
 
-### Property-Based Tests
-```python
-from hypothesis import given, strategies as st
-
-@given(prices=st.lists(st.floats(min_value=1.0, max_value=1e5), min_size=50))
-def test_sma_properties(prices):
-    """Property: SMA(period) <= max(prices[-period:])"""
-    candles = create_candles_from_closes(prices)
-    input = TAInput(candles={"TEST": candles}, scope_symbols=["TEST"])
-    output = SMAIndicator.compute(input, period=20)
-    if "TEST" in output.values:
-        assert output.values["TEST"] <= max(prices[-20:])
-```
-
 ---
 
-## Performance Considerations
+## Performance
 
-### Memory Optimization
+### Memory
+
 - **WindowSpec Clipping**: Fetch only `lookback_bars + min_lag_bars`
-- **Lazy Evaluation**: Only fetch data for `scope_symbols`
-- **Slice Views**: Use `slice_tail(seq, n)` to avoid copying
+- **Lazy Evaluation**: Only fetch `scope_symbols`
+- **Slice Views**: Avoid copying
 
-### CPU Optimization
+### CPU
+
 - **Caching**: Reuse outputs via `(name, params_hash, symbol)` keys
 - **Topological Sort**: Compute each node once
-- **Pure Python**: Profile first, optimize hotspots later with Numba/Cython
+- **Pure Python**: Profile first, optimize hotspots later
 
 ### Future: Parallelization
+
 - **Per-Symbol**: Execute different symbols in parallel
 - **DAG-Level**: Execute independent nodes concurrently
 - **Constraint**: Stateless design enables trivial parallelization
@@ -490,24 +336,13 @@ def test_sma_properties(prices):
 
 ## Security
 
-### Input Validation
-- Pydantic validators on all models
-- Reject malformed data (negative prices, invalid symbols)
-- Sanitize params before hashing
-
-### Dependency Supply Chain
-- Minimal dependencies (only Pydantic)
-- Pin versions in `requirements.txt`
-- Regular audits with `pip-audit`
-
-### Data Integrity
-- Immutable models (`frozen=True`)
-- No mutation of `TAInput`
-- Deterministic outputs enable audit trails
+- **Input Validation**: Pydantic validators on all models
+- **Dependency Audits**: Minimal deps, pin versions, `pip-audit`
+- **Data Integrity**: Immutable models (`frozen=True`), deterministic outputs
 
 ---
 
-## Appendix: Glossary
+## Glossary
 
 - **Stateless**: No internal state; pure functions
 - **Deterministic**: Same input → same output
@@ -519,6 +354,4 @@ def test_sma_properties(prices):
 
 ---
 
-**End of Architecture Document**
-
-*Living specification - update as project evolves.*
+**End of Architecture**
