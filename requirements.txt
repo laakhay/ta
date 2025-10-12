@@ -1,2 +1,2 @@
-# Runtime dependencies are specified in pyproject.toml
-# This file is kept for compatibility
+# Core dependencies
+pydantic>=2.0.0
