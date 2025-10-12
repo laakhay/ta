@@ -27,6 +27,9 @@ from .ta.core.spec import (
     WindowSpec,
 )
 
+# Import indicators to register them (must come after imports to avoid circular deps)
+from .ta import indicators  # noqa: F401
+
 __all__ = [
     # Version
     "__version__",

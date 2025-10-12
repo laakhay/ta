@@ -11,7 +11,7 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Any
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 from ..models import Candle
 
@@ -59,6 +59,8 @@ class TAInput(BaseModel):
 
     # Evaluation timestamp (e.g., last closed bar). Optional for batch backfills.
     eval_ts: datetime | None = None
+    
+    model_config = ConfigDict(revalidate_instances='never')
 
 
 class TAOutput(BaseModel):
