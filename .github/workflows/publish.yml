@@ -1,0 +1,71 @@
+name: Publish Python
+
+on:
+  push:
+    tags:
+      - 'v*'  # trigger on any v* tag
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to publish (e.g., v0.1.0). Leave empty to auto-detect latest v* tag.'
+        required: false
+
+jobs:
+  build-and-publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Resolve tag
+        id: tag
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            if [ -n "${{ inputs.tag }}" ]; then
+              TAG="${{ inputs.tag }}"
+            else
+              TAG=$(git describe --tags --match 'v*' --abbrev=0 2>/dev/null || true)
+            fi
+          else
+            TAG="${GITHUB_REF##*/}"
+          fi
+          if [ -z "$TAG" ]; then
+            echo "No tag resolved; aborting." >&2
+            exit 1
+          fi
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+          echo "Resolved tag: $TAG"
+
+      - name: Checkout resolved tag
+        run: |
+          git fetch --tags --force
+          git checkout "${{ steps.tag.outputs.tag }}"
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+          cache: 'pip'
+
+      - name: Install build tools
+        run: |
+          python -m pip install --upgrade pip
+          pip install build twine
+
+      - name: Build source & wheel
+        run: |
+          python -m build --sdist --wheel
+
+      - name: Publish to PyPI
+        env:
+          TWINE_USERNAME: __token__
+          TWINE_PASSWORD: ${{ secrets.PYPI_TOKEN }}
+        run: |
+          twine upload dist/*
+
+      - name: Clean up
+        run: rm -rf dist build *.egg-info

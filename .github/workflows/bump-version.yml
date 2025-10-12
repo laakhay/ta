@@ -1,0 +1,40 @@
+name: Bump Version and Tag
+
+on:
+  workflow_dispatch:
+    inputs:
+      level:
+        description: 'Version bump level (patch, minor, major)'
+        required: true
+        default: 'patch'
+
+jobs:
+  bump:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Compute next version from tags
+        id: v
+        run: |
+          LAST=$(git describe --tags --match 'v*' --abbrev=0 2>/dev/null || echo 'v0.0.0')
+          echo "Last tag: $LAST"
+          BASE=${LAST#v}
+          IFS='.' read -r MAJ MIN PAT <<< "$BASE"
+          case "${{ github.event.inputs.level }}" in
+            major) MAJ=$((MAJ+1)); MIN=0; PAT=0;;
+            minor) MIN=$((MIN+1)); PAT=0;;
+            patch) PAT=$((PAT+1));;
+            *) echo 'Invalid level'; exit 1;;
+          esac
+          NEXT="v${MAJ}.${MIN}.${PAT}"
+          echo "next=$NEXT" >> $GITHUB_OUTPUT
+
+      - name: Create Git tag
+        run: |
+          git tag ${{ steps.v.outputs.next }}
+          git push origin ${{ steps.v.outputs.next }}

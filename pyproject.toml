@@ -1,16 +1,21 @@
 [build-system]
-requires = ["setuptools>=65.0", "wheel"]
+requires = [
+    "setuptools>=65.0",
+    "wheel",
+    "setuptools-scm[toml]>=8.0",
+]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "laakhay-ta"
-version = "0.1.0"
+dynamic = ["version"]
 description = "Stateless technical analysis library for cryptocurrency markets"
 readme = "README.md"
 license = {text = "MIT"}
 authors = [
-    {name = "Laakhay", email = "team@laakhay.com"}
+    {name = "Laakhay Corporation", email = "laakhay.corp@gmail.com"}
 ]
+keywords = ["finance", "trading", "technical-analysis", "cryptocurrency", "indicators"]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
@@ -91,3 +96,7 @@ addopts = [
     "--cov-report=term-missing",
     "--cov-report=html",
 ]
+
+[tool.setuptools_scm]
+version_scheme = "python-simplified-semver"
+local_scheme = "no-local-version"
