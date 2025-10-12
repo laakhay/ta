@@ -19,9 +19,7 @@ class FundingRate(BaseModel):
     symbol: str = Field(..., min_length=1, description="Trading symbol")
     funding_time: datetime = Field(..., description="Funding time (UTC)")
     funding_rate: Decimal = Field(..., description="Funding rate (decimal, not percentage)")
-    mark_price: Decimal | None = Field(
-        default=None, gt=0, description="Mark price at funding time"
-    )
+    mark_price: Decimal | None = Field(default=None, gt=0, description="Mark price at funding time")
 
     model_config = ConfigDict(frozen=True, str_strip_whitespace=True)
 

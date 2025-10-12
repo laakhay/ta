@@ -25,12 +25,8 @@ class MarkPrice(BaseModel):
     estimated_settle_price: Decimal | None = Field(
         default=None, gt=0, description="Estimated settlement price"
     )
-    last_funding_rate: Decimal | None = Field(
-        default=None, description="Last applied funding rate"
-    )
-    next_funding_time: datetime | None = Field(
-        default=None, description="Next funding time (UTC)"
-    )
+    last_funding_rate: Decimal | None = Field(default=None, description="Last applied funding rate")
+    next_funding_time: datetime | None = Field(default=None, description="Next funding time (UTC)")
     timestamp: datetime = Field(..., description="Data timestamp (UTC)")
 
     model_config = ConfigDict(frozen=True, str_strip_whitespace=True)
