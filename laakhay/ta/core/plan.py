@@ -7,7 +7,7 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
-from .io import TAOutput
+from .io import TAInput, TAOutput
 from .registry import get_indicator
 
 
@@ -192,12 +192,100 @@ def fetch_raw_slices(nodes: list[PlanNode]) -> dict[tuple[str, ...], Any]:
     return {}
 
 
-def execute_plan(plan: ExecutionPlan, raw_cache: dict[tuple[str, ...], Any]) -> TAOutput:
+def execute_plan(
+    plan: ExecutionPlan,
+    raw_cache: dict[tuple[str, ...], Any],
+    request: ComputeRequest,
+) -> TAOutput:
     """
-    Assemble TAInput per 'indicator' node, call indicator.compute, and store results
-    in an in-memory cache keyed by ("name","params_hash","symbol").
+    Execute the plan: iterate through nodes, assemble TAInput, call compute().
 
-    Finally, return the TAOutput for the target node.
+    For each indicator node:
+    1. Gather its raw data dependencies from raw_cache
+    2. Gather its indicator dependencies from indicator_cache
+    3. Assemble TAInput
+    4. Call indicator.compute(input, **params)
+    5. Store results in indicator_cache
+    6. Return TAOutput for the target indicator
+
+    Args:
+        plan: ExecutionPlan with topologically sorted nodes
+        raw_cache: Cache of raw data (from fetch_raw_slices)
+        request: Original ComputeRequest with indicator name, params, symbols
+
+    Returns:
+        TAOutput for the target indicator
+
+    Raises:
+        IndicatorNotFoundError: If indicator is not registered
+        RuntimeError: If target indicator was not computed
     """
-    # Stub: implement orchestration later.
-    raise NotImplementedError("execute_plan is not implemented yet")
+    # Cache for indicator outputs: (name, params_hash, symbol) -> value
+    indicator_cache: dict[tuple[str, str, str], Any] = {}
+    target_output: TAOutput | None = None
+
+    # Process nodes in order (dependencies first)
+    for node in plan.nodes:
+        if node.kind == "raw":
+            # Raw nodes are already in raw_cache, skip
+            continue
+
+        # Extract indicator info from node key: ("indicator", name, params_hash, symbol)
+        _, ind_name, params_hash, symbol = node.key
+        ind_cls = get_indicator(ind_name)
+        if not ind_cls:
+            raise IndicatorNotFoundError(f"Indicator '{ind_name}' not found")
+
+        # Reconstruct params from hash (we'll need to track this differently)
+        # For now, use request params if it's the target indicator
+        if ind_name == request.indicator_name:
+            ind_params = request.params
+        else:
+            # For dependencies, params are embedded in the node or requirements
+            ind_params = node.params if node.params else {}
+
+        # Gather raw data for all symbols in request
+        candles_map: dict[str, list] = {}
+        for sym in request.symbols:
+            # Look for raw candle data: ("raw", "price", field, symbol)
+            raw_key = ("raw", "price", "close", sym)  # Simplified: assume close
+            if raw_key in raw_cache:
+                candles_map[sym] = raw_cache[raw_key]
+
+        # Gather indicator dependencies
+        injected_indicators: dict[tuple[str, str, str], Any] = {}
+        reqs = ind_cls.requirements()
+        for ind_dep in reqs.indicators:
+            dep_hash = stable_params_hash(ind_dep.params)
+            for sym in request.symbols:
+                dep_key = (ind_dep.name, dep_hash, sym)
+                if dep_key in indicator_cache:
+                    injected_indicators[dep_key] = indicator_cache[dep_key]
+
+        # Assemble TAInput
+        ta_input = TAInput(
+            candles=candles_map,
+            indicators=injected_indicators if injected_indicators else None,
+            scope_symbols=request.symbols,
+            eval_ts=request.eval_ts,
+        )
+
+        # Compute indicator
+        output = ind_cls.compute(ta_input, **ind_params)
+
+        # Store results in cache (per symbol)
+        for sym, value in output.values.items():
+            cache_key = (ind_name, params_hash, sym)
+            indicator_cache[cache_key] = value
+
+        # If this is the target indicator, save the output
+        if ind_name == request.indicator_name:
+            target_output = output
+
+    if target_output is None:
+        raise RuntimeError(
+            f"Target indicator '{request.indicator_name}' was not computed. "
+            f"This indicates a bug in the planner."
+        )
+
+    return target_output
