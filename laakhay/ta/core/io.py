@@ -60,7 +60,7 @@ class TAInput(BaseModel):
     # Evaluation timestamp (e.g., last closed bar). Optional for batch backfills.
     eval_ts: datetime | None = None
     
-    model_config = ConfigDict(revalidate_instances='never')
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
 
 class TAOutput(BaseModel):

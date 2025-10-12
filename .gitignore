@@ -12,9 +12,15 @@ demo*
 # logs if any
 **/*.log
 
+# Testing artifacts
 .pytest_cache/
+.coverage
+htmlcov/
+
+# IDE
 .vscode/
 
+# Build artifacts
 *.egg-info/
 dist/
 build/

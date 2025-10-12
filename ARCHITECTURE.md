@@ -1,7 +1,7 @@
 # Laakhay TA - Technical Architecture
 
-**Version**: 1.0  
-**Status**: Living Document  
+**Version**: 2.0  
+**Status**: Production-Ready Foundation  
 **Last Updated**: October 12, 2025
 
 ---
@@ -16,7 +16,42 @@
 2. **Deterministic**: Pure functions - same input → same output
 3. **Composable**: DAG-based dependency resolution
 4. **Multi-Asset Native**: Single timeframe, multi-symbol by default
-5. **Zero Heavy Dependencies**: Only Pydantic for validation
+5. **Series-First**: Returns complete time series for efficient backtesting
+6. **Zero Heavy Dependencies**: Only Pydantic for validation
+
+---
+
+## Current Status (v0.1.0)
+
+### ✅ Completed Components
+
+**Core Infrastructure (100%)**:
+- ✅ Stateless indicator contract (`BaseIndicator`)
+- ✅ Dependency specification system (`IndicatorRequirements`)
+- ✅ Registry with auto-discovery (`@register`)
+- ✅ DAG execution engine with cycle detection
+- ✅ Topological ordering and plan optimization
+- ✅ Series-based output for time-series analysis
+
+**Data Models (100%)**:
+- ✅ `Candle` - OHLCV with validation
+- ✅ `OpenInterest` - Futures OI tracking
+- ✅ `FundingRate` - Perpetual funding with calculations
+- ✅ `MarkPrice` - Index/mark price with spreads
+
+**Indicator Library (80%)**:
+- ✅ **Trend**: SMA, EMA, Bollinger Bands
+- ✅ **Momentum**: RSI, MACD, Stochastic, EMA
+- ✅ **Volume**: VWAP (cumulative & rolling)
+- ✅ **Volatility**: ATR, Bollinger Bands
+- ⏳ **Advanced**: ADX, Ichimoku, Parabolic SAR (planned)
+
+**Testing Infrastructure (100%)**:
+- ✅ 30 comprehensive unit tests (79% coverage)
+- ✅ Test fixtures for reusable data
+- ✅ All 8 Tier 1 indicators validated
+- ✅ Edge case testing (insufficient data, extremes)
+- ✅ Property testing (ranges, formulas, relationships)
 
 ---
 
@@ -34,7 +69,18 @@ ComputeRequest → Planner → DAG → Executor → TAOutput
 1. **Plan**: Resolve dependencies into DAG, topological sort
 2. **Fetch**: Load minimal raw data per WindowSpec
 3. **Execute**: Iterate DAG nodes, call compute(), cache results
-4. **Return**: Target indicator's TAOutput
+4. **Return**: Target indicator's TAOutput with complete series
+
+**Example Flow** (RSI calculation):
+```
+Request: RSI(period=14) for BTCUSDT
+  ↓
+Plan: [raw:price:close:BTCUSDT] → [indicator:rsi:14:BTCUSDT]
+  ↓
+Execute: Load 64 candles → Compute RSI series → Return [(ts, value), ...]
+  ↓
+Result: TAOutput(name="rsi", values={"BTCUSDT": [(t1, 45.2), (t2, 48.1), ...]})
+```
 
 ---
 

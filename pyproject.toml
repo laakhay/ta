@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "laakhay-ta"
 version = "0.1.0"
-description = "Professional, stateless technical analysis library for cryptocurrency markets"
+description = "Stateless technical analysis library for cryptocurrency markets"
 readme = "README.md"
 license = {text = "MIT"}
 authors = [
@@ -42,9 +42,8 @@ dev = [
 
 [project.urls]
 Homepage = "https://laakhay.com"
-Documentation = "https://docs.laakhay.com/ta"
-Repository = "https://github.com/laakhay/api.laakhay.com"
-Issues = "https://github.com/laakhay/api.laakhay.com/issues"
+Repository = "https://github.com/laakhay/ta"
+Issues = "https://github.com/laakhay/ta/issues"
 
 [tool.setuptools.packages.find]
 where = ["."]

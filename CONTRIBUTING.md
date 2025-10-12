@@ -77,20 +77,118 @@ git checkout -b feature/add-sma-indicator
 
 # 2. Implement (see template below)
 
-# 3. Test
-make test        # 90%+ coverage required
+# 3. Test - REQUIRED
+pytest tests/unit/indicators/test_my_indicator.py -v
+pytest tests/ --cov=laakhay.ta --cov-report=term-missing
+
+# Code quality checks
 make lint        # Ruff
 make format      # Black
-make type-check  # mypy
+make type-check  # mypy (if available)
 make ci          # All checks
 
 # 4. Commit (Conventional Commits)
-git commit -m "feat(indicators): add SMA indicator"
+git commit -m "feat(indicators): add SMA indicator with comprehensive tests"
 
 # 5. PR
+# - All tests passing (90%+ coverage)
 # - All CI checks must pass
 # - At least 1 maintainer approval
 # - Squash and merge
+```
+
+---
+
+## Testing Requirements
+
+**All indicators MUST have tests**. Follow the established patterns in `tests/unit/indicators/`.
+
+### Test Structure
+```
+tests/
+├── conftest.py              # Shared fixtures
+└── unit/
+    ├── core/                # Core functionality tests
+    │   └── test_plan.py
+    └── indicators/          # Indicator tests
+        ├── test_momentum.py
+        ├── test_trend.py
+        ├── test_volatility.py
+        └── test_volume.py
+```
+
+### Writing Indicator Tests
+
+**Principle**: Lean, potent tests. No bloat. Wide coverage with minimal code.
+
+```python
+"""Tests for My New Indicator."""
+
+from laakhay.ta.core.plan import ComputeRequest, build_execution_plan, execute_plan
+
+
+class TestMyIndicator:
+    """Test My New Indicator."""
+
+    def test_basic_calculation(self, sample_candles):
+        """Indicator should compute correct values."""
+        candles = sample_candles("BTCUSDT", count=50)
+
+        req = ComputeRequest(
+            indicator_name="my_indicator",
+            params={"period": 14},
+            symbols=["BTCUSDT"],
+            eval_ts=candles[-1].timestamp,
+        )
+
+        plan = build_execution_plan(req)
+        raw_cache = {("raw", "price", "close", "BTCUSDT"): candles}
+        result = execute_plan(plan, raw_cache, req)
+
+        values = result.values["BTCUSDT"]
+        
+        # Validate: ranges, calculations, properties
+        assert len(values) > 0
+        assert all(0 <= v[1] <= 100 for v in values)  # Range check
+        assert values[-1][1] > values[0][1]  # Trend check
+
+    def test_series_length(self, sample_candles):
+        """Series length should match formula."""
+        candles = sample_candles("BTCUSDT", count=100)
+        # ... test implementation
+
+    def test_edge_cases(self, sample_candles):
+        """Handle edge cases gracefully."""
+        # Test insufficient data, extreme values, etc.
+```
+
+### Test Coverage Requirements
+
+- **Minimum 75% coverage** for new code
+- **All branches tested** for critical paths
+- **Edge cases covered**: empty data, insufficient data, extreme values
+- **Properties validated**: ranges, monotonicity, formulas
+
+### Running Tests
+
+```bash
+# Run all tests
+pytest tests/ -v
+
+# Run specific test file
+pytest tests/unit/indicators/test_momentum.py -v
+
+# Run with coverage
+pytest tests/ --cov=laakhay.ta --cov-report=html
+
+# Run single test
+pytest tests/unit/indicators/test_momentum.py::TestRSIIndicator::test_rsi_range -v
+
+# Stop on first failure
+pytest tests/ -x
+
+# Show print statements
+pytest tests/ -s
 ```
 
 ---
