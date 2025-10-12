@@ -78,8 +78,7 @@ class StatisticalUtils:
 
         if method == "log":
             returns = [
-                log(prices_float[i] / prices_float[i - 1])
-                for i in range(1, len(prices_float))
+                log(prices_float[i] / prices_float[i - 1]) for i in range(1, len(prices_float))
             ]
         elif method == "pct":
             returns = [
@@ -87,10 +86,7 @@ class StatisticalUtils:
                 for i in range(1, len(prices_float))
             ]
         else:  # simple
-            returns = [
-                prices_float[i] - prices_float[i - 1]
-                for i in range(1, len(prices_float))
-            ]
+            returns = [prices_float[i] - prices_float[i - 1] for i in range(1, len(prices_float))]
 
         return returns
 
@@ -171,7 +167,7 @@ class StatisticalUtils:
             return 0.0
 
         std = stdev(returns)
-        return std * (annualization_factor ** 0.5)
+        return std * (annualization_factor**0.5)
 
     @staticmethod
     def calculate_sharpe_ratio(
@@ -209,4 +205,4 @@ class StatisticalUtils:
         excess_return = mean_return - risk_free_rate
         sharpe = excess_return / std_return
 
-        return sharpe * (annualization_factor ** 0.5)
+        return sharpe * (annualization_factor**0.5)

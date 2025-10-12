@@ -32,9 +32,7 @@ class TestPearsonCorrelation:
         series1 = [1.0, 2.0, 3.0, 4.0, 5.0]
         series2 = [2.0, 4.0, 6.0, 8.0, 10.0]
 
-        corr = CorrelationAnalyzer.calculate_pearson_correlation(
-            series1, series2
-        )
+        corr = CorrelationAnalyzer.calculate_pearson_correlation(series1, series2)
 
         assert abs(corr - 1.0) < 0.0001, "Perfect positive correlation"
 
@@ -43,9 +41,7 @@ class TestPearsonCorrelation:
         series1 = [1.0, 2.0, 3.0, 4.0, 5.0]
         series2 = [10.0, 8.0, 6.0, 4.0, 2.0]
 
-        corr = CorrelationAnalyzer.calculate_pearson_correlation(
-            series1, series2
-        )
+        corr = CorrelationAnalyzer.calculate_pearson_correlation(series1, series2)
 
         assert abs(corr - (-1.0)) < 0.0001, "Perfect negative correlation"
 
@@ -54,9 +50,7 @@ class TestPearsonCorrelation:
         series1 = [1.0, 2.0, 3.0, 4.0, 5.0]
         series2 = [3.0, 1.0, 4.0, 2.0, 5.0]
 
-        corr = CorrelationAnalyzer.calculate_pearson_correlation(
-            series1, series2
-        )
+        corr = CorrelationAnalyzer.calculate_pearson_correlation(series1, series2)
 
         # Should be close to 0 but not exactly due to small sample
         assert abs(corr) < 0.9, "Near-zero correlation"
@@ -67,9 +61,7 @@ class TestPearsonCorrelation:
         series2 = [1.0, 2.0]
 
         try:
-            CorrelationAnalyzer.calculate_pearson_correlation(
-                series1, series2
-            )
+            CorrelationAnalyzer.calculate_pearson_correlation(series1, series2)
             raise AssertionError("Should raise ValueError")
         except ValueError as e:
             assert "same length" in str(e)
@@ -80,9 +72,7 @@ class TestPearsonCorrelation:
         series2 = [2.0]
 
         try:
-            CorrelationAnalyzer.calculate_pearson_correlation(
-                series1, series2
-            )
+            CorrelationAnalyzer.calculate_pearson_correlation(series1, series2)
             raise AssertionError("Should raise ValueError")
         except ValueError as e:
             assert "at least 2" in str(e)
@@ -92,9 +82,7 @@ class TestPearsonCorrelation:
         series1 = [5.0, 5.0, 5.0, 5.0]
         series2 = [1.0, 2.0, 3.0, 4.0]
 
-        corr = CorrelationAnalyzer.calculate_pearson_correlation(
-            series1, series2
-        )
+        corr = CorrelationAnalyzer.calculate_pearson_correlation(series1, series2)
 
         assert corr == 0.0, "Constant series has no correlation"
 
@@ -105,12 +93,8 @@ class TestCandleSeriesCorrelation:
     def test_correlated_candle_series(self):
         """Test correlation calculation from candle series."""
         base_time = datetime(2024, 1, 1, tzinfo=timezone.utc)
-        candles1 = [
-            create_test_candle(base_time, 100 + i * 2) for i in range(10)
-        ]
-        candles2 = [
-            create_test_candle(base_time, 50 + i) for i in range(10)
-        ]
+        candles1 = [create_test_candle(base_time, 100 + i * 2) for i in range(10)]
+        candles2 = [create_test_candle(base_time, 50 + i) for i in range(10)]
 
         result = CorrelationAnalyzer.correlate_candle_series(
             candles1,
@@ -172,12 +156,8 @@ class TestCorrelationDetection:
         """Test detection of significant correlation."""
         base_time = datetime(2024, 1, 1, tzinfo=timezone.utc)
         # Create highly correlated series
-        candles1 = [
-            create_test_candle(base_time, 100 + i * 5) for i in range(20)
-        ]
-        candles2 = [
-            create_test_candle(base_time, 50 + i * 2.5) for i in range(20)
-        ]
+        candles1 = [create_test_candle(base_time, 100 + i * 5) for i in range(20)]
+        candles2 = [create_test_candle(base_time, 50 + i * 2.5) for i in range(20)]
 
         result = CorrelationAnalyzer.detect_correlation_change(
             candles1, candles2, significance_threshold=0.7
@@ -192,9 +172,7 @@ class TestCorrelationDetection:
         base_time = datetime(2024, 1, 1, tzinfo=timezone.utc)
         # Create weakly correlated series
         candles1 = [create_test_candle(base_time, 100 + i) for i in range(20)]
-        candles2 = [
-            create_test_candle(base_time, 50 + (i % 3)) for i in range(20)
-        ]
+        candles2 = [create_test_candle(base_time, 50 + (i % 3)) for i in range(20)]
 
         result = CorrelationAnalyzer.detect_correlation_change(
             candles1, candles2, significance_threshold=0.7
@@ -208,16 +186,10 @@ class TestCorrelationDetection:
         base_time = datetime(2024, 1, 1, tzinfo=timezone.utc)
 
         # Strong correlation (> 0.7)
-        candles1 = [
-            create_test_candle(base_time, 100 + i * 5) for i in range(20)
-        ]
-        candles2 = [
-            create_test_candle(base_time, 50 + i * 2.5) for i in range(20)
-        ]
+        candles1 = [create_test_candle(base_time, 100 + i * 5) for i in range(20)]
+        candles2 = [create_test_candle(base_time, 50 + i * 2.5) for i in range(20)]
 
-        result = CorrelationAnalyzer.detect_correlation_change(
-            candles1, candles2
-        )
+        result = CorrelationAnalyzer.detect_correlation_change(candles1, candles2)
         assert result.strength == "strong"
 
 
@@ -228,14 +200,10 @@ class TestRollingCorrelation:
         """Test rolling correlation over time."""
         base_time = datetime(2024, 1, 1, tzinfo=timezone.utc)
         # Create 50 candles
-        candles1 = [
-            create_test_candle(base_time, 100 + i) for i in range(50)
-        ]
+        candles1 = [create_test_candle(base_time, 100 + i) for i in range(50)]
         candles2 = [create_test_candle(base_time, 50 + i) for i in range(50)]
 
-        results = CorrelationAnalyzer.rolling_correlation_series(
-            candles1, candles2, window_size=10
-        )
+        results = CorrelationAnalyzer.rolling_correlation_series(candles1, candles2, window_size=10)
 
         # Should get 50 - 10 + 1 = 41 results
         assert len(results) == 41
@@ -250,9 +218,7 @@ class TestRollingCorrelation:
         candles1 = [create_test_candle(base_time, 100 + i) for i in range(10)]
         candles2 = [create_test_candle(base_time, 50 + i) for i in range(10)]
 
-        results = CorrelationAnalyzer.rolling_correlation_series(
-            candles1, candles2, window_size=5
-        )
+        results = CorrelationAnalyzer.rolling_correlation_series(candles1, candles2, window_size=5)
 
         # Should get 10 - 5 + 1 = 6 results
         assert len(results) == 6
@@ -264,9 +230,7 @@ class TestRollingCorrelation:
         candles2 = [create_test_candle(base_time, 50 + i) for i in range(5)]
 
         try:
-            CorrelationAnalyzer.rolling_correlation_series(
-                candles1, candles2, window_size=10
-            )
+            CorrelationAnalyzer.rolling_correlation_series(candles1, candles2, window_size=10)
             raise AssertionError("Should raise ValueError")
         except ValueError as e:
             assert "at least 10" in str(e)

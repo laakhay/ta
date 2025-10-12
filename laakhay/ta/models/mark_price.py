@@ -11,35 +11,29 @@ from pydantic import BaseModel, ConfigDict, Field
 
 class MarkPrice(BaseModel):
     """Mark Price and Index Price data for perpetual futures.
-    
+
     Mark Price is used for liquidations and unrealized PnL calculations.
     Index Price is the weighted average spot price from multiple exchanges.
-    
+
     These prices prevent market manipulation and unfair liquidations.
     """
 
     symbol: str = Field(..., min_length=1, description="Trading symbol")
     mark_price: Decimal = Field(..., gt=0, description="Mark price (used for liquidations)")
     index_price: Optional[Decimal] = Field(
-        default=None,
-        gt=0, 
-        description="Index price (spot reference)"
+        default=None, gt=0, description="Index price (spot reference)"
     )
     estimated_settle_price: Optional[Decimal] = Field(
-        default=None, 
-        gt=0, 
-        description="Estimated settlement price"
+        default=None, gt=0, description="Estimated settlement price"
     )
     last_funding_rate: Optional[Decimal] = Field(
-        default=None, 
-        description="Last applied funding rate"
+        default=None, description="Last applied funding rate"
     )
     next_funding_time: Optional[datetime] = Field(
-        default=None,
-        description="Next funding time (UTC)"
+        default=None, description="Next funding time (UTC)"
     )
     timestamp: datetime = Field(..., description="Data timestamp (UTC)")
-    
+
     model_config = ConfigDict(frozen=True, str_strip_whitespace=True)
 
     # --- Price Analysis Properties ---
@@ -93,9 +87,9 @@ class MarkPrice(BaseModel):
         """Categorize spread severity: normal, moderate, high, extreme."""
         if self.mark_index_spread_bps is None:
             return "unknown"
-        
+
         abs_spread = abs(self.mark_index_spread_bps)
-        
+
         if abs_spread < 10:  # < 0.10%
             return "normal"
         elif abs_spread < 30:  # 0.10% - 0.30%
@@ -119,10 +113,10 @@ class MarkPrice(BaseModel):
 
     def is_fresh(self, max_age_seconds: float = 5.0) -> bool:
         """Check if mark price data is fresh (age < threshold).
-        
+
         Args:
             max_age_seconds: Maximum age threshold (default 5s for real-time data)
-            
+
         Returns:
             True if age < threshold
         """

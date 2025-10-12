@@ -16,9 +16,7 @@ class CorrelationResult(BaseModel):
 
     asset1: str = Field(description="First asset identifier")
     asset2: str = Field(description="Second asset identifier")
-    correlation: float = Field(
-        description="Pearson correlation coefficient (-1 to 1)"
-    )
+    correlation: float = Field(description="Pearson correlation coefficient (-1 to 1)")
     lookback_periods: int = Field(description="Number of periods used")
     start_timestamp: datetime = Field(description="Start of analysis period")
     end_timestamp: datetime = Field(description="End of analysis period")
@@ -31,13 +29,9 @@ class CrossAssetCorrelationResult(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     timestamp: datetime = Field(description="Analysis timestamp")
-    correlation: float = Field(
-        description="Pearson correlation coefficient (-1 to 1)"
-    )
+    correlation: float = Field(description="Pearson correlation coefficient (-1 to 1)")
     lookback_periods: int = Field(description="Number of periods used")
-    is_significant: bool = Field(
-        description="Whether correlation meets significance threshold"
-    )
+    is_significant: bool = Field(description="Whether correlation meets significance threshold")
     strength: Literal["weak", "moderate", "strong"] = Field(
         description="Qualitative correlation strength"
     )
@@ -51,9 +45,7 @@ class CorrelationAnalyzer:
     """
 
     @staticmethod
-    def calculate_pearson_correlation(
-        series1: Sequence[float], series2: Sequence[float]
-    ) -> float:
+    def calculate_pearson_correlation(series1: Sequence[float], series2: Sequence[float]) -> float:
         """Calculate Pearson correlation coefficient.
 
         Args:
@@ -75,14 +67,10 @@ class CorrelationAnalyzer:
             >>> print(f"Correlation: {corr:.4f}")
         """
         if len(series1) != len(series2):
-            raise ValueError(
-                f"Series must have same length: {len(series1)} != {len(series2)}"
-            )
+            raise ValueError(f"Series must have same length: {len(series1)} != {len(series2)}")
 
         if len(series1) < 2:
-            raise ValueError(
-                f"Need at least 2 data points, got {len(series1)}"
-            )
+            raise ValueError(f"Need at least 2 data points, got {len(series1)}")
 
         n = len(series1)
 
@@ -92,8 +80,7 @@ class CorrelationAnalyzer:
 
         # Calculate correlation components
         numerator = sum(
-            (x1 - mean1) * (x2 - mean2)
-            for x1, x2 in zip(series1, series2, strict=True)
+            (x1 - mean1) * (x2 - mean2) for x1, x2 in zip(series1, series2, strict=True)
         )
         sum_sq1 = sum((x1 - mean1) ** 2 for x1 in series1)
         sum_sq2 = sum((x2 - mean2) ** 2 for x2 in series2)
@@ -146,9 +133,7 @@ class CorrelationAnalyzer:
         prices1 = [float(getattr(c, price_field)) for c in candles1]
         prices2 = [float(getattr(c, price_field)) for c in candles2]
 
-        correlation = CorrelationAnalyzer.calculate_pearson_correlation(
-            prices1, prices2
-        )
+        correlation = CorrelationAnalyzer.calculate_pearson_correlation(prices1, prices2)
 
         return CorrelationResult(
             asset1=asset1_name,
@@ -192,9 +177,7 @@ class CorrelationAnalyzer:
         prices1 = [float(getattr(c, price_field)) for c in current_candles1]
         prices2 = [float(getattr(c, price_field)) for c in current_candles2]
 
-        correlation = CorrelationAnalyzer.calculate_pearson_correlation(
-            prices1, prices2
-        )
+        correlation = CorrelationAnalyzer.calculate_pearson_correlation(prices1, prices2)
 
         abs_corr = abs(correlation)
         is_significant = abs_corr >= significance_threshold
@@ -250,9 +233,7 @@ class CorrelationAnalyzer:
             raise ValueError(f"Window size must be >= 2, got {window_size}")
 
         if len(candles1) < window_size:
-            raise ValueError(
-                f"Need at least {window_size} candles, got {len(candles1)}"
-            )
+            raise ValueError(f"Need at least {window_size} candles, got {len(candles1)}")
 
         results = []
         for i in range(window_size, len(candles1) + 1):

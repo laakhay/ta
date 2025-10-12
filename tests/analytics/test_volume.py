@@ -36,9 +36,7 @@ class TestVolumeStatistics:
             for i in range(50)
         ]
 
-        stats = VolumeAnalyzer.calculate_volume_statistics(
-            candles, windows={"test": 20}
-        )
+        stats = VolumeAnalyzer.calculate_volume_statistics(candles, windows={"test": 20})
 
         assert "test" in stats
         assert not stats["test"]["insufficient_data"]
@@ -82,9 +80,7 @@ class TestVolumeStatistics:
             for i in range(10)
         ]
 
-        stats = VolumeAnalyzer.calculate_volume_statistics(
-            candles, windows={"large": 100}
-        )
+        stats = VolumeAnalyzer.calculate_volume_statistics(candles, windows={"large": 100})
 
         assert stats["large"]["insufficient_data"]
         assert stats["large"]["median"] == Decimal("0")
@@ -294,22 +290,16 @@ class TestVolumePercentile:
         ]
 
         # Very high volume
-        high_percentile = VolumeAnalyzer.calculate_volume_percentile(
-            Decimal("10000"), candles
-        )
+        high_percentile = VolumeAnalyzer.calculate_volume_percentile(Decimal("10000"), candles)
         assert high_percentile == 100.0
 
         # Very low volume
-        low_percentile = VolumeAnalyzer.calculate_volume_percentile(
-            Decimal("1"), candles
-        )
+        low_percentile = VolumeAnalyzer.calculate_volume_percentile(Decimal("1"), candles)
         assert low_percentile == 0.0
 
     def test_percentile_empty_candles(self):
         """Test percentile with empty candles."""
-        percentile = VolumeAnalyzer.calculate_volume_percentile(
-            Decimal("1000"), []
-        )
+        percentile = VolumeAnalyzer.calculate_volume_percentile(Decimal("1000"), [])
         assert percentile == 0.0
 
 
@@ -344,9 +334,7 @@ class TestVolumeZScore:
         ]
 
         # Very high volume should have positive z-score
-        high_zscore = VolumeAnalyzer.calculate_volume_zscore(
-            Decimal("10000"), candles
-        )
+        high_zscore = VolumeAnalyzer.calculate_volume_zscore(Decimal("10000"), candles)
         assert high_zscore > 3
 
         # Very low volume should have negative z-score
@@ -362,13 +350,9 @@ class TestVolumeZScore:
         )
 
         # Single candle - can't calculate std
-        zscore = VolumeAnalyzer.calculate_volume_zscore(
-            Decimal("2000"), [candle]
-        )
+        zscore = VolumeAnalyzer.calculate_volume_zscore(Decimal("2000"), [candle])
         assert zscore == 0.0
 
         # Empty list
-        zscore = VolumeAnalyzer.calculate_volume_zscore(
-            Decimal("2000"), []
-        )
+        zscore = VolumeAnalyzer.calculate_volume_zscore(Decimal("2000"), [])
         assert zscore == 0.0

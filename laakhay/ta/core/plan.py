@@ -13,11 +13,13 @@ from .registry import get_indicator
 
 class CyclicDependencyError(Exception):
     """Raised when a circular dependency is detected in the indicator graph."""
+
     pass
 
 
 class IndicatorNotFoundError(Exception):
     """Raised when a requested indicator is not registered."""
+
     pass
 
 
@@ -33,6 +35,7 @@ class ComputeRequest(BaseModel):
     """
     Target indicator evaluation request for a single timeframe (multi-asset).
     """
+
     indicator_name: str
     params: dict[str, Any] = Field(default_factory=dict)
     symbols: list[str]
@@ -45,6 +48,7 @@ class PlanNode(BaseModel):
     kind == "raw": key describes raw slice node (e.g., ("price","close","BTCUSDT"))
     kind == "indicator": key describes computed outputs (e.g., ("rsi","<hash>","BTCUSDT"))
     """
+
     kind: Literal["raw", "indicator"]
     key: tuple[str, ...]
     # Optional for indicator nodes; raw nodes generally won't need it here.
@@ -166,9 +170,7 @@ def build_execution_plan(req: ComputeRequest) -> ExecutionPlan:
     if len(sorted_nodes) != len(graph):
         # Find nodes involved in cycle
         cycle_nodes = [node for node in graph if node not in sorted_nodes]
-        raise CyclicDependencyError(
-            f"Circular dependency detected involving: {cycle_nodes[:3]}..."
-        )
+        raise CyclicDependencyError(f"Circular dependency detected involving: {cycle_nodes[:3]}...")
 
     # Convert to PlanNode objects (dependencies first, reverse order)
     plan_nodes = []

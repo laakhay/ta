@@ -19,9 +19,9 @@ class TestReturnsCalculation:
 
         assert len(returns) == 2
         # log(105/100) ≈ 0.0488
-        assert abs(returns[0] - log(105/100)) < 0.0001
+        assert abs(returns[0] - log(105 / 100)) < 0.0001
         # log(110/105) ≈ 0.0465
-        assert abs(returns[1] - log(110/105)) < 0.0001
+        assert abs(returns[1] - log(110 / 105)) < 0.0001
 
     def test_pct_returns(self):
         """Test percentage returns calculation."""
@@ -33,7 +33,7 @@ class TestReturnsCalculation:
         # (105-100)/100 = 0.05
         assert abs(returns[0] - 0.05) < 0.0001
         # (110-105)/105 ≈ 0.0476
-        assert abs(returns[1] - (5/105)) < 0.0001
+        assert abs(returns[1] - (5 / 105)) < 0.0001
 
     def test_simple_returns(self):
         """Test simple returns calculation."""
@@ -183,7 +183,7 @@ class TestVolatility:
         # Annualized should be higher
         assert annual_vol > daily_vol
         # Should be approximately sqrt(252) times higher
-        assert abs(annual_vol / daily_vol - (252 ** 0.5)) < 0.1
+        assert abs(annual_vol / daily_vol - (252**0.5)) < 0.1
 
     def test_volatility_zero_returns(self):
         """Test volatility with zero returns."""
@@ -240,7 +240,7 @@ class TestSharpeRatio:
         # Annualized should be higher
         assert annual_sharpe > daily_sharpe
         # Should be approximately sqrt(252) times higher
-        assert abs(annual_sharpe / daily_sharpe - (252 ** 0.5)) < 0.1
+        assert abs(annual_sharpe / daily_sharpe - (252**0.5)) < 0.1
 
     def test_sharpe_zero_volatility(self):
         """Test Sharpe ratio with zero volatility."""

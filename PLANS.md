@@ -1,6 +1,6 @@
 # Laakhay TA - Roadmap
 
-**Version**: 2.0 | **Status**: v0.1.0 Complete (80%) | **Updated**: Oct 12, 2025
+**Version**: 1.0 | **Status**: v0.1.0 Complete (80%) | **Updated**: Oct 12, 2025
 
 ---
 
@@ -11,7 +11,9 @@
 - Core: BaseIndicator, Registry, DAG Planner, Execution Engine ✅
 - Data Models: Candle, OI, Funding, MarkPrice ✅
 - Indicators: SMA, EMA, RSI, MACD, Stochastic, ATR, BBands, VWAP ✅
-- Testing: 30 tests, 79% coverage ✅
+- Analytics: Correlation, Relative Strength, Volume, Statistics ✅
+- Testing: 98 tests, 79% core + 92-100% analytics ✅
+- Spike Detection: Abstracted from crypto-alerts-backend ✅
 
 ---
 
@@ -50,11 +52,11 @@
 ```python
 class StreamIndicator(BaseIndicator):
     kind: ClassVar[Literal["stream"]] = "stream"
-    
+  
     @classmethod
     def init_state(cls, **params) -> Any:
         """Initialize stateful computation."""
-    
+  
     @classmethod
     def update(cls, state: Any, new_candle: Candle, **params) -> Tuple[Any, float]:
         """Update state with new candle."""
@@ -71,12 +73,6 @@ req = ComputeRequest(
 )
 ```
 
-**Cross-Asset Analysis**
-
-- Correlation indicator (pairwise symbol correlation)
-- Spread analysis
-- Relative strength
-
 **Signal Generation**
 
 - Crossover detection
@@ -85,15 +81,58 @@ req = ComputeRequest(
 
 ---
 
+## Backend Migration Status
+
+**Extracted from crypto-alerts-backend** (5 modules):
+
+1. **Spike Detection** ✅
+   - PriceSpikeDetector, VolumeSpikeDetector, CombinedSpikeDetector
+   - 13 tests, 81% coverage
+   - Location: `laakhay/ta/signals/spikes.py`
+
+2. **Correlation Analysis** ✅
+   - CorrelationAnalyzer with Pearson correlation
+   - Rolling correlation, correlation change detection
+   - 14 tests, 92% coverage
+   - Location: `laakhay/ta/analytics/correlation.py`
+
+3. **Relative Strength** ✅
+   - RelativeStrengthAnalyzer for performance vs base asset
+   - Divergence detection, ranking
+   - 13 tests, 97% coverage
+   - Location: `laakhay/ta/analytics/relative_strength.py`
+
+4. **Volume Analysis** ✅
+   - VolumeAnalyzer with multi-window baseline comparison
+   - Percentile ranking, z-score calculation
+   - 16 tests, 100% coverage
+   - Location: `laakhay/ta/analytics/volume.py`
+
+5. **Statistical Utilities** ✅
+   - Returns (log/pct/simple), volatility, Sharpe ratio
+   - Percentile rank, z-score
+   - 25 tests, 100% coverage
+   - Location: `laakhay/ta/analytics/statistics.py`
+
+**Total**: 81 tests for backend features, 68 tests for analytics (92-100% coverage)
+
+**Next Steps**:
+- Integrate into crypto-alerts-backend
+- Remove legacy implementations
+- Performance benchmarks (target: <1ms per calculation)
+
+---
+
 ## Release Schedule
 
-| Version | Features                    | Target      |
-| ------- | --------------------------- | ----------- |
-| v0.1.0  | Core + 8 indicators + Tests | Oct 12 ✅   |
-| v0.2.0  | PyPI + Integration + CI/CD  | Oct 26      |
-| v0.3.0  | Tier 2 indicators (5+)      | Nov 9       |
-| v0.4.0  | Streaming + Multi-TF        | Dec 2025    |
-| v1.0.0  | Production-proven, 25+ ind  | Q1 2026     |
+| Version | Features                    | Target    |
+| ------- | --------------------------- | --------- |
+| v0.1.0  | Core + 8 indicators + Tests | Oct 12 ✅ |
+| v0.1.5  | Analytics + Backend Extract | Oct 13 ✅ |
+| v0.2.0  | PyPI + Integration + CI/CD  | Oct 26    |
+| v0.3.0  | Tier 2 indicators (5+)      | Nov 9     |
+| v0.4.0  | Streaming + Multi-TF        | Dec 2025  |
+| v1.0.0  | Production-proven, 25+ ind  | Q1 2026   |
 
 ---
 

@@ -11,7 +11,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 class FundingRate(BaseModel):
     """Funding rate data for futures contracts.
-    
+
     Funding rates are periodic payments between longs and shorts in perpetual futures.
     Positive rate = longs pay shorts (futures trading at premium).
     Negative rate = shorts pay longs (futures trading at discount).
@@ -21,11 +21,9 @@ class FundingRate(BaseModel):
     funding_time: datetime = Field(..., description="Funding time (UTC)")
     funding_rate: Decimal = Field(..., description="Funding rate (decimal, not percentage)")
     mark_price: Optional[Decimal] = Field(
-        default=None, 
-        gt=0, 
-        description="Mark price at funding time"
+        default=None, gt=0, description="Mark price at funding time"
     )
-    
+
     model_config = ConfigDict(frozen=True, str_strip_whitespace=True)
 
     # --- Developer ergonomics ---
@@ -43,7 +41,7 @@ class FundingRate(BaseModel):
     @property
     def annual_rate_percentage(self) -> Decimal:
         """Estimated annual rate percentage.
-        
+
         Assumes funding every 8 hours = 3x per day = 1095x per year.
         """
         return self.funding_rate_percentage * Decimal("1095")
@@ -65,10 +63,10 @@ class FundingRate(BaseModel):
 
     def get_age_seconds(self, now_ms: Optional[int] = None) -> float:
         """Seconds since funding time.
-        
+
         Args:
             now_ms: Optional current time in milliseconds. If None, uses current time.
-            
+
         Returns:
             Age in seconds (always non-negative)
         """
@@ -78,10 +76,10 @@ class FundingRate(BaseModel):
 
     def is_fresh(self, max_age_seconds: float = 300.0) -> bool:
         """Check if funding rate is fresh (age < threshold).
-        
+
         Args:
             max_age_seconds: Maximum age threshold (default 300s = 5min)
-            
+
         Returns:
             True if age < threshold
         """

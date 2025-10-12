@@ -117,9 +117,7 @@ class MACDIndicator(BaseIndicator):
 
         # Validate parameters
         if slow_period <= fast_period:
-            raise ValueError(
-                f"Slow period ({slow_period}) must be > fast period ({fast_period})"
-            )
+            raise ValueError(f"Slow period ({slow_period}) must be > fast period ({fast_period})")
         if fast_period < 2:
             raise ValueError(f"Fast period must be >= 2, got {fast_period}")
         if signal_period < 1:
@@ -127,9 +125,7 @@ class MACDIndicator(BaseIndicator):
 
         valid_fields = {"open", "high", "low", "close", "hlc3", "ohlc4", "hl2"}
         if price_field not in valid_fields:
-            raise ValueError(
-                f"Invalid price_field '{price_field}'. Must be one of {valid_fields}"
-            )
+            raise ValueError(f"Invalid price_field '{price_field}'. Must be one of {valid_fields}")
 
         results = {}
 

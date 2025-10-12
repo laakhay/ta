@@ -10,7 +10,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 class Candle(BaseModel):
     """OHLCV candle data.
-    
+
     Immutable representation of a price bar with open, high, low, close, and volume.
     Designed to be data-source agnostic - any provider can produce Candle instances.
     """
@@ -51,7 +51,7 @@ class Candle(BaseModel):
     model_config = ConfigDict(frozen=True, str_strip_whitespace=True)
 
     # --- Developer ergonomics / freshness helpers ---
-    
+
     @property
     def open_time_ms(self) -> int:
         """Get candle open time in milliseconds (Unix epoch)."""
@@ -62,10 +62,10 @@ class Candle(BaseModel):
 
         For closed candles this equals open_time + interval; for streaming open
         candles the caller may pass the actual interval used.
-        
+
         Args:
             interval_seconds: Candle interval in seconds (e.g., 60 for 1m, 3600 for 1h)
-            
+
         Returns:
             Close time in milliseconds (Unix epoch)
         """
@@ -73,11 +73,11 @@ class Candle(BaseModel):
 
     def get_age_seconds(self, *, is_closed: bool = True, interval_seconds: int = 60) -> float:
         """Calculate how old this candle is in seconds.
-        
+
         Args:
             is_closed: If True, age is measured from close_time; if False, from now
             interval_seconds: Candle interval in seconds
-            
+
         Returns:
             Age in seconds (always non-negative)
         """
@@ -86,36 +86,35 @@ class Candle(BaseModel):
         return max(0.0, (now_ms - ref) / 1000.0)
 
     def is_fresh(
-        self, 
-        max_age_seconds: float = 120.0, 
-        *, 
-        is_closed: bool = True, 
-        interval_seconds: int = 60
+        self, max_age_seconds: float = 120.0, *, is_closed: bool = True, interval_seconds: int = 60
     ) -> bool:
         """Check if candle data is fresh (age below threshold).
-        
+
         Args:
             max_age_seconds: Maximum age threshold in seconds
             is_closed: Whether to measure from close time or current time
             interval_seconds: Candle interval in seconds
-            
+
         Returns:
             True if candle age < max_age_seconds
         """
-        return self.get_age_seconds(is_closed=is_closed, interval_seconds=interval_seconds) < max_age_seconds
+        return (
+            self.get_age_seconds(is_closed=is_closed, interval_seconds=interval_seconds)
+            < max_age_seconds
+        )
 
     # --- Common derived prices ---
-    
+
     @property
     def hlc3(self) -> Decimal:
         """Typical price: (high + low + close) / 3"""
         return (self.high + self.low + self.close) / Decimal("3")
-    
+
     @property
     def ohlc4(self) -> Decimal:
         """Average price: (open + high + low + close) / 4"""
         return (self.open + self.high + self.low + self.close) / Decimal("4")
-    
+
     @property
     def hl2(self) -> Decimal:
         """Median price: (high + low) / 2"""

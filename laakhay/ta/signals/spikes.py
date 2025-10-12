@@ -146,9 +146,7 @@ class PriceSpikeDetector:
             >>> results = PriceSpikeDetector.detect_spikes_series(candles)
             >>> spikes = [r for r in results if r.is_spike]
         """
-        return [
-            PriceSpikeDetector.detect_spike(candle, threshold_pct) for candle in candles
-        ]
+        return [PriceSpikeDetector.detect_spike(candle, threshold_pct) for candle in candles]
 
 
 class VolumeSpikeDetector:
@@ -250,8 +248,7 @@ class VolumeSpikeDetector:
         volumes = [float(c.volume) for c in historical_candles]
         volumes_sorted = sorted(volumes)
         percentile = (
-            sum(1 for v in volumes_sorted if v < float(candle.volume))
-            / len(volumes_sorted)
+            sum(1 for v in volumes_sorted if v < float(candle.volume)) / len(volumes_sorted)
         ) * 100
 
         # Calculate z-score

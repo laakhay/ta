@@ -20,18 +20,21 @@ from ..models import Candle
 # Use full models (FundingRate, OpenInterest, MarkPrice) when richer metadata is needed
 class OIPoint(BaseModel):
     """Lightweight open interest data point."""
+
     ts: datetime
     oi: Decimal
 
 
 class FundingPoint(BaseModel):
     """Lightweight funding rate data point."""
+
     ts: datetime
     rate: Decimal
 
 
 class MarkPricePoint(BaseModel):
     """Lightweight mark price data point."""
+
     ts: datetime
     price: Decimal
 
@@ -39,10 +42,11 @@ class MarkPricePoint(BaseModel):
 class TAInput(BaseModel):
     """
     Engine-provided input bundle for a single-timeframe, multi-asset evaluation.
-    
+
     This is what indicators receive as input. Keys are plain symbols (e.g., "BTCUSDT").
     Data sources must provide data in this format to use laakhay-ta.
     """
+
     candles: Mapping[str, Sequence[Candle]]
 
     # Optional raw series per symbol
@@ -59,17 +63,18 @@ class TAInput(BaseModel):
 
     # Evaluation timestamp (e.g., last closed bar). Optional for batch backfills.
     eval_ts: datetime | None = None
-    
+
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
 
 class TAOutput(BaseModel):
     """
     Per-symbol indicator outputs and associated metadata.
-    
+
     This is what indicators return after computation.
     """
+
     name: str
-    values: Mapping[str, Any]           # symbol -> scalar / vector / dict
-    ts: datetime | None = None          # common eval time (optional)
-    meta: dict[str, Any] = {}           # e.g., {"lookback_used": 200, "notes": "..."}
+    values: Mapping[str, Any]  # symbol -> scalar / vector / dict
+    ts: datetime | None = None  # common eval time (optional)
+    meta: dict[str, Any] = {}  # e.g., {"lookback_used": 200, "notes": "..."}

@@ -18,9 +18,7 @@ class RelativeStrengthResult(BaseModel):
     timestamp: datetime = Field(description="Analysis timestamp")
     symbol_change_pct: Decimal = Field(description="Symbol percentage change")
     base_change_pct: Decimal = Field(description="Base asset percentage change")
-    relative_strength: Decimal = Field(
-        description="Relative strength (symbol - base)"
-    )
+    relative_strength: Decimal = Field(description="Relative strength (symbol - base)")
     divergence_type: Literal["bullish", "bearish", "none"] = Field(
         description="Type of divergence detected"
     )
@@ -88,12 +86,8 @@ class RelativeStrengthAnalyzer:
             >>> print(f"RS: {rs.relative_strength}% ({rs.strength_category})")
         """
         # Calculate percentage changes
-        symbol_change_pct = (
-            (symbol_current_price - symbol_start_price) / symbol_start_price * 100
-        )
-        base_change_pct = (
-            (base_current_price - base_start_price) / base_start_price * 100
-        )
+        symbol_change_pct = (symbol_current_price - symbol_start_price) / symbol_start_price * 100
+        base_change_pct = (base_current_price - base_start_price) / base_start_price * 100
 
         # Relative strength = symbol change - base change
         relative_strength = symbol_change_pct - base_change_pct
@@ -168,9 +162,7 @@ class RelativeStrengthAnalyzer:
             raise ValueError("Need at least 2 common timestamps")
 
         if reference_index < 0 or reference_index >= len(common_ts):
-            raise ValueError(
-                f"reference_index must be in [0, {len(common_ts) - 1}]"
-            )
+            raise ValueError(f"reference_index must be in [0, {len(common_ts) - 1}]")
 
         # Get reference prices
         reference_ts = common_ts[reference_index]

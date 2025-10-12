@@ -90,6 +90,13 @@ print(f"Latest RSI: {latest_rsi:.2f}")
 - **ATR** - Average True Range (Wilder's smoothing)
 - **Bollinger Bands** - Standard deviation bands
 
+### ✅ Analytics & Signals
+- **Correlation** - Inter-asset correlation (Pearson)
+- **Relative Strength** - Performance vs benchmark
+- **Volume Analysis** - Multi-window spike detection
+- **Statistics** - Returns, volatility, Sharpe ratio
+- **Spike Detection** - Price & volume spike algorithms
+
 **All indicators:**
 - ✅ Return complete time series (not just latest value)
 - ✅ Tested with manual calculations (accuracy < 1e-10)
@@ -627,6 +634,145 @@ Laakhay TA is **truly stateless**:
 **Formula:** Σ(Price × Volume) / Σ(Volume)
 
 **Use Cases:** Fair value, support/resistance, institutional benchmark
+
+---
+
+## 🧮 Analytics Module
+
+**Purpose**: Stateless market analysis for cross-asset operations. Unlike indicators (single-symbol, DAG-resolved), analytics handle multi-symbol comparisons, screening, and statistical operations.
+
+### Correlation Analysis
+
+```python
+from laakhay.ta.analytics import CorrelationAnalyzer
+
+# Calculate correlation between ETH and BTC
+result = CorrelationAnalyzer.correlate_candle_series(
+    symbol_candles=eth_candles,
+    base_candles=btc_candles,
+    price_field="close"
+)
+
+print(f"Correlation: {result.coefficient:.2f}")
+print(f"Strength: {result.strength}")  # weak/moderate/strong/very_strong
+
+# Rolling correlation
+series = CorrelationAnalyzer.rolling_correlation_series(
+    symbol_candles=eth_candles,
+    base_candles=btc_candles,
+    window_size=20
+)
+```
+
+**Use Cases**: Pair trading, risk management, market regime detection
+
+---
+
+### Relative Strength Analysis
+
+```python
+from laakhay.ta.analytics import RelativeStrengthAnalyzer
+
+# Compare ETH vs BTC performance
+result = RelativeStrengthAnalyzer.calculate_relative_strength(
+    symbol_start=Decimal("2000"),
+    symbol_end=Decimal("2100"),
+    base_start=Decimal("40000"),
+    base_end=Decimal("41000")
+)
+
+print(f"RS: {result.relative_strength:.2f}%")  # 2.5% (outperforming)
+print(f"Category: {result.strength_category}")  # outperform
+
+# Rank multiple assets
+ranked = RelativeStrengthAnalyzer.rank_by_relative_strength(
+    symbol_candles_map={
+        "ETHUSDT": eth_candles,
+        "BNBUSDT": bnb_candles,
+        "SOLUSDT": sol_candles
+    },
+    base_candles=btc_candles,
+    top_n=5
+)
+```
+
+**Use Cases**: Asset screening, rotation strategies, divergence detection
+
+---
+
+### Volume Analysis
+
+```python
+from laakhay.ta.analytics import VolumeAnalyzer
+
+# Multi-window volume analysis
+results = VolumeAnalyzer.analyze_volume_vs_baselines(
+    current_volume=Decimal("1000000"),
+    candles=historical_candles,
+    windows={"short": 20, "medium": 100, "long": 1000}
+)
+
+for name, analysis in results.items():
+    print(f"{name}: {analysis.multiplier:.1f}x baseline")
+    print(f"  Z-score: {analysis.zscore:.2f}")
+    print(f"  Percentile: {analysis.percentile:.1f}%")
+```
+
+**Use Cases**: Volume spike detection, anomaly detection, breakout confirmation
+
+---
+
+### Statistical Utilities
+
+```python
+from laakhay.ta.analytics import StatisticalUtils
+
+# Calculate returns
+prices = [Decimal("100"), Decimal("105"), Decimal("110")]
+log_returns = StatisticalUtils.calculate_returns(prices, method="log")
+pct_returns = StatisticalUtils.calculate_returns(prices, method="pct")
+
+# Volatility (annualized)
+vol = StatisticalUtils.calculate_volatility(returns, annualization_factor=252)
+
+# Sharpe ratio
+sharpe = StatisticalUtils.calculate_sharpe_ratio(
+    returns,
+    risk_free_rate=0.02,
+    annualization_factor=252
+)
+
+# Percentile rank & z-score
+percentile = StatisticalUtils.percentile_rank(102.5, [100, 101, 102, 103, 104])
+zscore = StatisticalUtils.zscore(110, [100, 102, 104, 106, 108])
+```
+
+**Use Cases**: Portfolio analytics, risk metrics, performance attribution
+
+---
+
+### Spike Detection
+
+```python
+from laakhay.ta.signals import PriceSpikeDetector, VolumeSpikeDetector
+
+# Price spike detection
+spike_result = PriceSpikeDetector.detect_spike(candle)
+if spike_result.is_spike:
+    print(f"{spike_result.direction} spike: {spike_result.spike_pct}%")
+    print(f"Strength: {spike_result.strength}")  # weak/moderate/strong/extreme
+
+# Volume spike detection
+vol_result = VolumeSpikeDetector.detect_volume_spike(
+    candle=current_candle,
+    historical_candles=candles[:-1],
+    multiplier_threshold=2.0
+)
+```
+
+**Use Cases**: Real-time alerts, breakout detection, anomaly monitoring
+
+---
 
 ## 🤝 Contributing
 

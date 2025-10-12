@@ -28,7 +28,9 @@ class VolumeWindowAnalysis(BaseModel):
 
     model_config = ConfigDict(frozen=True)
 
-    window_name: str = Field(description="Name of the time window (e.g., 'short', 'medium', 'long')")
+    window_name: str = Field(
+        description="Name of the time window (e.g., 'short', 'medium', 'long')"
+    )
     window_size: int = Field(gt=0, description="Size of the window in candles")
     baseline: Decimal = Field(ge=0, description="Calculated baseline volume for this window")
     multiplier: Decimal = Field(ge=0, description="Current volume as multiplier of baseline")
@@ -44,13 +46,13 @@ class VolumeWindowAnalysis(BaseModel):
 
 class VolumeAnalyzer:
     """Stateless volume analysis utilities.
-    
+
     Provides methods for:
     - Volume statistics calculation across multiple time windows
     - Volume baseline comparison (vs median/mean)
     - Multi-window volume analysis
     - Volume profiling
-    
+
     Example:
         >>> candles = [...]  # Historical candle data
         >>> current_volume = Decimal("1000000")
@@ -73,11 +75,11 @@ class VolumeAnalyzer:
         windows: dict[str, int] | None = None,
     ) -> dict[str, dict[str, Any]]:
         """Calculate volume statistics across multiple time windows.
-        
+
         Args:
             candles: Historical candle data (most recent last)
             windows: Dict of window_name -> window_size (default: {"short": 20, "medium": 100})
-            
+
         Returns:
             Dict of window_name -> statistics dict with keys:
                 - median (Decimal)
@@ -86,7 +88,7 @@ class VolumeAnalyzer:
                 - min (Decimal)
                 - max (Decimal)
                 - insufficient_data (bool)
-            
+
         Example:
             >>> stats = VolumeAnalyzer.calculate_volume_statistics(
             ...     candles,
@@ -133,19 +135,19 @@ class VolumeAnalyzer:
         baseline_method: Literal["median", "mean"] = "median",
     ) -> dict[str, VolumeWindowAnalysis]:
         """Analyze current volume against multiple baseline windows.
-        
+
         Args:
             current_volume: Current volume to analyze
             candles: Historical candles (most recent last, excluding current)
             windows: Dict of window_name -> window_size
             baseline_method: Method for baseline calculation ("median" or "mean")
-            
+
         Returns:
             Dict of window_name -> VolumeWindowAnalysis
-            
+
         Raises:
             ValueError: If baseline_method is invalid
-            
+
         Example:
             >>> analysis = VolumeAnalyzer.analyze_volume_vs_baselines(
             ...     current_volume=Decimal("1000000"),
@@ -158,7 +160,9 @@ class VolumeAnalyzer:
             ...         print(f"{name} window: {result.multiplier}x baseline")
         """
         if baseline_method not in ("median", "mean"):
-            raise ValueError(f"Invalid baseline_method: {baseline_method}. Must be 'median' or 'mean'.")
+            raise ValueError(
+                f"Invalid baseline_method: {baseline_method}. Must be 'median' or 'mean'."
+            )
 
         stats = VolumeAnalyzer.calculate_volume_statistics(candles, windows)
 
@@ -219,14 +223,14 @@ class VolumeAnalyzer:
         candles: Sequence[Candle],
     ) -> float:
         """Calculate percentile rank of a volume value.
-        
+
         Args:
             volume: Volume value to rank
             candles: Historical candles to compare against
-            
+
         Returns:
             Percentile rank (0-100)
-            
+
         Example:
             >>> percentile = VolumeAnalyzer.calculate_volume_percentile(
             ...     volume=Decimal("1000000"),
@@ -248,14 +252,14 @@ class VolumeAnalyzer:
         candles: Sequence[Candle],
     ) -> float:
         """Calculate z-score of a volume value.
-        
+
         Args:
             volume: Volume value to score
             candles: Historical candles to compare against
-            
+
         Returns:
             Z-score (standard deviations from mean)
-            
+
         Example:
             >>> zscore = VolumeAnalyzer.calculate_volume_zscore(
             ...     volume=Decimal("1000000"),

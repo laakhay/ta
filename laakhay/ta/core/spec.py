@@ -7,13 +7,13 @@ from pydantic import BaseModel, Field
 
 # What kinds of raw series an indicator may consume.
 DataKind = Literal[
-    "price",        # OHLCV (Candle)
-    "volume",       # explicit volume dependency
-    "oi",           # open interest
-    "funding",      # funding rates
-    "mark_price",   # mark/index price series
-    "trades",       # tick/agg trades (future)
-    "orderbook",    # L2/L3 diffs or snapshots (future)
+    "price",  # OHLCV (Candle)
+    "volume",  # explicit volume dependency
+    "oi",  # open interest
+    "funding",  # funding rates
+    "mark_price",  # mark/index price series
+    "trades",  # tick/agg trades (future)
+    "orderbook",  # L2/L3 diffs or snapshots (future)
 ]
 
 # Optional price field selector when kind == "price"

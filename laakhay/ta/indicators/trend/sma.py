@@ -82,9 +82,7 @@ class SMAIndicator(BaseIndicator):
 
         valid_fields = {"open", "high", "low", "close", "hlc3", "ohlc4", "hl2"}
         if price_field not in valid_fields:
-            raise ValueError(
-                f"Invalid price_field '{price_field}'. Must be one of {valid_fields}"
-            )
+            raise ValueError(f"Invalid price_field '{price_field}'. Must be one of {valid_fields}")
 
         results = {}
 

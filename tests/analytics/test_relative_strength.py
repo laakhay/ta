@@ -182,17 +182,13 @@ class TestRelativeStrengthSeries:
 
         # Create symbol going up 10% over 10 periods
         symbol_candles = [
-            create_test_candle(
-                base_time + timedelta(hours=i), 3000 + i * 30, symbol="ETHUSDT"
-            )
+            create_test_candle(base_time + timedelta(hours=i), 3000 + i * 30, symbol="ETHUSDT")
             for i in range(10)
         ]
 
         # Create base going up 5% over 10 periods
         base_candles = [
-            create_test_candle(
-                base_time + timedelta(hours=i), 90000 + i * 500, symbol="BTCUSDT"
-            )
+            create_test_candle(base_time + timedelta(hours=i), 90000 + i * 500, symbol="BTCUSDT")
             for i in range(10)
         ]
 
@@ -215,15 +211,11 @@ class TestRelativeStrengthSeries:
         base_time = datetime(2024, 1, 1, tzinfo=timezone.utc)
 
         symbol_candles = [
-            create_test_candle(
-                base_time + timedelta(hours=i), 3000 + i * 30, symbol="ETHUSDT"
-            )
+            create_test_candle(base_time + timedelta(hours=i), 3000 + i * 30, symbol="ETHUSDT")
             for i in range(10)
         ]
         base_candles = [
-            create_test_candle(
-                base_time + timedelta(hours=i), 90000 + i * 500, symbol="BTCUSDT"
-            )
+            create_test_candle(base_time + timedelta(hours=i), 90000 + i * 500, symbol="BTCUSDT")
             for i in range(10)
         ]
 
@@ -260,30 +252,22 @@ class TestRanking:
 
         # Create base asset (BTC)
         base_candles = [
-            create_test_candle(
-                base_time + timedelta(hours=i), 90000 + i * 100, symbol="BTCUSDT"
-            )
+            create_test_candle(base_time + timedelta(hours=i), 90000 + i * 100, symbol="BTCUSDT")
             for i in range(10)
         ]
 
         # Create multiple symbols with different performance
         symbols = {
             "ETHUSDT": [  # Strong performer (+10%)
-                create_test_candle(
-                    base_time + timedelta(hours=i), 3000 + i * 30, symbol="ETHUSDT"
-                )
+                create_test_candle(base_time + timedelta(hours=i), 3000 + i * 30, symbol="ETHUSDT")
                 for i in range(10)
             ],
             "SOLUSDT": [  # Moderate performer (+5%)
-                create_test_candle(
-                    base_time + timedelta(hours=i), 100 + i * 0.5, symbol="SOLUSDT"
-                )
+                create_test_candle(base_time + timedelta(hours=i), 100 + i * 0.5, symbol="SOLUSDT")
                 for i in range(10)
             ],
             "BNBUSDT": [  # Underperformer (-2%)
-                create_test_candle(
-                    base_time + timedelta(hours=i), 500 - i * 1, symbol="BNBUSDT"
-                )
+                create_test_candle(base_time + timedelta(hours=i), 500 - i * 1, symbol="BNBUSDT")
                 for i in range(10)
             ],
         }
@@ -308,17 +292,13 @@ class TestRanking:
         base_time = datetime(2024, 1, 1, tzinfo=timezone.utc)
 
         base_candles = [
-            create_test_candle(
-                base_time + timedelta(hours=j), 90000 + j * 100, symbol="BTCUSDT"
-            )
+            create_test_candle(base_time + timedelta(hours=j), 90000 + j * 100, symbol="BTCUSDT")
             for j in range(10)
         ]
 
         symbols = {
             f"SYM{i}": [
-                create_test_candle(
-                    base_time + timedelta(hours=j), 100 + i * j, symbol=f"SYM{i}"
-                )
+                create_test_candle(base_time + timedelta(hours=j), 100 + i * j, symbol=f"SYM{i}")
                 for j in range(10)
             ]
             for i in range(5)
@@ -336,22 +316,16 @@ class TestRanking:
         base_time = datetime(2024, 1, 1, tzinfo=timezone.utc)
 
         base_candles = [
-            create_test_candle(
-                base_time + timedelta(hours=i), 90000 + i * 100, symbol="BTCUSDT"
-            )
+            create_test_candle(base_time + timedelta(hours=i), 90000 + i * 100, symbol="BTCUSDT")
             for i in range(10)
         ]
 
         symbols = {
             "GOOD": [
-                create_test_candle(
-                    base_time + timedelta(hours=i), 100 + i * 1, symbol="GOOD"
-                )
+                create_test_candle(base_time + timedelta(hours=i), 100 + i * 1, symbol="GOOD")
                 for i in range(10)
             ],
-            "BAD": [  # Only 1 candle
-                create_test_candle(base_time, 100, symbol="BAD")
-            ],
+            "BAD": [create_test_candle(base_time, 100, symbol="BAD")],  # Only 1 candle
         }
 
         rankings = RelativeStrengthAnalyzer.rank_by_relative_strength(

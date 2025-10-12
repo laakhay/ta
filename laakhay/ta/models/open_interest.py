@@ -11,7 +11,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 class OpenInterest(BaseModel):
     """Open Interest data for futures contracts.
-    
+
     Open Interest represents the total number of outstanding derivative contracts
     that have not been settled. It's a key indicator of market activity and liquidity.
     """

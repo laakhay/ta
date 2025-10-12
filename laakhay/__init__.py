@@ -5,7 +5,7 @@ A stateless, data-source agnostic technical analysis engine for cryptocurrencies
 Usage:
     >>> from laakhay.ta.models import Candle
     >>> from laakhay.ta.core import BaseIndicator
-    
+
     # Any data source that provides Candle objects can use laakhay-ta
 """
 
