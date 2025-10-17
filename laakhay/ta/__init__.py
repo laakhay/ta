@@ -13,6 +13,7 @@ __version__ = "0.1.0"
 
 # Export models for data source integrations
 # Import indicators to register them (must come after imports to avoid circular deps)
+from . import indicators  # noqa: F401
 
 # Export core contracts
 from .core.base import BaseIndicator
