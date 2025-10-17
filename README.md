@@ -85,6 +85,8 @@ print(f"Latest RSI: {latest_rsi:.2f}")
 
 ### ✅ Volume Indicators
 - **VWAP** - Volume Weighted Average Price (cumulative & rolling)
+- **Volume SMA** - Simple average volume over a rolling window
+- **Volume ROC** - Percentage change in volume vs N bars ago
 
 ### ✅ Volatility Indicators
 - **ATR** - Average True Range (Wilder's smoothing)

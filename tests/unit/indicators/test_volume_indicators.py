@@ -1,4 +1,4 @@
-"""Tests for volume indicators (VWAP)."""
+"""Tests for volume indicators (VWAP, Volume SMA, Volume ROC)."""
 
 from laakhay.ta.core.plan import ComputeRequest, build_execution_plan, execute_plan
 
@@ -145,3 +145,102 @@ class TestVWAPIndicator:
         # Typical price = (105 + 95 + 100) / 3 = 100
         expected = (105.0 + 95.0 + 100.0) / 3
         assert abs(vwap_val - expected) < 0.01
+
+
+class TestSimpleVolumeAverageIndicator:
+    """Test Simple Volume Average (Volume SMA) indicator."""
+
+    def test_volume_sma_basic(self, sample_candles):
+        """Volume SMA should match arithmetic mean of the window."""
+        from decimal import Decimal
+
+        candles = sample_candles("BTCUSDT", count=5)
+        custom_volumes = [100, 200, 300, 400, 500]
+        candles = [
+            candle.model_copy(update={"volume": Decimal(str(volume))})
+            for candle, volume in zip(candles, custom_volumes, strict=True)
+        ]
+
+        req = ComputeRequest(
+            indicator_name="volume_sma",
+            params={"period": 3},
+            symbols=["BTCUSDT"],
+            eval_ts=candles[-1].timestamp,
+        )
+
+        plan = build_execution_plan(req)
+        raw_cache = {("raw", "price", "close", "BTCUSDT"): candles}
+        result = execute_plan(plan, raw_cache, req)
+
+        sma_series = result.values["BTCUSDT"]
+
+        assert len(sma_series) == 3  # 5 - 3 + 1
+
+        expected_values = [
+            (100 + 200 + 300) / 3,
+            (200 + 300 + 400) / 3,
+            (300 + 400 + 500) / 3,
+        ]
+
+        for (_ts, value), expected in zip(sma_series, expected_values, strict=True):
+            assert abs(value - expected) < 1e-6
+
+
+class TestVolumeROCIndicator:
+    """Test Volume Rate of Change indicator."""
+
+    def test_volume_roc_percentage(self, sample_candles):
+        """Volume ROC should compute percentage change vs period bars ago."""
+        from decimal import Decimal
+
+        candles = sample_candles("BTCUSDT", count=5)
+        custom_volumes = [100, 200, 400, 200, 100]
+        candles = [
+            candle.model_copy(update={"volume": Decimal(str(volume))})
+            for candle, volume in zip(candles, custom_volumes, strict=True)
+        ]
+
+        req = ComputeRequest(
+            indicator_name="volume_roc",
+            params={"period": 2, "multiplier": 100.0},
+            symbols=["BTCUSDT"],
+            eval_ts=candles[-1].timestamp,
+        )
+
+        plan = build_execution_plan(req)
+        raw_cache = {("raw", "price", "close", "BTCUSDT"): candles}
+        result = execute_plan(plan, raw_cache, req)
+
+        roc_series = result.values["BTCUSDT"]
+
+        assert len(roc_series) == 3  # 5 - 2
+
+        expected_values = [300.0, 0.0, -75.0]
+        for (_ts, value), expected in zip(roc_series, expected_values, strict=True):
+            assert abs(value - expected) < 1e-6
+
+    def test_volume_roc_zero_previous_volume(self, sample_candles):
+        """When prior volume is zero, ROC should return zero to avoid division by zero."""
+        from decimal import Decimal
+
+        candles = sample_candles("BTCUSDT", count=3)
+        custom_volumes = [0, 150, 300]
+        candles = [
+            candle.model_copy(update={"volume": Decimal(str(volume))})
+            for candle, volume in zip(candles, custom_volumes, strict=True)
+        ]
+
+        req = ComputeRequest(
+            indicator_name="volume_roc",
+            params={"period": 2},
+            symbols=["BTCUSDT"],
+            eval_ts=candles[-1].timestamp,
+        )
+
+        plan = build_execution_plan(req)
+        raw_cache = {("raw", "price", "close", "BTCUSDT"): candles}
+        result = execute_plan(plan, raw_cache, req)
+
+        roc_series = result.values["BTCUSDT"]
+        assert len(roc_series) == 1
+        assert roc_series[0][1] == 0.0
