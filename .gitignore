@@ -1,0 +1,21 @@
+# Virtual environment
+.venv/
+**/__pycache__/
+
+# Build artefacts
+dist/
+*.tar.gz
+*.whl
+
+# IDE
+.vscode/
+
+# Lint/Test/Coverage artifacts
+.ruff_cache/
+.pytest_cache/
+.coverage
+.coverage.*
+.cache/
+
+# Coverage report
+htmlcov/

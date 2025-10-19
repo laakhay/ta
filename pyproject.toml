@@ -1,0 +1,53 @@
+[build-system]
+requires = ["uv_build>=0.9.4,<0.10.0"]
+build-backend = "uv_build"
+
+[project]
+name = "laakhay-ta"
+version = "0.1.0"
+description = "Stateless Technical Analysis Library built with ♥︎ by Laakhay"
+readme = "README.md"
+requires-python = ">=3.12"
+license = { text = "MIT" }
+authors = [{ name = "Laakhay Corporation", email = "laakhay.corp@gmail.com" }]
+dependencies = []
+
+[project.urls]
+Homepage = "https://laakhay.com"
+Repository = "https://github.com/laakhay/ta"
+Issues    = "https://github.com/laakhay/ta/issues"
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0", 
+    "pytest-asyncio>=0.21.0",
+    "pytest-cov>=4.0.0",
+    "ruff>=0.1.0"
+]
+
+[tool.uv.build-backend]
+module-root = "laakhay"
+module-name = "ta"
+namespace = true
+source-exclude = ["tests/**", "docs/**", "build/**", "dist/**"]
+wheel-exclude  = ["tests/**", "docs/**", "build/**", "dist/**"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = [
+  "--strict-markers",
+  "--tb=short",
+  "--cov=laakhay.ta",
+  "--cov-report=term-missing",
+  "--cov-report=html",
+  "--import-mode=importlib"
+]
+
+[tool.ruff]
+line-length = 88
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "C90", "I", "N", "UP", "B"]
