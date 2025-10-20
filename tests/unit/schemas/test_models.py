@@ -61,6 +61,24 @@ class TestParamSchema:
         # Optional parameter without default should fail
         with pytest.raises(ValueError, match="Optional parameters must have default values"):
             ParamSchema(name="source", type=str, required=False)
+        
+        # Empty name should fail
+        with pytest.raises(ValueError, match="Parameter name must be a non-empty string"):
+            ParamSchema(name="", type=int)
+        
+        # None name should fail
+        with pytest.raises(ValueError, match="Parameter name must be a non-empty string"):
+            ParamSchema(name=None, type=int)  # type: ignore[arg-type]
+        
+        # Default value not in valid_values should fail
+        with pytest.raises(ValueError, match="Default value 99 not in valid_values"):
+            ParamSchema(
+                name="period", 
+                type=int, 
+                default=99, 
+                required=False,
+                valid_values=[5, 10, 20]
+            )
 
 
 class TestOutputSchema:
@@ -85,6 +103,16 @@ class TestOutputSchema:
         assert output.name == "signal"
         assert output.type == bool
         assert output.description == ""
+
+    def test_output_schema_validation_errors(self) -> None:
+        """Test output schema validation rules."""
+        # Empty name should fail
+        with pytest.raises(ValueError, match="Output name must be a non-empty string"):
+            OutputSchema(name="", type=float)
+        
+        # None name should fail
+        with pytest.raises(ValueError, match="Output name must be a non-empty string"):
+            OutputSchema(name=None, type=float)  # type: ignore[arg-type]
 
 
 class TestIndicatorSchema:
@@ -208,3 +236,32 @@ class TestIndicatorSchema:
         assert len(restored.parameters) == len(original.parameters)
         assert len(restored.outputs) == len(original.outputs)
         assert restored.aliases == original.aliases
+
+    def test_indicator_schema_from_dict_validation_errors(self) -> None:
+        """Test schema deserialization validation errors."""
+        # Unknown parameter type should fail
+        data_with_unknown_param = {
+            "name": "test",
+            "parameters": {
+                "param": {
+                    "type": "unknown_type",
+                    "required": True,
+                    "description": "Test param"
+                }
+            }
+        }
+        with pytest.raises(ValueError, match="Unsupported parameter type: unknown_type"):
+            IndicatorSchema.from_dict(data_with_unknown_param)
+        
+        # Unknown output type should fail
+        data_with_unknown_output = {
+            "name": "test",
+            "outputs": {
+                "output": {
+                    "type": "unknown_type",
+                    "description": "Test output"
+                }
+            }
+        }
+        with pytest.raises(ValueError, match="Unsupported output type: unknown_type"):
+            IndicatorSchema.from_dict(data_with_unknown_output)

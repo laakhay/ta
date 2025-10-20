@@ -38,7 +38,7 @@ class TestDatasetKey:
         """Test that DatasetKey is immutable."""
         key = DatasetKey(symbol="BTCUSDT", timeframe="1h")
         with pytest.raises(AttributeError):
-            key.symbol = "ETHUSDT"
+            key.symbol = "ETHUSDT"  # type: ignore[misc]
 
 
 class TestDatasetMetadata:
@@ -399,7 +399,7 @@ class TestDatasetView:
         btc_view = ds.select(symbol="BTCUSDT")
         items = list(btc_view)
         assert len(items) == 1
-        key, series = items[0]
+        key, _series = items[0]
         assert key.symbol == "BTCUSDT"
 
 

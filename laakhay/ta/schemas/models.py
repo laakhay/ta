@@ -19,10 +19,15 @@ class ParamSchema:
     
     def __post_init__(self) -> None:
         """Validate parameter schema."""
+        if not self.name:
+            raise ValueError("Parameter name must be a non-empty string")
         if self.required and self.default is not None:
             raise ValueError("Required parameters cannot have default values")
         if not self.required and self.default is None:
             raise ValueError("Optional parameters must have default values")
+        if self.valid_values is not None and self.default is not None:
+            if self.default not in self.valid_values:
+                raise ValueError(f"Default value {self.default} not in valid_values")
 
 
 @dataclass(frozen=True)
@@ -32,6 +37,11 @@ class OutputSchema:
     name: str
     type: type
     description: str = ""
+    
+    def __post_init__(self) -> None:
+        """Validate output schema."""
+        if not self.name:
+            raise ValueError("Output name must be a non-empty string")
 
 
 @dataclass(frozen=True)
@@ -40,9 +50,9 @@ class IndicatorSchema:
     
     name: str
     description: str = ""
-    parameters: dict[str, ParamSchema] = field(default_factory=dict)
-    outputs: dict[str, OutputSchema] = field(default_factory=dict)
-    aliases: list[str] = field(default_factory=list)
+    parameters: dict[str, ParamSchema] = field(default_factory=lambda: dict[str, ParamSchema]())
+    outputs: dict[str, OutputSchema] = field(default_factory=lambda: dict[str, OutputSchema]())
+    aliases: list[str] = field(default_factory=lambda: list[str]())
     
     def to_dict(self) -> dict[str, Any]:
         """Convert schema to dictionary representation."""
@@ -84,7 +94,10 @@ class IndicatorSchema:
         
         parameters: dict[str, ParamSchema] = {}
         for name, param_data in data.get("parameters", {}).items():
-            param_type = type_mapping.get(param_data["type"], type(None))
+            param_type_name: str = param_data["type"]
+            if param_type_name not in type_mapping:
+                raise ValueError(f"Unsupported parameter type: {param_type_name}")
+            param_type: type = type_mapping[param_type_name]
             parameters[name] = ParamSchema(
                 name=name,
                 type=param_type,
@@ -96,7 +109,10 @@ class IndicatorSchema:
         
         outputs: dict[str, OutputSchema] = {}
         for name, output_data in data.get("outputs", {}).items():
-            output_type = type_mapping.get(output_data["type"], type(None))
+            output_type_name: str = output_data["type"]
+            if output_type_name not in type_mapping:
+                raise ValueError(f"Unsupported output type: {output_type_name}")
+            output_type: type = type_mapping[output_type_name]
             outputs[name] = OutputSchema(
                 name=name,
                 type=output_type,

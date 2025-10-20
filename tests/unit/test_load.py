@@ -4,11 +4,8 @@ import pytest
 import tempfile
 from pathlib import Path
 from decimal import Decimal
-from datetime import datetime, timezone
-
 from laakhay.ta.load import from_csv
 from laakhay.ta.core import OHLCV, Series
-from laakhay.ta.core.types import Price
 
 
 class TestLoadCSV:

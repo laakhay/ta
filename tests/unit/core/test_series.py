@@ -6,7 +6,7 @@ from datetime import datetime, timezone, timedelta
 from typing import Any
 
 from laakhay.ta.core import Series, PriceSeries, QtySeries
-from laakhay.ta.core.types import Price, Qty, Timestamp
+from laakhay.ta.core.types import Price, Timestamp
 
 
 class TestSeriesCore:
@@ -184,7 +184,7 @@ class TestSeriesOperations:
         
         result = series + Decimal("10")
         assert len(result) == len(series)
-        assert result[0][1] == series[0][1] + Decimal("10")
+        assert result[0][1] == series[0][1] + Decimal("10")  # type: ignore[operator]
         assert result.symbol == series.symbol
         assert result.timeframe == series.timeframe
 

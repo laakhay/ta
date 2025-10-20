@@ -64,7 +64,7 @@ class TestOHLCVCore:
             OHLCV(
                 timestamps=sample_timestamps,
                 opens=(Decimal("100"),),  # Only 1 value, 4 timestamps
-                highs=sample_timestamps[:4],  # Wrong type
+                highs=(Decimal("101"),),  # Wrong type - should be Price
                 lows=(Decimal("99"),),
                 closes=(Decimal("101"),),
                 volumes=(Decimal("1000"),),
@@ -175,7 +175,7 @@ class TestOHLCVConversion:
         assert "volumes" in series_dict
         
         # Check that all series have the same length and metadata
-        for name, series in series_dict.items():
+        for _name, series in series_dict.items():
             assert len(series) == len(ohlcv)
             assert series.symbol == ohlcv.symbol
             assert series.timeframe == ohlcv.timeframe

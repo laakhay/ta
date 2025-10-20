@@ -30,7 +30,7 @@ class DatasetMetadata:
     """Metadata for the dataset."""
     created_at: Timestamp = field(default_factory=lambda: datetime.now(timezone.utc))
     description: str = ""
-    tags: Set[str] = field(default_factory=set)
+    tags: Set[str] = field(default_factory=lambda: set())
     
     def to_dict(self) -> dict[str, Any]:
         """Convert metadata to dictionary format."""
