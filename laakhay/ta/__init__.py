@@ -1,7 +1,7 @@
 from .core import Bar, Price, Qty, Rate, Timestamp, dataset
 from .load import from_csv
 from .dump import to_csv
-from .schemas import ParamSchema, OutputSchema, IndicatorSchema
+from .registry import register, indicator, describe_indicator, SeriesContext, ParamSchema, OutputSchema, IndicatorSchema, list_indicators, list_all_names
 
 __all__ = [
     "Bar",
@@ -15,4 +15,10 @@ __all__ = [
     "ParamSchema",
     "OutputSchema",
     "IndicatorSchema",
+    "register",
+    "indicator",
+    "describe_indicator",
+    "SeriesContext",
+    "list_indicators",
+    "list_all_names",
 ]

@@ -2,7 +2,7 @@
 
 import pytest
 
-from laakhay.ta.schemas import ParamSchema, OutputSchema, IndicatorSchema
+from laakhay.ta.registry import ParamSchema, OutputSchema, IndicatorSchema
 
 
 class TestParamSchema:
