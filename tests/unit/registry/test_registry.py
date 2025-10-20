@@ -141,32 +141,30 @@ class TestRegistry:
 class TestRegistryValidation:
     """Registry validation functionality."""
     
-    def test_validate_function_no_parameters(self, registry):
-        """Test Registry validate function with no parameters."""
+    def test_validate_function_comprehensive(self, registry):
+        """Test Registry comprehensive function validation."""
+        # Test no parameters
         def no_params_func() -> Series[Price]:
             return Series((), (), "TEST", "1s")
         
         with pytest.raises(ValueError, match="must have at least one parameter"):
             registry.register(no_params_func)
-    
-    def test_validate_function_wrong_first_parameter(self, registry):
-        """Test Registry validate function with wrong first parameter."""
+        
+        # Test wrong first parameter
         def wrong_first_param_func(param: int) -> Series[Price]:
             return Series((), (), "TEST", "1s")
         
         with pytest.raises(ValueError, match="first parameter must be SeriesContext"):
             registry.register(wrong_first_param_func)
-    
-    def test_validate_function_wrong_return_type(self, registry):
-        """Test Registry validate function with wrong return type."""
+        
+        # Test wrong return type
         def wrong_return_func(ctx: SeriesContext) -> str:
             return "invalid"
         
         with pytest.raises(ValueError, match="must return Series"):
             registry.register(wrong_return_func)
-    
-    def test_validate_function_no_return_annotation(self, registry):
-        """Test Registry validate function with no return annotation."""
+        
+        # Test no return annotation (should work)
         def no_return_annotation_func(ctx: SeriesContext):
             return Series((), (), "TEST", "1s")
         
@@ -375,3 +373,135 @@ class TestRegistryGlobalFunctions:
         all_names = list_all_names()
         assert "test_list_all_func" in all_names
         assert "alias_func" in all_names
+
+
+class TestRegistryErrorHandling:
+    """Test registry error handling and edge cases."""
+    
+    def test_register_indicator_no_annotation_warning(self):
+        """Test registering indicator with no annotation on first parameter."""
+        from laakhay.ta.registry import Registry
+        
+        registry = Registry()
+        
+        def test_indicator(series, period: int = 20) -> Series[Price]:
+            """Test indicator with no annotation on first parameter."""
+            return series
+        
+        # This should work but may trigger warnings
+        registry.register(test_indicator)
+        assert "test_indicator" in registry._indicators
+    
+    def test_register_indicator_wrong_first_parameter_type(self):
+        """Test registering indicator with wrong first parameter type."""
+        from laakhay.ta.registry import Registry
+        
+        registry = Registry()
+        
+        def test_indicator(period: int) -> Series[Price]:  # Wrong first parameter
+            """Test indicator with wrong first parameter type."""
+            return Series[Price](
+                timestamps=(),
+                values=(),
+                symbol="TEST",
+                timeframe="1h"
+            )
+        
+        # This should raise an error
+        with pytest.raises(ValueError, match="Indicator function 'test_indicator' first parameter must be SeriesContext"):
+            registry.register(test_indicator)
+    
+    def test_register_indicator_no_parameters(self):
+        """Test registering indicator with no parameters."""
+        from laakhay.ta.registry import Registry
+        
+        registry = Registry()
+        
+        def test_indicator() -> Series[Price]:  # No parameters
+            """Test indicator with no parameters."""
+            return Series[Price](
+                timestamps=(),
+                values=(),
+                symbol="TEST",
+                timeframe="1h"
+            )
+        
+        # This should raise an error
+        with pytest.raises(ValueError, match="Indicator function 'test_indicator' must have at least one parameter"):
+            registry.register(test_indicator)
+    
+    def test_register_indicator_comprehensive_return_types(self):
+        """Test registering indicators with various return types."""
+        from laakhay.ta.registry import Registry
+        from typing import Tuple, Dict
+        
+        registry = Registry()
+        
+        # Test Series return type
+        def series_indicator(ctx: SeriesContext) -> Series[Price]:
+            return Series[Price]((), (), "TEST", "1h")
+        
+        # Test Tuple return type
+        def tuple_indicator(ctx: SeriesContext) -> Tuple[Series[Price], Series[Price]]:
+            series = Series[Price]((), (), "TEST", "1h")
+            return series, series
+        
+        # Test Dict return type
+        def dict_indicator(ctx: SeriesContext) -> Dict[str, Series[Price]]:
+            series = Series[Price]((), (), "TEST", "1h")
+            return {"output": series}
+        
+        # Test invalid return type
+        def invalid_indicator(ctx: SeriesContext) -> str:
+            return "invalid"
+        
+        # Register valid indicators
+        registry.register(series_indicator)
+        registry.register(tuple_indicator)
+        registry.register(dict_indicator)
+        
+        assert "series_indicator" in registry._indicators
+        assert "tuple_indicator" in registry._indicators
+        assert "dict_indicator" in registry._indicators
+        
+        # Test invalid return type raises error
+        with pytest.raises(ValueError, match="Indicator function 'invalid_indicator' must return Series"):
+            registry.register(invalid_indicator)
+    
+    def test_register_indicator_unsupported_return_types_error(self):
+        """Test registering indicators with unsupported return types raises errors."""
+        from laakhay.ta.registry import Registry
+        from typing import Union, Optional, List
+        
+        registry = Registry()
+        
+        # Test Union return type
+        def union_indicator(ctx: SeriesContext) -> Union[Series[Price], str]:
+            return Series[Price]((), (), "TEST", "1h")
+        
+        # Test Optional return type
+        def optional_indicator(ctx: SeriesContext) -> Optional[Series[Price]]:
+            return Series[Price]((), (), "TEST", "1h")
+        
+        # Test List return type
+        def list_indicator(ctx: SeriesContext) -> List[Series[Price]]:
+            return [Series[Price]((), (), "TEST", "1h")]
+        
+        # Test int return type
+        def int_indicator(ctx: SeriesContext) -> int:
+            return 42
+        
+        # Test all unsupported types raise errors
+        with pytest.raises(ValueError, match="Indicator function 'union_indicator' must return Series"):
+            registry.register(union_indicator)
+        
+        with pytest.raises(ValueError, match="Indicator function 'optional_indicator' must return Series"):
+            registry.register(optional_indicator)
+        
+        with pytest.raises(ValueError, match="Indicator function 'list_indicator' must return Series"):
+            registry.register(list_indicator)
+        
+        with pytest.raises(ValueError, match="Indicator function 'int_indicator' must return Series"):
+            registry.register(int_indicator)
+
+

@@ -58,9 +58,10 @@ class TestParamSchema:
         with pytest.raises(ValueError, match="Required parameters cannot have default values"):
             ParamSchema(name="period", type=int, required=True, default=20)
         
-        # Optional parameter without default should fail
-        with pytest.raises(ValueError, match="Optional parameters must have default values"):
-            ParamSchema(name="source", type=str, required=False)
+        # Optional parameter without default should now be allowed (None is valid default)
+        # This should not raise an error anymore
+        param = ParamSchema(name="source", type=str, required=False)
+        assert param.default is None
         
         # Empty name should fail
         with pytest.raises(ValueError, match="Parameter name must be a non-empty string"):
@@ -265,3 +266,90 @@ class TestIndicatorSchema:
         }
         with pytest.raises(ValueError, match="Unsupported output type: unknown_type"):
             IndicatorSchema.from_dict(data_with_unknown_output)
+
+
+class TestRegistryCriticalIssues:
+    """Test critical issues with the registry system identified in the audit."""
+    
+    def test_indicator_overrides_handles_any_type(self):
+        """Test that indicator overrides handle Any type without isinstance error."""
+        from typing import Any
+        from laakhay.ta.core.series import Series
+        from laakhay.ta.core.types import Price
+        from laakhay.ta.registry.models import IndicatorHandle
+        from inspect import signature
+        
+        def test_indicator(series: Series[Price], param: Any) -> Series[Price]:
+            """Test indicator with unannotated param."""
+            return series
+        
+        # This should work but may fail due to isinstance(Any) issue
+        schema = IndicatorSchema(
+            name="test",
+            description="Test indicator",
+            parameters={
+                "param": ParamSchema(
+                    name="param",
+                    type=Any,  # This causes the isinstance issue
+                    required=True,
+                    description="Test param"
+                )
+            }
+        )
+        
+        handle = IndicatorHandle(
+            name="test",
+            func=test_indicator,
+            signature=signature(test_indicator),
+            schema=schema,
+            aliases=[]
+        )
+        
+        # This should not raise TypeError
+        try:
+            result = handle.with_overrides(param="test_value")
+            assert result is not None
+        except TypeError as e:
+            if "typing.Any cannot be used with isinstance()" in str(e):
+                pytest.fail("Registry should handle Any type without isinstance error")
+            else:
+                raise
+    
+    def test_optional_parameters_work_correctly(self):
+        """Test that optional parameters work correctly."""
+        from typing import Optional
+        from laakhay.ta.core.series import Series
+        from laakhay.ta.core.types import Price
+        from laakhay.ta.registry.models import IndicatorHandle
+        from inspect import signature
+        
+        def test_indicator(series: Series[Price], optional_param: Optional[int] = None) -> Series[Price]:
+            """Test indicator with optional parameter."""
+            return series
+        
+        # This should work - optional params should be optional
+        schema = IndicatorSchema(
+            name="test",
+            description="Test indicator",
+            parameters={
+                "optional_param": ParamSchema(
+                    name="optional_param",
+                    type=Optional[int],
+                    required=False,  # Should be False for optional params
+                    default=None,  # Add default for optional param
+                    description="Optional param"
+                )
+            }
+        )
+        
+        handle = IndicatorHandle(
+            name="test",
+            func=test_indicator,
+            signature=signature(test_indicator),
+            schema=schema,
+            aliases=[]
+        )
+        
+        # This should work without providing the optional parameter
+        result = handle.with_overrides()
+        assert result is not None

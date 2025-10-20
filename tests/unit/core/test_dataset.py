@@ -1,618 +1,366 @@
-"""Tests for Dataset functionality."""
+"""Tests for Dataset, DatasetKey, DatasetMetadata, and helpers."""
+
+from __future__ import annotations
 
 import pytest
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 
-from laakhay.ta.core import (
-    Dataset, DatasetKey, DatasetMetadata,
-    OHLCV, Series
-)
-from laakhay.ta.core.dataset import dataset
+from laakhay.ta.core import Dataset, DatasetKey, DatasetMetadata, OHLCV, Series
+from laakhay.ta.core.dataset import dataset as make_dataset
 from laakhay.ta.core.types import Price
 
 
+UTC = timezone.utc
+
+
+# ---------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------
+
+def mk_series_from_fixture(sample_series_data: dict[str, Any], symbol="BTCUSDT", tf="1h"):
+    return Series[Price](
+        timestamps=sample_series_data["timestamps"],
+        values=sample_series_data["values"],
+        symbol=symbol,
+        timeframe=tf,
+    )
+
+def mk_ohlcv_from_fixture(sample_ohlcv_data: dict[str, Any], symbol="BTCUSDT", tf="1h"):
+    return OHLCV(
+        timestamps=sample_ohlcv_data["timestamps"],
+        opens=sample_ohlcv_data["opens"],
+        highs=sample_ohlcv_data["highs"],
+        lows=sample_ohlcv_data["lows"],
+        closes=sample_ohlcv_data["closes"],
+        volumes=sample_ohlcv_data["volumes"],
+        is_closed=sample_ohlcv_data["is_closed"],
+        symbol=symbol,
+        timeframe=tf,
+    )
+
+
+# ---------------------------------------------------------------------
+# DatasetKey
+# ---------------------------------------------------------------------
+
 class TestDatasetKey:
-    """Test DatasetKey functionality."""
+    def test_creation_and_defaults(self):
+        k = DatasetKey(symbol="BTCUSDT", timeframe="1h", source="binance")
+        assert (k.symbol, k.timeframe, k.source) == ("BTCUSDT", "1h", "binance")
 
-    def test_dataset_key_creation(self) -> None:
-        """Test DatasetKey creation."""
-        key = DatasetKey(symbol="BTCUSDT", timeframe="1h", source="binance")
-        assert key.symbol == "BTCUSDT"
-        assert key.timeframe == "1h"
-        assert key.source == "binance"
+        k2 = DatasetKey(symbol="BTCUSDT", timeframe="1h")
+        assert k2.source == "default"
 
-    def test_dataset_key_default_source(self) -> None:
-        """Test DatasetKey with default source."""
-        key = DatasetKey(symbol="BTCUSDT", timeframe="1h")
-        assert key.symbol == "BTCUSDT"
-        assert key.timeframe == "1h"
-        assert key.source == "default"
+    def test_str_and_roundtrip_dict(self):
+        k = DatasetKey(symbol="BTCUSDT", timeframe="1h", source="binance")
+        assert str(k) == "BTCUSDT|1h|binance"
+        d = k.to_dict()
+        assert d == {"symbol": "BTCUSDT", "timeframe": "1h", "source": "binance"}
+        k2 = DatasetKey.from_dict(d)
+        assert k2 == k
 
-    def test_dataset_key_string_representation(self) -> None:
-        """Test DatasetKey string representation."""
-        key = DatasetKey(symbol="BTCUSDT", timeframe="1h", source="binance")
-        assert str(key) == "BTCUSDT_1h_binance"
+    def test_from_dict_default_source(self):
+        k = DatasetKey.from_dict({"symbol": "BTCUSDT", "timeframe": "1h"})
+        assert k.source == "default"
 
-    def test_dataset_key_immutable(self) -> None:
-        """Test that DatasetKey is immutable."""
-        key = DatasetKey(symbol="BTCUSDT", timeframe="1h")
+    def test_immutable(self):
+        k = DatasetKey("BTCUSDT", "1h")
         with pytest.raises(AttributeError):
-            key.symbol = "ETHUSDT"  # type: ignore[misc]
+            k.symbol = "ETHUSDT"  # type: ignore[attr-defined]
 
+
+# ---------------------------------------------------------------------
+# DatasetMetadata
+# ---------------------------------------------------------------------
 
 class TestDatasetMetadata:
-    """Test DatasetMetadata functionality."""
+    def test_creation_and_defaults(self):
+        md = DatasetMetadata(description="Test dataset", tags={"crypto", "test"})
+        assert md.description == "Test dataset"
+        assert md.tags == {"crypto", "test"}
+        assert isinstance(md.created_at, datetime)
 
-    def test_dataset_metadata_creation(self) -> None:
-        """Test DatasetMetadata creation."""
-        metadata = DatasetMetadata(
-            description="Test dataset",
-            tags={"crypto", "test"}
-        )
-        assert metadata.description == "Test dataset"
-        assert metadata.tags == {"crypto", "test"}
-        assert isinstance(metadata.created_at, datetime)
+        md2 = DatasetMetadata()
+        assert md2.description == ""
+        assert md2.tags == set()
+        assert isinstance(md2.created_at, datetime)
 
-    def test_dataset_metadata_defaults(self) -> None:
-        """Test DatasetMetadata with defaults."""
-        metadata = DatasetMetadata()
-        assert metadata.description == ""
-        assert metadata.tags == set()
-        assert isinstance(metadata.created_at, datetime)
-
-    def test_dataset_metadata_to_dict(self) -> None:
-        """Test DatasetMetadata to_dict method."""
-        metadata = DatasetMetadata(
-            description="Test dataset",
-            tags={"crypto", "test"}
-        )
-        data = metadata.to_dict()
-        assert data["description"] == "Test dataset"
-        assert set(data["tags"]) == {"crypto", "test"}
-        assert "created_at" in data
-
-    def test_dataset_metadata_from_dict(self) -> None:
-        """Test DatasetMetadata from_dict method."""
-        data = {
+    def test_roundtrip_dict(self):
+        d = {
             "description": "Test dataset",
             "tags": ["crypto", "test"],
-            "created_at": "2024-01-01T00:00:00Z"
+            "created_at": "2024-01-01T00:00:00Z",
         }
-        metadata = DatasetMetadata.from_dict(data)
-        assert metadata.description == "Test dataset"
-        assert metadata.tags == {"crypto", "test"}
-        assert isinstance(metadata.created_at, datetime)
+        md = DatasetMetadata.from_dict(d)
+        assert md.description == "Test dataset"
+        assert md.tags == {"crypto", "test"}
+        assert isinstance(md.created_at, datetime)
+        out = md.to_dict()
+        assert out["description"] == "Test dataset"
+        assert set(out["tags"]) == {"crypto", "test"}
+        assert "created_at" in out
 
 
-class TestDatasetCreation:
-    """Test Dataset creation and basic functionality."""
+# ---------------------------------------------------------------------
+# Dataset core
+# ---------------------------------------------------------------------
 
-    def test_dataset_creation_empty(self) -> None:
-        """Test empty dataset creation."""
+class TestDatasetCore:
+    def test_empty_and_metadata(self):
         ds = Dataset()
-        assert len(ds) == 0
-        assert len(ds.symbols) == 0
-        assert len(ds.timeframes) == 0
-        assert len(ds.sources) == 0
+        assert len(ds) == 0 and ds.symbols == set() and ds.timeframes == set() and ds.sources == set()
 
-    def test_dataset_creation_with_metadata(self) -> None:
-        """Test dataset creation with metadata."""
-        metadata = DatasetMetadata(description="Test dataset")
-        ds = Dataset(metadata=metadata)
-        assert ds.metadata.description == "Test dataset"
+        md = DatasetMetadata(description="X")
+        ds2 = Dataset(metadata=md)
+        assert ds2.metadata.description == "X"
 
-    def test_dataset_add_series(self, sample_series_data: dict[str, Any]) -> None:
-        """Test adding series to dataset."""
+    def test_add_series_and_sets(self, sample_series_data):
         ds = Dataset()
-        series = Series[Price](
-            timestamps=sample_series_data["timestamps"],
-            values=sample_series_data["values"],
-            symbol="BTCUSDT",
-            timeframe="1h"
-        )
-        
-        ds.add_series("BTCUSDT", "1h", series)
+        s = mk_series_from_fixture(sample_series_data, "BTCUSDT", "1h")
+        ds.add_series("BTCUSDT", "1h", s)
         assert len(ds) == 1
-        assert "BTCUSDT" in ds.symbols
-        assert "1h" in ds.timeframes
+        assert ds.symbols == {"BTCUSDT"}
+        assert ds.timeframes == {"1h"}
+        assert ds.sources == {"default"}
 
-    def test_dataset_add_series_with_source(self, sample_series_data: dict[str, Any]) -> None:
-        """Test adding series with custom source."""
+    def test_add_series_with_source(self, sample_series_data):
         ds = Dataset()
-        series = Series[Price](
-            timestamps=sample_series_data["timestamps"],
-            values=sample_series_data["values"],
-            symbol="BTCUSDT",
-            timeframe="1h"
-        )
-        
-        ds.add_series("BTCUSDT", "1h", series, source="binance")
+        s = mk_series_from_fixture(sample_series_data, "BTCUSDT", "1h")
+        ds.add_series("BTCUSDT", "1h", s, source="binance")
         assert len(ds) == 1
-        assert "binance" in ds.sources
+        assert ds.sources == {"binance"}
 
-    def test_dataset_series_retrieval(self, sample_series_data: dict[str, Any]) -> None:
-        """Test series retrieval from dataset."""
+    def test_series_retrieval_found_and_not_found(self, sample_series_data):
         ds = Dataset()
-        series = Series[Price](
-            timestamps=sample_series_data["timestamps"],
-            values=sample_series_data["values"],
-            symbol="BTCUSDT",
-            timeframe="1h"
-        )
-        
-        ds.add_series("BTCUSDT", "1h", series)
-        
-        retrieved = ds.series("BTCUSDT", "1h")
-        assert retrieved is not None
-        assert len(retrieved) == len(series)
+        s = mk_series_from_fixture(sample_series_data, "BTCUSDT", "1h")
+        ds.add_series("BTCUSDT", "1h", s)
+        assert ds.series("BTCUSDT", "1h") is not None
+        assert ds.series("NONEXISTENT", "1h") is None
 
-    def test_dataset_series_retrieval_not_found(self) -> None:
-        """Test series retrieval when not found."""
+    def test_properties_multiple(self, sample_series_data):
         ds = Dataset()
-        retrieved = ds.series("NONEXISTENT", "1h")
-        assert retrieved is None
-
-    def test_dataset_properties(self, sample_series_data: dict[str, Any]) -> None:
-        """Test dataset properties."""
-        ds = Dataset()
-        
-        # Add multiple series
-        series1 = Series[Price](
-            timestamps=sample_series_data["timestamps"],
-            values=sample_series_data["values"],
-            symbol="BTCUSDT",
-            timeframe="1h"
-        )
-        series2 = Series[Price](
-            timestamps=sample_series_data["timestamps"],
-            values=sample_series_data["values"],
-            symbol="ETHUSDT",
-            timeframe="1h"
-        )
-        
-        ds.add_series("BTCUSDT", "1h", series1)
-        ds.add_series("ETHUSDT", "1h", series2)
-        
+        s1 = mk_series_from_fixture(sample_series_data, "BTCUSDT", "1h")
+        s2 = mk_series_from_fixture(sample_series_data, "ETHUSDT", "1h")
+        ds.add_series("BTCUSDT", "1h", s1)
+        ds.add_series("ETHUSDT", "1h", s2)
         assert len(ds) == 2
         assert ds.symbols == {"BTCUSDT", "ETHUSDT"}
         assert ds.timeframes == {"1h"}
         assert ds.sources == {"default"}
 
-    def test_dataset_iteration(self, sample_series_data: dict[str, Any]) -> None:
-        """Test dataset iteration."""
+    def test_iteration_contains_getitem(self, sample_series_data):
         ds = Dataset()
-        series = Series[Price](
-            timestamps=sample_series_data["timestamps"],
-            values=sample_series_data["values"],
-            symbol="BTCUSDT",
-            timeframe="1h"
-        )
-        
-        ds.add_series("BTCUSDT", "1h", series)
-        
+        s = mk_series_from_fixture(sample_series_data, "BTCUSDT", "1h")
+        ds.add_series("BTCUSDT", "1h", s)
+
         items = list(ds)
         assert len(items) == 1
-        key, retrieved_series = items[0]
-        assert key.symbol == "BTCUSDT"
-        assert key.timeframe == "1h"
-        assert len(retrieved_series) == len(series)
+        key, val = items[0]
+        assert key == DatasetKey("BTCUSDT", "1h")
 
-    def test_dataset_contains(self, sample_series_data: dict[str, Any]) -> None:
-        """Test dataset contains functionality."""
-        ds = Dataset()
-        series = Series[Price](
-            timestamps=sample_series_data["timestamps"],
-            values=sample_series_data["values"],
-            symbol="BTCUSDT",
-            timeframe="1h"
-        )
-        
-        ds.add_series("BTCUSDT", "1h", series)
-        
-        key = DatasetKey("BTCUSDT", "1h")
-        assert key in ds
-        
-        non_existent_key = DatasetKey("ETHUSDT", "1h")
-        assert non_existent_key not in ds
+        assert DatasetKey("BTCUSDT", "1h") in ds
+        assert DatasetKey("ETHUSDT", "1h") not in ds
 
-    def test_dataset_getitem(self, sample_series_data: dict[str, Any]) -> None:
-        """Test dataset getitem functionality."""
-        ds = Dataset()
-        series = Series[Price](
-            timestamps=sample_series_data["timestamps"],
-            values=sample_series_data["values"],
-            symbol="BTCUSDT",
-            timeframe="1h"
-        )
-        
-        ds.add_series("BTCUSDT", "1h", series)
-        
-        key = DatasetKey("BTCUSDT", "1h")
-        retrieved = ds[key]
-        assert len(retrieved) == len(series)
-
-    def test_dataset_getitem_not_found(self) -> None:
-        """Test dataset getitem when key not found."""
-        ds = Dataset()
-        key = DatasetKey("NONEXISTENT", "1h")
-        
+        assert len(ds[DatasetKey("BTCUSDT", "1h")]) == len(s)
         with pytest.raises(KeyError):
-            ds[key]
+            _ = ds[DatasetKey("NOPE", "1h")]
 
+
+# ---------------------------------------------------------------------
+# DatasetView
+# ---------------------------------------------------------------------
 
 class TestDatasetView:
-    """Test DatasetView functionality."""
-
-    def test_dataset_view_creation(self, sample_series_data: dict[str, Any]) -> None:
-        """Test dataset view creation."""
+    def test_view_creation_and_symbol_filter(self, sample_series_data):
         ds = Dataset()
-        
-        # Add multiple series
-        series1 = Series[Price](
-            timestamps=sample_series_data["timestamps"],
-            values=sample_series_data["values"],
-            symbol="BTCUSDT",
-            timeframe="1h"
-        )
-        series2 = Series[Price](
-            timestamps=sample_series_data["timestamps"],
-            values=sample_series_data["values"],
-            symbol="ETHUSDT",
-            timeframe="1h"
-        )
-        
-        ds.add_series("BTCUSDT", "1h", series1)
-        ds.add_series("ETHUSDT", "1h", series2)
-        
-        # Create view filtered by symbol
-        btc_view = ds.select(symbol="BTCUSDT")
-        assert len(btc_view) == 1
-        assert btc_view.symbols == {"BTCUSDT"}
+        btc = mk_series_from_fixture(sample_series_data, "BTCUSDT", "1h")
+        eth = mk_series_from_fixture(sample_series_data, "ETHUSDT", "1h")
+        ds.add_series("BTCUSDT", "1h", btc)
+        ds.add_series("ETHUSDT", "1h", eth)
 
-    def test_dataset_view_symbol_filter(self, sample_series_data: dict[str, Any]) -> None:
-        """Test dataset view with symbol filter."""
+        v = ds.select(symbol="BTCUSDT")
+        assert len(v) == 1 and v.symbols == {"BTCUSDT"}
+
+        items = list(v)
+        assert len(items) == 1 and items[0][0].symbol == "BTCUSDT"
+
+    def test_timeframe_filter(self, sample_series_data):
         ds = Dataset()
-        
-        series1 = Series[Price](
-            timestamps=sample_series_data["timestamps"],
-            values=sample_series_data["values"],
-            symbol="BTCUSDT",
-            timeframe="1h"
-        )
-        series2 = Series[Price](
-            timestamps=sample_series_data["timestamps"],
-            values=sample_series_data["values"],
-            symbol="ETHUSDT",
-            timeframe="1h"
-        )
-        
-        ds.add_series("BTCUSDT", "1h", series1)
-        ds.add_series("ETHUSDT", "1h", series2)
-        
-        btc_view = ds.select(symbol="BTCUSDT")
-        assert len(btc_view) == 1
-        assert "BTCUSDT" in btc_view.symbols
-        assert "ETHUSDT" not in btc_view.symbols
+        s1 = mk_series_from_fixture(sample_series_data, "BTCUSDT", "1h")
+        s2 = mk_series_from_fixture(sample_series_data, "BTCUSDT", "5m")
+        ds.add_series("BTCUSDT", "1h", s1)
+        ds.add_series("BTCUSDT", "5m", s2)
 
-    def test_dataset_view_timeframe_filter(self, sample_series_data: dict[str, Any]) -> None:
-        """Test dataset view with timeframe filter."""
+        v = ds.select(timeframe="1h")
+        assert len(v) == 1 and v.timeframes == {"1h"}
+
+    def test_source_filter(self, sample_series_data):
         ds = Dataset()
-        
-        series1 = Series[Price](
-            timestamps=sample_series_data["timestamps"],
-            values=sample_series_data["values"],
-            symbol="BTCUSDT",
-            timeframe="1h"
-        )
-        series2 = Series[Price](
-            timestamps=sample_series_data["timestamps"],
-            values=sample_series_data["values"],
-            symbol="BTCUSDT",
-            timeframe="5m"
-        )
-        
-        ds.add_series("BTCUSDT", "1h", series1)
-        ds.add_series("BTCUSDT", "5m", series2)
-        
-        hourly_view = ds.select(timeframe="1h")
-        assert len(hourly_view) == 1
-        assert hourly_view.timeframes == {"1h"}
+        s1 = mk_series_from_fixture(sample_series_data, "BTCUSDT", "1h")
+        s2 = mk_series_from_fixture(sample_series_data, "BTCUSDT", "1h")
+        ds.add_series("BTCUSDT", "1h", s1, source="binance")
+        ds.add_series("BTCUSDT", "1h", s2, source="coinbase")
 
-    def test_dataset_view_source_filter(self, sample_series_data: dict[str, Any]) -> None:
-        """Test dataset view with source filter."""
+        v = ds.select(source="binance")
+        assert len(v) == 1 and v.sources == {"binance"}
+
+    def test_multiple_filters(self, sample_series_data):
         ds = Dataset()
-        
-        series1 = Series[Price](
-            timestamps=sample_series_data["timestamps"],
-            values=sample_series_data["values"],
-            symbol="BTCUSDT",
-            timeframe="1h"
-        )
-        series2 = Series[Price](
-            timestamps=sample_series_data["timestamps"],
-            values=sample_series_data["values"],
-            symbol="BTCUSDT",
-            timeframe="1h"
-        )
-        
-        ds.add_series("BTCUSDT", "1h", series1, source="binance")
-        ds.add_series("BTCUSDT", "1h", series2, source="coinbase")
-        
-        binance_view = ds.select(source="binance")
-        assert len(binance_view) == 1
-        assert binance_view.sources == {"binance"}
+        s1 = mk_series_from_fixture(sample_series_data, "BTCUSDT", "1h")
+        s2 = mk_series_from_fixture(sample_series_data, "ETHUSDT", "1h")
+        s3 = mk_series_from_fixture(sample_series_data, "BTCUSDT", "5m")
+        ds.add_series("BTCUSDT", "1h", s1)
+        ds.add_series("ETHUSDT", "1h", s2)
+        ds.add_series("BTCUSDT", "5m", s3)
 
-    def test_dataset_view_multiple_filters(self, sample_series_data: dict[str, Any]) -> None:
-        """Test dataset view with multiple filters."""
-        ds = Dataset()
-        
-        series1 = Series[Price](
-            timestamps=sample_series_data["timestamps"],
-            values=sample_series_data["values"],
-            symbol="BTCUSDT",
-            timeframe="1h"
-        )
-        series2 = Series[Price](
-            timestamps=sample_series_data["timestamps"],
-            values=sample_series_data["values"],
-            symbol="ETHUSDT",
-            timeframe="1h"
-        )
-        series3 = Series[Price](
-            timestamps=sample_series_data["timestamps"],
-            values=sample_series_data["values"],
-            symbol="BTCUSDT",
-            timeframe="5m"
-        )
-        
-        ds.add_series("BTCUSDT", "1h", series1)
-        ds.add_series("ETHUSDT", "1h", series2)
-        ds.add_series("BTCUSDT", "5m", series3)
-        
-        # Filter by symbol and timeframe
-        filtered_view = ds.select(symbol="BTCUSDT", timeframe="1h")
-        assert len(filtered_view) == 1
-        assert filtered_view.symbols == {"BTCUSDT"}
-        assert filtered_view.timeframes == {"1h"}
-
-    def test_dataset_view_iteration(self, sample_series_data: dict[str, Any]) -> None:
-        """Test dataset view iteration."""
-        ds = Dataset()
-        
-        series1 = Series[Price](
-            timestamps=sample_series_data["timestamps"],
-            values=sample_series_data["values"],
-            symbol="BTCUSDT",
-            timeframe="1h"
-        )
-        series2 = Series[Price](
-            timestamps=sample_series_data["timestamps"],
-            values=sample_series_data["values"],
-            symbol="ETHUSDT",
-            timeframe="1h"
-        )
-        
-        ds.add_series("BTCUSDT", "1h", series1)
-        ds.add_series("ETHUSDT", "1h", series2)
-        
-        btc_view = ds.select(symbol="BTCUSDT")
-        items = list(btc_view)
-        assert len(items) == 1
-        key, _series = items[0]
-        assert key.symbol == "BTCUSDT"
+        v = ds.select(symbol="BTCUSDT", timeframe="1h")
+        assert len(v) == 1
+        assert v.symbols == {"BTCUSDT"} and v.timeframes == {"1h"}
 
 
-class TestDatasetConvenienceFunction:
-    """Test dataset convenience function."""
+# ---------------------------------------------------------------------
+# dataset(...) convenience
+# ---------------------------------------------------------------------
 
-    def test_dataset_function_positional_args(self, sample_series_data: dict[str, Any]) -> None:
-        """Test dataset function with positional arguments."""
-        series1 = Series[Price](
-            timestamps=sample_series_data["timestamps"],
-            values=sample_series_data["values"],
-            symbol="BTCUSDT",
-            timeframe="1h"
-        )
-        series2 = Series[Price](
-            timestamps=sample_series_data["timestamps"],
-            values=sample_series_data["values"],
-            symbol="ETHUSDT",
-            timeframe="1h"
-        )
-        
-        ds = dataset(series1, series2)
-        assert len(ds) == 2
-        assert "BTCUSDT" in ds.symbols
-        assert "ETHUSDT" in ds.symbols
+class TestDatasetConvenience:
+    def test_positional(self, sample_series_data):
+        s1 = mk_series_from_fixture(sample_series_data, "BTCUSDT", "1h")
+        s2 = mk_series_from_fixture(sample_series_data, "ETHUSDT", "1h")
+        ds = make_dataset(s1, s2)
+        assert len(ds) == 2 and {"BTCUSDT", "ETHUSDT"} <= ds.symbols
 
-    def test_dataset_function_with_metadata(self, sample_series_data: dict[str, Any]) -> None:
-        """Test dataset function with metadata."""
-        series = Series[Price](
-            timestamps=sample_series_data["timestamps"],
-            values=sample_series_data["values"],
-            symbol="BTCUSDT",
-            timeframe="1h"
-        )
-        
-        metadata = DatasetMetadata(description="Test dataset")
-        ds = dataset(series, metadata=metadata)
+    def test_with_metadata(self, sample_series_data):
+        s = mk_series_from_fixture(sample_series_data, "BTCUSDT", "1h")
+        md = DatasetMetadata(description="Test dataset")
+        ds = make_dataset(s, metadata=md)
         assert ds.metadata.description == "Test dataset"
 
-    def test_dataset_function_keyword_args(self, sample_series_data: dict[str, Any]) -> None:
-        """Test dataset function with keyword arguments."""
-        series1 = Series[Price](
-            timestamps=sample_series_data["timestamps"],
-            values=sample_series_data["values"],
-            symbol="BTCUSDT",
-            timeframe="1h"
-        )
-        series2 = Series[Price](
-            timestamps=sample_series_data["timestamps"],
-            values=sample_series_data["values"],
-            symbol="ETHUSDT",
-            timeframe="1h"
-        )
-        
-        ds = dataset(
-            BTCUSDT_1h=series1,
-            ETHUSDT_1h=series2
-        )
-        assert len(ds) == 2
-        assert "BTCUSDT" in ds.symbols
-        assert "ETHUSDT" in ds.symbols
+    def test_keyword_args(self, sample_series_data):
+        s1 = mk_series_from_fixture(sample_series_data, "BTCUSDT", "1h")
+        s2 = mk_series_from_fixture(sample_series_data, "ETHUSDT", "1h")
+        ds = make_dataset(**{"BTCUSDT|1h": s1, "ETHUSDT|1h": s2})
+        assert len(ds) == 2 and {"BTCUSDT", "ETHUSDT"} <= ds.symbols
 
-    def test_dataset_function_with_source(self, sample_series_data: dict[str, Any]) -> None:
-        """Test dataset function with source specification."""
-        series = Series[Price](
-            timestamps=sample_series_data["timestamps"],
-            values=sample_series_data["values"],
-            symbol="BTCUSDT",
-            timeframe="1h"
-        )
-        
-        ds = dataset(
-            BTCUSDT_1h_binance=series
-        )
-        assert len(ds) == 1
-        assert "binance" in ds.sources
+    def test_keyword_with_source(self, sample_series_data):
+        s = mk_series_from_fixture(sample_series_data, "BTCUSDT", "1h")
+        ds = make_dataset(**{"BTCUSDT|1h|binance": s})
+        assert len(ds) == 1 and "binance" in ds.sources
 
+
+# ---------------------------------------------------------------------
+# Serialization
+# ---------------------------------------------------------------------
 
 class TestDatasetSerialization:
-    """Test Dataset serialization functionality."""
-
-    def test_dataset_to_dict(self, sample_series_data: dict[str, Any]) -> None:
-        """Test dataset to_dict method."""
+    def test_to_dict_and_from_dict(self, sample_series_data):
         ds = Dataset()
-        series = Series[Price](
-            timestamps=sample_series_data["timestamps"],
-            values=sample_series_data["values"],
-            symbol="BTCUSDT",
-            timeframe="1h"
-        )
-        
-        ds.add_series("BTCUSDT", "1h", series)
-        
-        data = ds.to_dict()
-        assert "metadata" in data
-        assert "series" in data
-        assert len(data["series"]) == 1
+        s = mk_series_from_fixture(sample_series_data, "BTCUSDT", "1h")
+        ds.add_series("BTCUSDT", "1h", s)
+        d = ds.to_dict()
+        assert "metadata" in d and "series" in d and len(d["series"]) == 1
+        ds2 = Dataset.from_dict(d)
+        assert len(ds2) == 1 and "BTCUSDT" in ds2.symbols
 
-    def test_dataset_from_dict(self, sample_series_data: dict[str, Any]) -> None:
-        """Test dataset from_dict method."""
-        # Create original dataset
+    def test_ohlcv_roundtrip(self, sample_ohlcv_data):
         ds = Dataset()
-        series = Series[Price](
-            timestamps=sample_series_data["timestamps"],
-            values=sample_series_data["values"],
-            symbol="BTCUSDT",
-            timeframe="1h"
-        )
-        ds.add_series("BTCUSDT", "1h", series)
-        
-        # Convert to dict and back
-        data = ds.to_dict()
-        restored_ds = Dataset.from_dict(data)
-        
-        assert len(restored_ds) == 1
-        assert "BTCUSDT" in restored_ds.symbols
+        o = mk_ohlcv_from_fixture(sample_ohlcv_data, "BTCUSDT", "1h")
+        ds.add_series("BTCUSDT", "1h", o)
+        d = ds.to_dict()
+        ds2 = Dataset.from_dict(d)
+        assert len(ds2) == 1
+        got = ds2.series("BTCUSDT", "1h")
+        assert isinstance(got, OHLCV)
 
-    def test_dataset_ohlcv_serialization(self, sample_ohlcv_data: dict[str, Any]) -> None:
-        """Test dataset serialization with OHLCV data."""
-        ds = Dataset()
-        ohlcv = OHLCV(
-            timestamps=sample_ohlcv_data["timestamps"],
-            opens=sample_ohlcv_data["opens"],
-            highs=sample_ohlcv_data["highs"],
-            lows=sample_ohlcv_data["lows"],
-            closes=sample_ohlcv_data["closes"],
-            volumes=sample_ohlcv_data["volumes"],
-            is_closed=sample_ohlcv_data["is_closed"],
-            symbol="BTCUSDT",
-            timeframe="1h"
-        )
-        
-        ds.add_series("BTCUSDT", "1h", ohlcv)
-        
-        # Convert to dict and back
-        data = ds.to_dict()
-        restored_ds = Dataset.from_dict(data)
-        
-        assert len(restored_ds) == 1
-        retrieved = restored_ds.series("BTCUSDT", "1h")
-        assert retrieved is not None
-        assert isinstance(retrieved, OHLCV)
 
+# ---------------------------------------------------------------------
+# Integration & edge behavior
+# ---------------------------------------------------------------------
 
 class TestDatasetIntegration:
-    """Test Dataset integration with real-world scenarios."""
-
-    def test_multi_symbol_timeframe_dataset(self, sample_series_data: dict[str, Any]) -> None:
-        """Test dataset with multiple symbols and timeframes."""
+    def test_multi_symbol_timeframe(self, sample_series_data):
         ds = Dataset()
-        
-        # Add multiple series with different symbols and timeframes
-        btc_1h = Series[Price](
-            timestamps=sample_series_data["timestamps"],
-            values=sample_series_data["values"],
-            symbol="BTCUSDT",
-            timeframe="1h"
-        )
-        btc_5m = Series[Price](
-            timestamps=sample_series_data["timestamps"],
-            values=sample_series_data["values"],
-            symbol="BTCUSDT",
-            timeframe="5m"
-        )
-        eth_1h = Series[Price](
-            timestamps=sample_series_data["timestamps"],
-            values=sample_series_data["values"],
-            symbol="ETHUSDT",
-            timeframe="1h"
-        )
-        
+        btc_1h = mk_series_from_fixture(sample_series_data, "BTCUSDT", "1h")
+        btc_5m = mk_series_from_fixture(sample_series_data, "BTCUSDT", "5m")
+        eth_1h = mk_series_from_fixture(sample_series_data, "ETHUSDT", "1h")
+
         ds.add_series("BTCUSDT", "1h", btc_1h)
         ds.add_series("BTCUSDT", "5m", btc_5m)
         ds.add_series("ETHUSDT", "1h", eth_1h)
-        
+
         assert len(ds) == 3
         assert ds.symbols == {"BTCUSDT", "ETHUSDT"}
         assert ds.timeframes == {"1h", "5m"}
-        
-        # Test views
-        btc_view = ds.select(symbol="BTCUSDT")
-        assert len(btc_view) == 2
-        
-        hourly_view = ds.select(timeframe="1h")
-        assert len(hourly_view) == 2
 
-    def test_dataset_with_different_sources(self, sample_series_data: dict[str, Any]) -> None:
-        """Test dataset with different data sources."""
+        assert len(ds.select(symbol="BTCUSDT")) == 2
+        assert len(ds.select(timeframe="1h")) == 2
+
+    def test_different_sources(self, sample_series_data):
         ds = Dataset()
-        
-        series1 = Series[Price](
-            timestamps=sample_series_data["timestamps"],
-            values=sample_series_data["values"],
-            symbol="BTCUSDT",
-            timeframe="1h"
+        s1 = mk_series_from_fixture(sample_series_data, "BTCUSDT", "1h")
+        s2 = mk_series_from_fixture(sample_series_data, "BTCUSDT", "1h")
+        ds.add_series("BTCUSDT", "1h", s1, source="binance")
+        ds.add_series("BTCUSDT", "1h", s2, source="coinbase")
+
+        assert len(ds) == 2 and ds.sources == {"binance", "coinbase"}
+        b = ds.series("BTCUSDT", "1h", source="binance")
+        c = ds.series("BTCUSDT", "1h", source="coinbase")
+        assert b is not None and c is not None and b is not c
+
+
+# ---------------------------------------------------------------------
+# Critical serialization edge cases from audit
+# ---------------------------------------------------------------------
+
+class TestDatasetSerializationCriticalIssues:
+    def test_symbol_with_underscores_roundtrips(self):
+        key = DatasetKey(symbol="BTC_PERP", timeframe="1h", source="binance")
+        ds = Dataset()
+        s = Series[Price](
+            timestamps=(datetime(2024, 1, 1, tzinfo=UTC),),
+            values=(Price(100.0),),
+            symbol="BTC_PERP",
+            timeframe="1h",
         )
-        series2 = Series[Price](
-            timestamps=sample_series_data["timestamps"],
-            values=sample_series_data["values"],
-            symbol="BTCUSDT",
-            timeframe="1h"
-        )
-        
-        ds.add_series("BTCUSDT", "1h", series1, source="binance")
-        ds.add_series("BTCUSDT", "1h", series2, source="coinbase")
-        
-        assert len(ds) == 2
-        assert ds.sources == {"binance", "coinbase"}
-        
-        # Test source-specific retrieval
-        binance_data = ds.series("BTCUSDT", "1h", source="binance")
-        coinbase_data = ds.series("BTCUSDT", "1h", source="coinbase")
-        
-        assert binance_data is not None
-        assert coinbase_data is not None
-        assert binance_data is not coinbase_data
+        ds.add_series(key.symbol, key.timeframe, s, key.source)
+
+        d = ds.to_dict()
+        ds2 = Dataset.from_dict(d)
+
+        # Ensure symbol preserved and retrievable
+        found = None
+        for k, v in ds2._series.items():  # using internal mapping intentionally for strict check
+            if k.symbol == "BTC_PERP":
+                found = v
+                break
+        assert found is not None and found.symbol == "BTC_PERP"
+
+    def test_from_dict_invalid_key_format_is_ignored(self):
+        data = {
+            "metadata": {"created_at": "2024-01-01T00:00:00Z", "description": "", "tags": []},
+            "series": {
+                "invalid_key": {  # no separators
+                    "timestamps": ["2024-01-01T00:00:00+00:00"],
+                    "values": [100.0],
+                    "symbol": "BTC",
+                    "timeframe": "1h",
+                }
+            },
+        }
+        ds = Dataset.from_dict(data)
+        assert len(ds) == 0
+
+    def test_from_dict_short_key_format_is_ignored(self):
+        data = {
+            "metadata": {"created_at": "2024-01-01T00:00:00Z", "description": "", "tags": []},
+            "series": {
+                "BTC": {  # only symbol
+                    "timestamps": ["2024-01-01T00:00:00+00:00"],
+                    "values": [100.0],
+                    "symbol": "BTC",
+                    "timeframe": "1h",
+                }
+            },
+        }
+        ds = Dataset.from_dict(data)
+        assert len(ds) == 0

@@ -3,8 +3,16 @@
 import pytest
 from decimal import Decimal
 from datetime import datetime, timezone
+from typing import Any
 
-from laakhay.ta.registry import SeriesContext, IndicatorHandle, IndicatorSchema
+from laakhay.ta.registry import (
+    SeriesContext,
+    IndicatorHandle,
+    IndicatorSchema,
+    register,
+    indicator,
+    get_global_registry,
+)
 from laakhay.ta.core import Series
 from laakhay.ta.core.types import Price, Timestamp
 
@@ -240,10 +248,10 @@ class TestIndicatorHandle:
                 symbol="BTCUSDT",
                 timeframe="1h"
             )
-        
+
         from inspect import signature
         from laakhay.ta.registry import IndicatorSchema, ParamSchema, OutputSchema
-        
+
         schema = IndicatorSchema(
             name="dummy",
             description="Dummy indicator",
@@ -280,11 +288,82 @@ class TestIndicatorHandle:
         # Test invalid parameter type (no coercion)
         with pytest.raises(ValueError, match="Parameter 'period' expects int, got str"):
             handle.with_overrides(period="invalid")
-        
+
         # Test valid type coercion
         overridden_handle = handle.with_overrides(period="50")  # String to int
         assert overridden_handle.name == "dummy"
-        
+
         # Test float to int coercion
         overridden_handle = handle.with_overrides(period=50.0)  # Float to int
         assert overridden_handle.name == "dummy"
+
+    def test_indicator_handle_with_overrides_any_type(self) -> None:
+        """Unannotated parameters (typing.Any) should bypass isinstance checks."""
+
+        @register(name="any_override_test")
+        def any_indicator(ctx: SeriesContext, threshold=10):
+            return Series[Price](
+                timestamps=[datetime.now(timezone.utc)],
+                values=[Decimal("100")],
+                symbol="BTCUSDT",
+                timeframe="1h",
+            )
+
+        handle = indicator("any_override_test")
+        assert handle.schema.parameters["threshold"].type is Any
+
+        overridden = handle.with_overrides(threshold="raise")
+        ctx = SeriesContext()
+        result = overridden(ctx)
+        assert isinstance(result, Series)
+
+        # Clean up global registry state for downstream tests
+        get_global_registry().clear()
+
+    def test_optional_parameter_schema(self) -> None:
+        """Optional parameters with None defaults should remain optional."""
+
+        def optional_indicator(ctx: SeriesContext, threshold: int | None = None) -> Series[Price]:
+            return Series[Price](
+                timestamps=[datetime.now(timezone.utc)],
+                values=[Decimal("100")],
+                symbol="BTCUSDT",
+                timeframe="1h"
+            )
+
+        from inspect import signature
+        from laakhay.ta.registry import IndicatorSchema, ParamSchema, OutputSchema
+
+        schema = IndicatorSchema(
+            name="optional_indicator",
+            description="Optional parameter indicator",
+            parameters={
+                "threshold": ParamSchema(
+                    name="threshold",
+                    type=int,
+                    default=None,
+                    required=False,
+                    description="Optional threshold"
+                )
+            },
+            outputs={
+                "result": OutputSchema(
+                    name="result",
+                    type=float,
+                    description="Result"
+                )
+            }
+        )
+
+        handle = IndicatorHandle(
+            name="optional_indicator",
+            func=optional_indicator,
+            signature=signature(optional_indicator),
+            schema=schema,
+            aliases=[],
+        )
+
+        overridden = handle.with_overrides(threshold=None)
+        ctx = SeriesContext()
+        result = overridden(ctx)
+        assert isinstance(result, Series)

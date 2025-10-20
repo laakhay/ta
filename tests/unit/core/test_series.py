@@ -1,281 +1,315 @@
-"""Consolidated Series tests - lean and efficient."""
+"""Tests for Series + align_series."""
 
 import pytest
 from decimal import Decimal
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 
-from laakhay.ta.core.series import Series
+from laakhay.ta.core.series import Series, align_series
 from laakhay.ta.core.types import Price
 
 
-class TestSeriesCore:
-    """Core Series functionality."""
-    
-    def test_creation(self, timestamp):
-        """Test Series creation."""
-        series = Series(
-            timestamps=(timestamp,),
-            values=(Price(Decimal("100")),),
-            symbol="TEST",
-            timeframe="1s"
-        )
-        assert len(series) == 1
-        assert series.values[0] == Price(Decimal("100"))
-    
-    def test_empty_creation(self):
-        """Test empty Series creation."""
-        series = Series((), (), "TEST", "1s")
-        assert len(series) == 0
-    
-    def test_validation_errors(self, timestamp):
-        """Test Series validation errors."""
-        with pytest.raises(ValueError, match="Timestamps and values must have the same length"):
-            Series(
-                timestamps=(timestamp,),
-                values=(),
-                symbol="TEST",
-                timeframe="1s"
-            )
-    
-    def test_indexing(self, price_series):
-        """Test Series indexing."""
-        assert price_series[0] == (price_series.timestamps[0], price_series.values[0])
-    
-    def test_iteration(self, multi_point_series):
-        """Test Series iteration."""
-        values = list(multi_point_series)
-        assert len(values) == 2
-        assert values[0] == (multi_point_series.timestamps[0], multi_point_series.values[0])
-        assert values[1] == (multi_point_series.timestamps[1], multi_point_series.values[1])
-    
-    def test_time_slicing(self, multi_point_series):
-        """Test Series time slicing."""
-        # Test basic slicing
-        sliced = multi_point_series[0:1]
-        assert len(sliced) == 1
+# ---------------------------------------------------------------------
+# Helpers & fixtures
+# ---------------------------------------------------------------------
+
+UTC = timezone.utc
+
+def ts(*parts) -> tuple[datetime, ...]:
+    """Datetime tuple helper: ts((y,m,d,h=0), ...) -> (dt1, dt2, ...)."""
+    out = []
+    for p in parts:
+        if len(p) == 3:
+            y, m, d = p
+            out.append(datetime(y, m, d, tzinfo=UTC))
+        else:
+            y, m, d, h = p
+            out.append(datetime(y, m, d, h, tzinfo=UTC))
+    return tuple(out)
+
+def mk_series(vals, stamps, symbol="BTC", tf="1h"):
+    """Create a Series[Price] with Price-wrapped values."""
+    return Series[Price](
+        timestamps=stamps,
+        values=tuple(Price(Decimal(str(v))) if not isinstance(v, Price) else v for v in vals),
+        symbol=symbol,
+        timeframe=tf,
+    )
+
+@pytest.fixture
+def t0(): return datetime(2024, 1, 1, 10, 0, 0, tzinfo=UTC)
+
+@pytest.fixture
+def price_series(t0):
+    return mk_series([100], (t0,), symbol="TEST", tf="1s")
+
+@pytest.fixture
+def multi_series():
+    stamps = ts((2024,1,1,10),(2024,1,1,11))
+    return mk_series([100, 200], stamps, symbol="TEST", tf="1s")
+
+@pytest.fixture
+def other_series_same_t():
+    stamps = ts((2024,1,1,10),(2024,1,1,11))
+    return mk_series([50, 75], stamps, symbol="TEST", tf="1s")
 
 
-class TestSeriesOperations:
-    """Series arithmetic operations - comprehensive coverage."""
-    
-    def test_addition_concatenation(self, price_series, timestamp):
-        """Test Series addition with concatenation."""
-        timestamp2 = datetime(2024, 1, 1, 0, 0, 1, tzinfo=timezone.utc)
-        series2 = Series(
-            timestamps=(timestamp2,),
-            values=(Price(Decimal("200")),),
-            symbol="TEST",
-            timeframe="1s"
-        )
-        result = price_series + series2
-        assert len(result) == 2
-    
-    def test_addition_element_wise(self, multi_point_series, different_series):
-        """Test Series addition element-wise."""
-        result = multi_point_series + different_series
-        assert len(result) == 2
-        assert result.values[0] == Price(Decimal("150"))  # 100 + 50
-        assert result.values[1] == Price(Decimal("275"))  # 200 + 75
-    
-    def test_addition_scalar(self, price_series):
-        """Test Series addition with scalar."""
-        result = price_series + 25
-        assert result.values[0] == Price(Decimal("125"))  # 100 + 25
-    
-    def test_addition_validation_error(self, timestamp):
-        """Test Series addition validation error."""
-        series1 = Series((timestamp,), (Price(Decimal("100")),), "TEST1", "1s")
-        series2 = Series((timestamp,), (Price(Decimal("200")),), "TEST2", "1s")
-        with pytest.raises(ValueError, match="Cannot add series with different symbols"):
-            series1 + series2
-    
-    def test_subtraction_element_wise(self, multi_point_series, different_series):
-        """Test Series subtraction element-wise."""
-        result = multi_point_series - different_series
-        assert result.values[0] == Price(Decimal("50"))   # 100 - 50
-        assert result.values[1] == Price(Decimal("125"))  # 200 - 75
-    
-    def test_subtraction_scalar(self, price_series):
-        """Test Series subtraction with scalar."""
-        result = price_series - 25
-        assert result.values[0] == Price(Decimal("75"))  # 100 - 25
-    
-    def test_subtraction_different_lengths_error(self, multi_point_series, price_series):
-        """Test Series subtraction with different lengths."""
-        with pytest.raises(ValueError, match="Cannot subtract series of different lengths"):
-            multi_point_series - price_series
-    
-    def test_subtraction_type_error(self, timestamp):
-        """Test Series subtraction type error."""
-        series1 = Series((timestamp,), (Price(Decimal("100")),), "TEST", "1s")
-        series2 = Series((timestamp,), ("invalid",), "TEST", "1s")
-        with pytest.raises(TypeError, match="Cannot subtract series values of types"):
-            series1 - series2
-    
-    def test_subtraction_scalar_type_error(self, price_series):
-        """Test Series subtraction scalar type error."""
-        with pytest.raises(TypeError, match="Cannot subtract <class 'str'> from series values"):
-            price_series - "invalid"
-    
-    def test_multiplication_element_wise(self, multi_point_series, different_series):
-        """Test Series multiplication element-wise."""
-        result = multi_point_series * different_series
-        assert result.values[0] == Price(Decimal("5000"))   # 100 * 50
-        assert result.values[1] == Price(Decimal("15000"))  # 200 * 75
-    
-    def test_multiplication_scalar(self, price_series):
-        """Test Series multiplication with scalar."""
-        result = price_series * Decimal("2.5")
-        assert result.values[0] == Price(Decimal("250"))  # 100 * 2.5
-    
-    def test_multiplication_different_lengths_error(self, multi_point_series, price_series):
-        """Test Series multiplication with different lengths."""
-        with pytest.raises(ValueError, match="Cannot multiply series of different lengths"):
-            multi_point_series * price_series
-    
-    def test_multiplication_type_error(self, timestamp):
-        """Test Series multiplication type error."""
-        series1 = Series((timestamp,), (Price(Decimal("100")),), "TEST", "1s")
-        series2 = Series((timestamp,), ("invalid",), "TEST", "1s")
-        with pytest.raises(TypeError, match="Cannot multiply series values of types"):
-            series1 * series2
-    
-    def test_multiplication_scalar_type_error(self, price_series):
-        """Test Series multiplication scalar type error."""
-        with pytest.raises(TypeError, match="Cannot multiply series values of type"):
-            price_series * "invalid"
-    
-    def test_division_element_wise(self, multi_point_series, different_series):
-        """Test Series division element-wise."""
-        result = multi_point_series / different_series
-        assert result.values[0] == Price(Decimal("2"))     # 100 / 50
-        assert result.values[1] == Price(Decimal("2.666666666666666666666666667"))  # 200 / 75
-    
-    def test_division_scalar(self, price_series):
-        """Test Series division with scalar."""
-        result = price_series / 4
-        assert result.values[0] == Price(Decimal("25"))  # 100 / 4
-    
-    def test_division_different_lengths_error(self, multi_point_series, price_series):
-        """Test Series division with different lengths."""
-        with pytest.raises(ValueError, match="Cannot divide series of different lengths"):
-            multi_point_series / price_series
-    
-    def test_division_type_error(self, timestamp):
-        """Test Series division type error."""
-        series1 = Series((timestamp,), (Price(Decimal("100")),), "TEST", "1s")
-        series2 = Series((timestamp,), ("invalid",), "TEST", "1s")
-        with pytest.raises(TypeError, match="Cannot divide series values of types"):
-            series1 / series2
-    
-    def test_division_scalar_zero_division_error(self, price_series):
-        """Test Series division by zero."""
-        with pytest.raises(ValueError, match="Cannot divide by zero"):
-            price_series / 0
-    
-    def test_modulo_element_wise(self, multi_point_series, different_series):
-        """Test Series modulo element-wise."""
-        result = multi_point_series % different_series
-        assert result.values[0] == Price(Decimal("0"))   # 100 % 50 = 0
-        assert result.values[1] == Price(Decimal("50"))  # 200 % 75 = 50
-    
-    def test_modulo_scalar(self, price_series):
-        """Test Series modulo with scalar."""
-        result = price_series % 7
-        assert result.values[0] == Price(Decimal("2"))  # 100 % 7 = 2
-    
-    def test_modulo_different_lengths_error(self, multi_point_series, price_series):
-        """Test Series modulo with different lengths."""
-        with pytest.raises(ValueError, match="Cannot perform modulo on series of different lengths"):
-            multi_point_series % price_series
-    
-    def test_modulo_type_error(self, timestamp):
-        """Test Series modulo type error."""
-        series1 = Series((timestamp,), (Price(Decimal("100")),), "TEST", "1s")
-        series2 = Series((timestamp,), ("invalid",), "TEST", "1s")
-        with pytest.raises(TypeError, match="Cannot perform modulo on series values of types"):
-            series1 % series2
-    
-    def test_modulo_scalar_zero_division_error(self, price_series):
-        """Test Series modulo by zero."""
-        with pytest.raises(ZeroDivisionError, match="Cannot perform modulo with zero in series"):
-            price_series % 0
-    
-    def test_power_element_wise(self, multi_point_series, different_series):
-        """Test Series power element-wise."""
-        result = multi_point_series ** different_series
-        assert result.values[0] == Price(Decimal("1.000000000000000000000000000E+100"))  # 100^50
-        assert result.values[1] == Price(Decimal("3.777893186295716170956800000E+172"))  # 200^75
-    
-    def test_power_scalar(self, price_series):
-        """Test Series power with scalar."""
-        result = price_series ** 3
-        assert result.values[0] == Price(Decimal("1000000"))  # 100^3
-    
-    def test_power_different_lengths_error(self, multi_point_series, price_series):
-        """Test Series power with different lengths."""
-        with pytest.raises(ValueError, match="Cannot perform power on series of different lengths"):
-            multi_point_series ** price_series
-    
-    def test_power_type_error(self, timestamp):
-        """Test Series power type error."""
-        series1 = Series((timestamp,), (Price(Decimal("100")),), "TEST", "1s")
-        series2 = Series((timestamp,), ("invalid",), "TEST", "1s")
-        with pytest.raises(TypeError, match="Cannot perform power on series values of types"):
-            series1 ** series2
-    
-    def test_power_scalar_type_error(self, price_series):
-        """Test Series power scalar type error."""
-        with pytest.raises(TypeError, match="Cannot perform power on series values of type"):
-            price_series ** "invalid"
+# ---------------------------------------------------------------------
+# Core creation & basics
+# ---------------------------------------------------------------------
+
+def test_creation(price_series, t0):
+    s = price_series
+    assert len(s) == 1
+    assert s.values[0] == Price(Decimal("100"))
+    assert s.timestamps[0] == t0
+
+def test_empty_creation():
+    s = Series((), (), "TEST", "1s")
+    assert len(s) == 0
+    assert s.is_empty
+
+def test_validation_length_mismatch(t0):
+    with pytest.raises(ValueError, match="same length"):
+        Series((t0,), (), "TEST", "1s")
+
+def test_unsorted_timestamps_raises():
+    t1, t2 = ts((2024,1,1,12),(2024,1,1,10))
+    with pytest.raises(ValueError, match="sorted"):
+        mk_series([100,101], (t1, t2))
+
+def test_indexing_and_iteration(multi_series):
+    # index returns (timestamp, value)
+    assert multi_series[0] == (multi_series.timestamps[0], multi_series.values[0])
+    assert multi_series[1] == (multi_series.timestamps[1], multi_series.values[1])
+    pairs = list(multi_series)
+    assert pairs == [
+        (multi_series.timestamps[0], multi_series.values[0]),
+        (multi_series.timestamps[1], multi_series.values[1]),
+    ]
+
+def test_index_errors(price_series):
+    with pytest.raises(IndexError):
+        _ = price_series[1]
+    with pytest.raises(TypeError, match="indices"):
+        _ = price_series["nope"]  # type: ignore
+    with pytest.raises(TypeError):
+        _ = price_series[object()]  # type: ignore
+
+def test_properties_nonempty_and_empty():
+    s = mk_series([100,101], ts((2024,1,1,10),(2024,1,1,11)))
+    assert s.length == 2 and not s.is_empty
+    e = mk_series([], ())
+    assert e.length == 0 and e.is_empty
 
 
-class TestSeriesUnaryOperations:
-    """Series unary operations."""
-    
-    def test_negation(self, price_series):
-        """Test Series negation."""
-        result = -price_series
-        assert result.values[0] == Price(Decimal("-100"))
-    
-    def test_negation_type_error(self, timestamp):
-        """Test Series negation type error."""
-        series = Series((timestamp,), ("invalid",), "TEST", "1s")
-        with pytest.raises(TypeError, match="Cannot negate series values of type"):
-            -series
-    
-    def test_positive(self, price_series):
-        """Test Series positive operation."""
-        result = +price_series
-        assert result.values[0] == Price(Decimal("100"))
-    
-    def test_positive_negative_value(self, timestamp):
-        """Test Series positive with negative value."""
-        series = Series((timestamp,), (Price(Decimal("-100")),), "TEST", "1s")
-        result = +series
-        assert result.values[0] == Price(Decimal("-100"))
+# ---------------------------------------------------------------------
+# Arithmetic (element-wise & scalar) + error paths
+# ---------------------------------------------------------------------
+
+@pytest.mark.parametrize(
+    "op, expected0, expected1",
+    [
+        ("+", Decimal("150"), Decimal("275")),      # 100+50, 200+75
+        ("-", Decimal("50"),  Decimal("125")),      # 100-50, 200-75
+        ("*", Decimal("5000"), Decimal("15000")),   # 100*50, 200*75
+        ("/", Decimal("2"),   Decimal("2.666666666666666666666666667")),
+        ("%", Decimal("0"),   Decimal("50")),
+        ("**", Decimal("1E+100"), Decimal("3.777893186295716170956800000E+172")),
+    ],
+)
+def test_elementwise_ops(multi_series, other_series_same_t, op, expected0, expected1):
+    left, right = multi_series, other_series_same_t
+    result = eval(f"left {op} right")
+    assert len(result) == 2
+    assert result.values[0] == Price(expected0)
+    assert result.values[1] == Price(expected1)
+
+@pytest.mark.parametrize(
+    "op, scalar, expected",
+    [
+        ("+", 25, Decimal("125")),
+        ("-", 25, Decimal("75")),
+        ("*", Decimal("2.5"), Decimal("250")),
+        ("/", 4, Decimal("25")),
+        ("%", 7, Decimal("2")),
+        ("**", 3, Decimal("1000000")),
+    ],
+)
+def test_scalar_ops(price_series, op, scalar, expected):
+    result = eval(f"price_series {op} scalar")
+    assert result.values[0] == Price(expected)
+
+@pytest.mark.parametrize("op", ["/", "%"])
+def test_zero_division_scalar(price_series, op):
+    with pytest.raises(ValueError):
+        _ = eval(f"price_series {op} 0")
+
+@pytest.mark.parametrize("op", ["+", "-", "*", "/", "%", "**"])
+def test_type_error_in_ops_with_series_values(t0, op):
+    s1 = mk_series([100], (t0,), symbol="TEST", tf="1s")
+    s2 = Series((t0,), ("invalid",), "TEST", "1s")
+    with pytest.raises(TypeError):
+        _ = eval(f"s1 {op} s2")
+
+@pytest.mark.parametrize("rhs", ["invalid", object()])
+@pytest.mark.parametrize("op", ["+", "-", "*", "/", "%"])
+def test_type_error_in_ops_with_scalar(price_series, op, rhs):
+    with pytest.raises(TypeError):
+        _ = eval(f"price_series {op} rhs")
+
+def test_cross_instrument_arithmetic_rejected():
+    t = ts((2024,1,1))
+    s1 = mk_series([100.0], t, symbol="BTC", tf="1h")
+    s2 = mk_series([200.0], t, symbol="ETH", tf="4h")
+    with pytest.raises(ValueError):
+        _ = s1 + s2
+
+def test_misaligned_timestamps_rejected():
+    s1 = mk_series([100.0, 101.0], ts((2024,1,1,10),(2024,1,1,11)))
+    s2 = mk_series([200.0, 201.0], ts((2024,1,1,12),(2024,1,1,13)))
+    with pytest.raises(ValueError, match="timestamp alignment"):
+        _ = s1 + s2
+
+def test_different_lengths_rejected():
+    s1 = mk_series([100.0], ts((2024,1,1,10)))
+    s2 = mk_series([200.0, 300.0], ts((2024,1,1,11),(2024,1,1,12)))
+    with pytest.raises(ValueError, match="different lengths"):
+        _ = s1 + s2
 
 
-class TestSeriesSerialization:
-    """Series serialization."""
-    
-    def test_serialization(self, price_series):
-        """Test Series serialization."""
-        data = price_series.to_dict()
-        assert data["symbol"] == "TEST"
-        assert data["timeframe"] == "1s"
-        assert len(data["timestamps"]) == 1
-        assert len(data["values"]) == 1
-        
-        restored = Series.from_dict(data)
-        assert restored == price_series
+# ---------------------------------------------------------------------
+# Unary
+# ---------------------------------------------------------------------
+
+def test_unary_neg_pos(price_series, t0):
+    neg = -price_series
+    assert neg.values[0] == Price(Decimal("-100"))
+    pos = +price_series
+    assert pos.values[0] == Price(Decimal("100"))
+
+def test_unary_pos_preserves_sign_for_negative(t0):
+    s = mk_series([-100], (t0,))
+    assert (+s).values[0] == Price(Decimal("-100"))
+
+def test_unary_neg_type_error(t0):
+    s = Series((t0,), ("invalid",), "TEST", "1s")
+    with pytest.raises(TypeError):
+        _ = -s
 
 
-class TestSeriesTypes:
-    """Series type aliases."""
-    
-    def test_type_aliases(self):
-        """Test Series type aliases."""
-        from laakhay.ta.core.series import PriceSeries, QtySeries
-        assert PriceSeries is not None
-        assert QtySeries is not None
+# ---------------------------------------------------------------------
+# Serialization & type aliases
+# ---------------------------------------------------------------------
+
+def test_roundtrip_to_from_dict(price_series):
+    data = price_series.to_dict()
+    assert data["symbol"] == "TEST" and data["timeframe"] == "1s"
+    restored = Series.from_dict(data)
+    assert restored == price_series
+
+def test_from_dict_parses_types():
+    data = {
+        "timestamps": ["2024-01-01T10:00:00+00:00"],
+        "values": [100.0],
+        "symbol": "BTC",
+        "timeframe": "1h",
+    }
+    s = Series[Price].from_dict(data)
+    assert s.timestamps[0] == datetime(2024,1,1,10,0,0,tzinfo=UTC)
+    assert s.values[0] == Price(100.0)
+
+def test_type_aliases_exist():
+    from laakhay.ta.core.series import PriceSeries, QtySeries
+    assert PriceSeries is not None and QtySeries is not None
+
+
+# ---------------------------------------------------------------------
+# slice_by_time
+# ---------------------------------------------------------------------
+
+def test_slice_by_time_range():
+    stamps = ts((2024,1,1,10),(2024,1,1,11),(2024,1,1,12),(2024,1,1,13))
+    s = mk_series([100,101,102,103], stamps)
+    start, end = stamps[1], stamps[2]
+    r = s.slice_by_time(start, end)
+    assert r.timestamps == (stamps[1], stamps[2])
+    assert r.values[0] == Price(101) and r.values[1] == Price(102)
+    assert r.symbol == s.symbol and r.timeframe == s.timeframe
+
+def test_slice_by_time_invalid_range():
+    s = mk_series([100], ts((2024,1,1,10)))
+    with pytest.raises(ValueError):
+        _ = s.slice_by_time(datetime(2024,1,1,12, tzinfo=UTC),
+                            datetime(2024,1,1,11, tzinfo=UTC))
+
+def test_slice_by_time_empty_result():
+    s = mk_series([100], ts((2024,1,1,10)))
+    r = s.slice_by_time(datetime(2024,1,1,12, tzinfo=UTC),
+                        datetime(2024,1,1,13, tzinfo=UTC))
+    assert len(r.timestamps) == 0 and len(r.values) == 0
+    assert r.symbol == s.symbol and r.timeframe == s.timeframe
+
+
+# ---------------------------------------------------------------------
+# align_series
+# ---------------------------------------------------------------------
+
+def test_align_series_inner(multi_series, other_series_same_t):
+    a, b = align_series(multi_series, other_series_same_t, how="inner")
+    assert a.timestamps == multi_series.timestamps
+    assert b.timestamps == other_series_same_t.timestamps
+    assert a.values == multi_series.values
+    assert b.values == other_series_same_t.values
+
+def test_align_series_outer_ffill():
+    base = datetime(2024,1,1,tzinfo=UTC)
+    t0, t1, t2 = base, base + timedelta(hours=1), base + timedelta(hours=2)
+    left  = mk_series([100,101], (t0, t1))
+    right = mk_series([200,201], (t1, t2))
+    al, ar = align_series(
+        left, right, how="outer", fill="ffill",
+        left_fill_value=left.values[0], right_fill_value=right.values[0]
+    )
+    assert al.timestamps == (t0, t1, t2)
+    assert ar.timestamps == (t0, t1, t2)
+    assert al.values == (Price(100), Price(101), Price(101))
+    assert ar.values == (Price(200), Price(200), Price(201))
+
+def test_align_series_symbol_override():
+    ts1 = ts((2024,1,1))
+    btc = mk_series([100], ts1, symbol="BTC")
+    eth = mk_series([200], ts1, symbol="ETH")
+    with pytest.raises(ValueError, match="different symbols"):
+        align_series(btc, eth)
+    a_btc, a_eth = align_series(btc, eth, symbol="BTC-ETH", timeframe="1h")
+    assert a_btc.symbol == a_eth.symbol == "BTC-ETH"
+    diff = a_btc - a_eth
+    assert diff.symbol == "BTC-ETH" and diff.values[0] == Price(Decimal("-100"))
+
+def test_align_series_outer_without_fill_raises():
+    base = datetime(2024,1,1,tzinfo=UTC)
+    left  = mk_series([100], (base,))
+    right = mk_series([200], (base + timedelta(hours=1),))
+    with pytest.raises(ValueError, match="Missing value"):
+        align_series(left, right, how="outer")
+
+def test_align_series_unsupported_strategy():
+    s1 = mk_series([100], ts((2024,1,1,10)))
+    s2 = mk_series([200], ts((2024,1,1,11)))
+    with pytest.raises(ValueError, match="Unsupported alignment strategy 'invalid'"):
+        align_series(s1, s2, how="invalid")
+
+def test_align_series_diff_symbols_or_timeframes_without_override():
+    s1 = mk_series([100], ts((2024,1,1,10)), symbol="BTC", tf="1h")
+    s2 = mk_series([200], ts((2024,1,1,11)), symbol="ETH", tf="4h")
+    with pytest.raises(ValueError, match="different symbols"):
+        align_series(s1, s2, how="inner")
+    s3 = mk_series([200], ts((2024,1,1,11)), symbol="BTC", tf="4h")
+    with pytest.raises(ValueError, match="different timeframes"):
+        align_series(s1, s3, how="inner")
+
+def test_align_series_empty_inner_result_raises():
+    s1 = mk_series([100], ts((2024,1,1,10)))
+    s2 = mk_series([200], ts((2024,1,1,11)))
+    with pytest.raises(ValueError, match="empty timestamp set"):
+        align_series(s1, s2, how="inner")

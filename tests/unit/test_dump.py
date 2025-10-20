@@ -63,8 +63,8 @@ class TestDumpCSV:
                 
             assert len(lines) == 3  # Header + 2 data rows
             assert "timestamp,open,high,low,close,volume,is_closed" in lines[0]
-            assert "2024-01-01T00:00:00+00:00,100.0,101.0,99.0,100.5,1000.0,True" in lines[1]
-            assert "2024-01-01T01:00:00+00:00,100.5,102.0,100.0,101.5,1100.0,False" in lines[2]
+            assert "2024-01-01T00:00:00+00:00,100.0,101.0,99.0,100.5,1000,True" in lines[1]
+            assert "2024-01-01T01:00:00+00:00,100.5,102.0,100.0,101.5,1100,False" in lines[2]
             
         finally:
             Path(temp_path).unlink()
@@ -116,7 +116,7 @@ class TestDumpCSV:
                 
             assert len(lines) == 3  # Header + 2 data rows
             assert "time,o,h,l,c,v,closed" in lines[0]
-            assert "2024-01-01T00:00:00+00:00,100.0,101.0,99.0,100.5,1000.0,True" in lines[1]
+            assert "2024-01-01T00:00:00+00:00,100.0,101.0,99.0,100.5,1000,True" in lines[1]
             
         finally:
             Path(temp_path).unlink()
@@ -197,3 +197,71 @@ class TestDumpCSV:
             
         finally:
             Path(temp_path).unlink()
+
+
+class TestCSVExportCriticalIssues:
+    """Test critical issues with CSV export identified in the audit."""
+    
+    def test_csv_export_preserves_decimal_precision(self):
+        """Test that CSV export preserves Decimal precision."""
+        from laakhay.ta.load import from_csv
+        import os
+        
+        # Create series with Decimal values
+        series = Series[Price](
+            timestamps=(datetime(2024, 1, 1, tzinfo=timezone.utc),),
+            values=(Price(Decimal("100.123456789")),),  # High precision decimal
+            symbol="BTC",
+            timeframe="1h"
+        )
+        
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.csv', delete=False) as f:
+            temp_path = f.name
+        
+        try:
+            # Export to CSV
+            to_csv(series, temp_path)
+            
+            # Import back from CSV
+            imported_series = from_csv(temp_path, "BTC", "1h")
+            
+            # This should work - precision should be preserved
+            assert imported_series.values[0] == Price(Decimal("100.123456789")), "Decimal precision should be preserved"
+            
+        finally:
+            os.unlink(temp_path)
+    
+    def test_csv_export_ohlcv_preserves_decimal_precision(self):
+        """Test that OHLCV CSV export preserves Decimal precision."""
+        from laakhay.ta.load import from_csv
+        from laakhay.ta.core.types import Qty
+        import os
+        
+        ohlcv = OHLCV(
+            timestamps=(datetime(2024, 1, 1, tzinfo=timezone.utc),),
+            opens=(Price(Decimal("100.123456789")),),
+            highs=(Price(Decimal("101.123456789")),),
+            lows=(Price(Decimal("99.123456789")),),
+            closes=(Price(Decimal("100.123456789")),),
+            volumes=(Qty(Decimal("1000.123456789")),),
+            is_closed=(True,),
+            symbol="BTC",
+            timeframe="1h"
+        )
+        
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.csv', delete=False) as f:
+            temp_path = f.name
+        
+        try:
+            # Export to CSV
+            to_csv(ohlcv, temp_path)
+            
+            # Import back from CSV
+            imported_ohlcv = from_csv(temp_path, "BTC", "1h")
+            
+            # This should work - precision should be preserved
+            assert imported_ohlcv.opens[0] == Price(Decimal("100.123456789")), "Open price precision should be preserved"
+            assert imported_ohlcv.volumes[0] == Qty(Decimal("1000.123456789")), "Volume precision should be preserved"
+            
+        finally:
+            os.unlink(temp_path)
