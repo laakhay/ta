@@ -129,42 +129,69 @@ class OHLCV:
             timeframe=self.timeframe
         )
 
-    def to_series(self) -> dict[str, Any]:
-        """Convert OHLCV to separate Series objects."""
+    def to_series(self, field: str | None = None) -> Any:
+        """Convert OHLCV to Series.
+
+        - If field is None, return a dict of Series for all fields
+        - If field is provided (one of: open, high, low, close, volume), return a single Series for that field
+        """
         # Import here to avoid circular imports
-        from .series import PriceSeries, QtySeries  # type: ignore[import-untyped]
-        return {
-            'opens': PriceSeries(
-                timestamps=self.timestamps,
-                values=self.opens,
-                symbol=self.symbol,
-                timeframe=self.timeframe
-            ),
-            'highs': PriceSeries(
-                timestamps=self.timestamps,
-                values=self.highs,
-                symbol=self.symbol,
-                timeframe=self.timeframe
-            ),
-            'lows': PriceSeries(
-                timestamps=self.timestamps,
-                values=self.lows,
-                symbol=self.symbol,
-                timeframe=self.timeframe
-            ),
-            'closes': PriceSeries(
-                timestamps=self.timestamps,
-                values=self.closes,
-                symbol=self.symbol,
-                timeframe=self.timeframe
-            ),
-            'volumes': QtySeries(
-                timestamps=self.timestamps,
-                values=self.volumes,
-                symbol=self.symbol,
-                timeframe=self.timeframe
-            )
-        }
+        from .series import PriceSeries, QtySeries, Series  # type: ignore[import-untyped]
+
+        if field is None:
+            return {
+                'opens': PriceSeries(
+                    timestamps=self.timestamps,
+                    values=self.opens,
+                    symbol=self.symbol,
+                    timeframe=self.timeframe
+                ),
+                'highs': PriceSeries(
+                    timestamps=self.timestamps,
+                    values=self.highs,
+                    symbol=self.symbol,
+                    timeframe=self.timeframe
+                ),
+                'lows': PriceSeries(
+                    timestamps=self.timestamps,
+                    values=self.lows,
+                    symbol=self.symbol,
+                    timeframe=self.timeframe
+                ),
+                'closes': PriceSeries(
+                    timestamps=self.timestamps,
+                    values=self.closes,
+                    symbol=self.symbol,
+                    timeframe=self.timeframe
+                ),
+                'volumes': QtySeries(
+                    timestamps=self.timestamps,
+                    values=self.volumes,
+                    symbol=self.symbol,
+                    timeframe=self.timeframe
+                )
+            }
+
+        # Single-field mode
+        if field == "open":
+            values = self.opens
+        elif field == "high":
+            values = self.highs
+        elif field == "low":
+            values = self.lows
+        elif field == "close":
+            values = self.closes
+        elif field == "volume":
+            values = self.volumes
+        else:
+            raise ValueError(f"Unknown field: {field}. Must be one of: open, high, low, close, volume")
+
+        return Series(
+            timestamps=self.timestamps,
+            values=values,
+            symbol=self.symbol,
+            timeframe=self.timeframe
+        )
 
     @classmethod
     def from_bars(cls, bars: list[Bar], symbol: str = "UNKNOWN", timeframe: str = "1h") -> OHLCV:
@@ -217,6 +244,10 @@ class OHLCV:
             symbol=data['symbol'],
             timeframe=data['timeframe']
         )
+
+    # Backwards-compatible alias for single-field access
+    def to_series_field(self, field: str) -> Any:
+        return self.to_series(field)
 
     def to_dict(self) -> dict[str, Any]:
         """Convert OHLCV to dictionary format."""

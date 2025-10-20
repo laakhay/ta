@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict, Union
+from typing import Any, Dict, Union, List
 from decimal import Decimal
 
 from .core import Series, Dataset
@@ -53,7 +53,8 @@ class IndicatorHandle:
             if name not in self._registry._indicators:
                 raise ValueError(f"Indicator '{name}' not found in registry")
         
-        self._indicator_func = self._registry._indicators[name]
+        # Get the registry handle and wrap it
+        self._registry_handle = self._registry._indicators[name]
         self._schema = self._get_schema()
     
     def _get_schema(self) -> Dict[str, Any]:
@@ -62,7 +63,7 @@ class IndicatorHandle:
         return {
             'name': self.name,
             'params': self.params,
-            'description': getattr(self._indicator_func, '__doc__', 'No description available')
+            'description': getattr(self._registry_handle.func, '__doc__', 'No description available')
         }
     
     def __call__(self, dataset: Union[Dataset, Series[Price]]) -> Series[Price]:
@@ -81,7 +82,8 @@ class IndicatorHandle:
             # Dataset - extract primary series
             ctx = dataset.to_context()
         
-        return self._indicator_func(ctx, **self.params)
+        # Call the registry handle with the context and parameters
+        return self._registry_handle(ctx, **self.params)
     
     def _to_expression(self) -> Expression:
         """Convert this handle to an expression for algebraic composition.
@@ -90,6 +92,30 @@ class IndicatorHandle:
         """
         # Create a special node that represents this indicator handle
         return Expression(IndicatorNode(self.name, self.params))
+    
+    # ExpressionNode interface methods
+    def evaluate(self, context: Dict[str, Series[Any]]) -> Series[Any]:
+        """Evaluate this indicator handle as an expression node."""
+        # Convert context dict to Dataset if needed
+        if isinstance(context, dict):
+            # Create a temporary dataset from the context
+            temp_dataset = Dataset()
+            for name, series in context.items():
+                temp_dataset.add_series("temp", "1h", series, name)
+            return self(temp_dataset)
+        else:
+            # Assume it's already a Dataset
+            return self(context)
+    
+    def dependencies(self) -> List[str]:
+        """Get list of dependencies this indicator requires."""
+        # For now, assume all indicators need close series
+        return ["close"]
+    
+    def describe(self) -> str:
+        """Get human-readable description of this indicator handle."""
+        params_str = ", ".join(f"{k}={v}" for k, v in self.params.items())
+        return f"{self.name}({params_str})"
     
     # Algebraic operators for composition
     def __add__(self, other: Any) -> Expression:

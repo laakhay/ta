@@ -115,22 +115,31 @@ class Dataset:
         context_dict = {}
         
         for key, series in self._series.items():
-            # Map common series types to context attributes
-            if key.source == "close":
-                context_dict["close"] = series
-            elif key.source == "high":
-                context_dict["high"] = series
-            elif key.source == "low":
-                context_dict["low"] = series
-            elif key.source == "open":
-                context_dict["open"] = series
-            elif key.source == "volume":
-                context_dict["volume"] = series
-            elif key.source == "price":
-                context_dict["price"] = series
+            # Handle OHLCV data
+            if hasattr(series, 'to_series'):  # It's an OHLCV
+                context_dict["close"] = series.to_series("close")
+                context_dict["open"] = series.to_series("open")
+                context_dict["high"] = series.to_series("high")
+                context_dict["low"] = series.to_series("low")
+                context_dict["volume"] = series.to_series("volume")
+                context_dict["price"] = series.to_series("close")  # Use close as default price
             else:
-                # Use the source name as the attribute name
-                context_dict[key.source] = series
+                # Handle regular Series
+                if key.source == "close":
+                    context_dict["close"] = series
+                elif key.source == "high":
+                    context_dict["high"] = series
+                elif key.source == "low":
+                    context_dict["low"] = series
+                elif key.source == "open":
+                    context_dict["open"] = series
+                elif key.source == "volume":
+                    context_dict["volume"] = series
+                elif key.source == "price":
+                    context_dict["price"] = series
+                else:
+                    # Use the source name as the attribute name
+                    context_dict[key.source] = series
         
         # If no close series found but we have series with values, use the first one as close
         if "close" not in context_dict and self._series:
@@ -139,7 +148,8 @@ class Dataset:
                 context_dict["close"] = first_series
         
         if not context_dict:
-            raise ValueError("No suitable series found in dataset for indicator evaluation")
+            # Return empty context for empty dataset
+            return SeriesContext()
         
         return SeriesContext(**context_dict)
     
@@ -182,6 +192,11 @@ class Dataset:
         """Number of series in the dataset."""
         return len(self._series)
     
+    @property
+    def is_empty(self) -> bool:
+        """Whether the dataset is empty."""
+        return len(self._series) == 0
+    
     def __iter__(self) -> Iterator[tuple[DatasetKey, Union[OHLCV, Series[Any]]]]:
         """Iterate over key-series pairs."""
         return iter(self._series.items())
@@ -190,8 +205,34 @@ class Dataset:
         """Check if a key exists in the dataset."""
         return key in self._series
     
-    def __getitem__(self, key: DatasetKey) -> Union[OHLCV, Series[Any]]:
-        """Get series by key."""
+    def __getitem__(self, key: Union[DatasetKey, str]) -> Union[OHLCV, Series[Any]]:
+        """Get series by key or field name."""
+        # Handle string field access (e.g., "close", "open", "high", "low", "volume")
+        if isinstance(key, str):
+            if key in ["open", "high", "low", "close", "volume"]:
+                # Get the first OHLCV series and extract the field
+                if not self._series:
+                    raise KeyError(f"No series found in dataset")
+                
+                # Find the first OHLCV series
+                ohlcv_series = None
+                for series in self._series.values():
+                    if hasattr(series, 'to_series'):  # It's an OHLCV
+                        ohlcv_series = series
+                        break
+                
+                if ohlcv_series is None:
+                    raise KeyError(f"No OHLCV series found for field access: {key}")
+                
+                return ohlcv_series.to_series(key)
+            else:
+                # Try to find a series with this symbol
+                for series_key, series in self._series.items():
+                    if series_key.symbol == key:
+                        return series
+                raise KeyError(f"No series found with symbol: {key}")
+        
+        # Handle DatasetKey access
         if key not in self._series:
             raise KeyError(f"No series found for key: {key}")
         return self._series[key]
