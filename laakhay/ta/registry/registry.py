@@ -320,8 +320,6 @@ def get_global_registry() -> Registry:
     global _global_registry
     if _global_registry is None:
         _global_registry = Registry()
-        # Ensure indicators are registered when creating the registry
-        from .. import indicators  # noqa: F401
     return _global_registry
 
 

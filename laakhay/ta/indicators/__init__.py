@@ -13,10 +13,10 @@ from ..registry.registry import register
 from ..expressions.models import Literal
 from ..expressions.operators import Expression
 
-# Import all primitives
-from .primitives import (
+# Import primitives directly from the module to avoid circular imports
+from ..primitives import (
     diff, rolling_max, rolling_mean, rolling_min, rolling_sum, rolling_std, shift,
-    elementwise_max, elementwise_min, cumulative_sum, positive_values, negative_values,
+    cumulative_sum, positive_values, negative_values,
     rolling_ema, true_range, typical_price, sign
 )
 
@@ -36,7 +36,7 @@ __all__ = [
     "Series", "Price", "Qty", "SeriesContext", "register", "Expression", "Literal",
     # Primitives
     "diff", "rolling_max", "rolling_mean", "rolling_min", "rolling_sum", 
-    "rolling_std", "shift", "elementwise_max", "elementwise_min",
+    "rolling_std", "shift",
     "cumulative_sum", "positive_values", "negative_values",
     "rolling_ema", "true_range", "typical_price", "sign",
     # Indicators

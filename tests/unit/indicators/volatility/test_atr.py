@@ -152,17 +152,17 @@ class TestATRIndicator:
 
         # Test missing high
         ctx = SeriesContext(low=close_series, close=close_series)
-        with pytest.raises(ValueError, match="True Range requires series: .* missing: .*high.*"):
+        with pytest.raises(ValueError, match="True Range requires series: .*high.*low.*close.*"):
             atr(ctx)
 
         # Test missing low
         ctx = SeriesContext(high=close_series, close=close_series)
-        with pytest.raises(ValueError, match="True Range requires series: .* missing: .*low.*"):
+        with pytest.raises(ValueError, match="True Range requires series: .*high.*low.*close.*"):
             atr(ctx)
 
         # Test missing close
         ctx = SeriesContext(high=close_series, low=close_series)
-        with pytest.raises(ValueError, match="True Range requires series: .* missing: .*close.*"):
+        with pytest.raises(ValueError, match="True Range requires series: .*high.*low.*close.*"):
             atr(ctx)
 
     def test_atr_different_lengths(self):

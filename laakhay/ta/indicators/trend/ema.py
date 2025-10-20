@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from .. import register, SeriesContext, Price
-from ..primitives import rolling_ema
+from ...primitives import rolling_ema
 from ...core import Series
 
 

@@ -19,30 +19,18 @@ def bbands(
     - upper_band = middle_band + (std_dev * standard_deviation)
     - lower_band = middle_band - (std_dev * standard_deviation)
     """
-    if period <= 0:
-        raise ValueError("Bollinger Bands period must be positive")
-    if std_dev <= 0:
-        raise ValueError("Standard deviation multiplier must be positive")
+    if period <= 0 or std_dev <= 0:
+        raise ValueError("Bollinger Bands period and std_dev must be positive")
 
-    # Calculate middle band (SMA)
+    # Calculate middle band and standard deviation
     middle_band = rolling_mean(ctx, period)
-
-    # Calculate standard deviation
     std_deviation = rolling_std(ctx, period)
 
-    # Use expressions to calculate upper and lower bands
+    # Calculate upper and lower bands using expressions
     middle_expr = Expression(Literal(middle_band))
     std_expr = Expression(Literal(std_deviation))
-
-    # Upper band = middle + (std * std_dev)
-    upper_band = middle_expr + (std_expr * std_dev)
     
-    # Lower band = middle - (std * std_dev)
-    lower_band = middle_expr - (std_expr * std_dev)
+    upper_band = (middle_expr + (std_expr * std_dev)).evaluate({})
+    lower_band = (middle_expr - (std_expr * std_dev)).evaluate({})
 
-    # Evaluate bands
-    context = {}
-    upper_series = upper_band.evaluate(context)
-    lower_series = lower_band.evaluate(context)
-
-    return upper_series, middle_band, lower_series
+    return upper_band, middle_band, lower_band

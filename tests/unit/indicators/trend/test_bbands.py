@@ -94,16 +94,16 @@ class TestBollingerBandsIndicator:
 
         ctx = SeriesContext(close=close_series)
 
-        with pytest.raises(ValueError, match="Bollinger Bands period must be positive"):
+        with pytest.raises(ValueError, match="Bollinger Bands period and std_dev must be positive"):
             bbands(ctx, period=0)
 
-        with pytest.raises(ValueError, match="Bollinger Bands period must be positive"):
+        with pytest.raises(ValueError, match="Bollinger Bands period and std_dev must be positive"):
             bbands(ctx, period=-1)
 
-        with pytest.raises(ValueError, match="Standard deviation multiplier must be positive"):
+        with pytest.raises(ValueError, match="Bollinger Bands period and std_dev must be positive"):
             bbands(ctx, period=20, std_dev=0)
 
-        with pytest.raises(ValueError, match="Standard deviation multiplier must be positive"):
+        with pytest.raises(ValueError, match="Bollinger Bands period and std_dev must be positive"):
             bbands(ctx, period=20, std_dev=-1)
 
     def test_bbands_default_parameters(self):
