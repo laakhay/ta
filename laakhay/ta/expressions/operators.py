@@ -83,6 +83,20 @@ class Expression:
         """Unary plus operator."""
         return Expression(UnaryOp(OperatorType.POS, self._node))
     
+    def __and__(self, other: Union[Expression, Series[Any], float, int]) -> Expression:
+        """Bitwise AND operator (logical AND)."""
+        other_node = _to_node(other)
+        return Expression(BinaryOp(OperatorType.AND, self._node, other_node))
+    
+    def __or__(self, other: Union[Expression, Series[Any], float, int]) -> Expression:
+        """Bitwise OR operator (logical OR)."""
+        other_node = _to_node(other)
+        return Expression(BinaryOp(OperatorType.OR, self._node, other_node))
+    
+    def __invert__(self) -> Expression:
+        """Bitwise NOT operator (logical NOT)."""
+        return Expression(UnaryOp(OperatorType.NOT, self._node))
+    
     def evaluate(self, context: dict[str, Series[Any]]) -> Series[Any]:
         """Evaluate the expression with given context."""
         return self._node.evaluate(context)

@@ -1,4 +1,4 @@
-from .types import Symbol, Price, Qty, Rate, Timestamp
+from .types import Symbol, Price, Qty, Volume, Rate, Timestamp
 from .types import PriceLike, QtyLike, RateLike, TimestampLike
 from .coercers import coerce_price, coerce_qty, coerce_rate
 from .timestamps import coerce_timestamp
@@ -21,6 +21,7 @@ __all__ = [
     "Symbol",
     "Price",
     "Qty",
+    "Volume",
     "Rate",
     "Timestamp",
     "PriceLike",

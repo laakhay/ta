@@ -5,6 +5,15 @@ from datetime import datetime, date, timezone, timedelta
 from decimal import Decimal
 from typing import Any, Dict, List, Union, Tuple
 
+
+@pytest.fixture(autouse=True)
+def ensure_indicators_registered():
+    """Ensure indicators are registered before each test."""
+    # Force import of indicators to trigger registration
+    from laakhay.ta import indicators  # noqa: F401
+    
+    yield
+
 @pytest.fixture
 def sample_datetime_utc() -> datetime:
     """Sample UTC datetime for testing."""

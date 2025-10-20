@@ -4,6 +4,10 @@ from .dump import to_csv
 from .registry import register, indicator, describe_indicator, SeriesContext, ParamSchema, OutputSchema, IndicatorSchema, list_indicators, list_all_names
 from .engine import Engine
 from .expressions import Expression, ExpressionNode, BinaryOp, UnaryOp, Literal, as_expression
+from .public_api import ta, IndicatorHandle, TASeries
+
+# Import indicators to trigger registration
+from . import indicators
 
 __all__ = [
     "Bar",
@@ -30,4 +34,8 @@ __all__ = [
     "Literal",
     "as_expression",
     "Engine",
+    # New public API
+    "ta",
+    "IndicatorHandle",
+    "TASeries",
 ]

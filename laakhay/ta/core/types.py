@@ -7,6 +7,7 @@ from typing import TypeAlias
 Symbol: TypeAlias = str
 Price: TypeAlias = Decimal
 Qty: TypeAlias = Decimal
+Volume: TypeAlias = Decimal
 Rate: TypeAlias = Decimal
 Timestamp: TypeAlias = datetime
 

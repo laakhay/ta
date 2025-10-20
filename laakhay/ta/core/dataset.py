@@ -93,6 +93,56 @@ class Dataset:
         key = DatasetKey(symbol=symbol, timeframe=timeframe, source=source)
         self._series[key] = series
     
+    def add(self, symbol: Symbol, timeframe: str, source: str, series: Union[OHLCV, Series[Any]]) -> None:
+        """Add a series to the dataset (alias for add_series with different parameter order)."""
+        self.add_series(symbol, timeframe, series, source)
+    
+    def to_context(self) -> SeriesContext:
+        """Convert dataset to SeriesContext for indicator evaluation.
+        
+        This method extracts series from the dataset and creates a SeriesContext
+        that can be used with indicator functions.
+        
+        Returns:
+            SeriesContext with available series
+            
+        Raises:
+            ValueError: If no suitable series are found in the dataset
+        """
+        from ..registry.models import SeriesContext
+        
+        # Build context dictionary from available series
+        context_dict = {}
+        
+        for key, series in self._series.items():
+            # Map common series types to context attributes
+            if key.source == "close":
+                context_dict["close"] = series
+            elif key.source == "high":
+                context_dict["high"] = series
+            elif key.source == "low":
+                context_dict["low"] = series
+            elif key.source == "open":
+                context_dict["open"] = series
+            elif key.source == "volume":
+                context_dict["volume"] = series
+            elif key.source == "price":
+                context_dict["price"] = series
+            else:
+                # Use the source name as the attribute name
+                context_dict[key.source] = series
+        
+        # If no close series found but we have series with values, use the first one as close
+        if "close" not in context_dict and self._series:
+            first_series = next(iter(self._series.values()))
+            if hasattr(first_series, 'values') and len(first_series.values) > 0:
+                context_dict["close"] = first_series
+        
+        if not context_dict:
+            raise ValueError("No suitable series found in dataset for indicator evaluation")
+        
+        return SeriesContext(**context_dict)
+    
     def series(self, 
                symbol: Symbol, 
                timeframe: str, 
@@ -265,6 +315,46 @@ class DatasetView:
         if key not in self:
             raise KeyError(f"No series found for key in view: {key}")
         return self._dataset[key]
+    
+    def to_context(self) -> SeriesContext:
+        """Convert dataset to SeriesContext for indicator evaluation.
+        
+        This method extracts series from the dataset and creates a SeriesContext
+        that can be used with indicator functions.
+        
+        Returns:
+            SeriesContext with available series
+            
+        Raises:
+            ValueError: If no suitable series are found in the dataset
+        """
+        from ..registry.models import SeriesContext
+        
+        # Build context dictionary from available series
+        context_dict = {}
+        
+        for key, series in self:
+            # Map common series types to context attributes
+            if key.source == "close" or (hasattr(series, 'values') and len(series.values) > 0):
+                context_dict["close"] = series
+            elif key.source == "high":
+                context_dict["high"] = series
+            elif key.source == "low":
+                context_dict["low"] = series
+            elif key.source == "open":
+                context_dict["open"] = series
+            elif key.source == "volume":
+                context_dict["volume"] = series
+            elif key.source == "price":
+                context_dict["price"] = series
+            else:
+                # Use the source name as the attribute name
+                context_dict[key.source] = series
+        
+        if not context_dict:
+            raise ValueError("No suitable series found in dataset for indicator evaluation")
+        
+        return SeriesContext(**context_dict)
 
 
 def dataset(*series: Union[OHLCV, Series[Any]], 

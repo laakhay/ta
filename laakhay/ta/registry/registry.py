@@ -308,12 +308,23 @@ class Registry:
 
 
 # Global registry instance
-_global_registry = Registry()
+_global_registry = None
 
 
 def get_global_registry() -> Registry:
     """Get the global registry instance. Useful for testing and advanced usage."""
+    global _global_registry
+    if _global_registry is None:
+        _global_registry = Registry()
+        # Ensure indicators are registered when creating the registry
+        from .. import indicators  # noqa: F401
     return _global_registry
+
+
+def reset_global_registry() -> None:
+    """Reset the global registry. Useful for testing."""
+    global _global_registry
+    _global_registry = None
 
 
 def register(
@@ -323,13 +334,13 @@ def register(
 ) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
     """Decorator to register an indicator function."""
     def decorator(func: Callable[..., Any]) -> Callable[..., Any]:
-        return _global_registry.register(func, name, aliases, description)
+        return get_global_registry().register(func, name, aliases, description)
     return decorator
 
 
 def indicator(name: str, **overrides: Any) -> IndicatorHandle:
     """Get indicator handle by name with optional parameter overrides."""
-    handle = _global_registry.get(name)
+    handle = get_global_registry().get(name)
     if handle is None:
         raise ValueError(f"Indicator '{name}' not found")
     return handle.with_overrides(**overrides)
@@ -337,7 +348,7 @@ def indicator(name: str, **overrides: Any) -> IndicatorHandle:
 
 def describe_indicator(name: str) -> IndicatorSchema:
     """Get indicator schema by name."""
-    handle = _global_registry.get(name)
+    handle = get_global_registry().get(name)
     if handle is None:
         raise ValueError(f"Indicator '{name}' not found")
     return handle.schema
@@ -345,9 +356,9 @@ def describe_indicator(name: str) -> IndicatorSchema:
 
 def list_indicators() -> List[str]:
     """List all registered indicator names."""
-    return _global_registry.list_indicators()
+    return get_global_registry().list_indicators()
 
 
 def list_all_names() -> List[str]:
     """List all registered indicator names and aliases."""
-    return _global_registry.list_all_names()
+    return get_global_registry().list_all_names()
