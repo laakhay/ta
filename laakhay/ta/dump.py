@@ -67,11 +67,11 @@ def to_csv(
             for i in range(len(data)):
                 writer.writerow({
                     timestamp_col: data.timestamps[i].isoformat(),
-                    default_mapping["open_col"]: float(data.opens[i]),
-                    default_mapping["high_col"]: float(data.highs[i]),
-                    default_mapping["low_col"]: float(data.lows[i]),
-                    default_mapping["close_col"]: float(data.closes[i]),
-                    default_mapping["volume_col"]: float(data.volumes[i]),
+                    default_mapping["open_col"]: str(data.opens[i]),
+                    default_mapping["high_col"]: str(data.highs[i]),
+                    default_mapping["low_col"]: str(data.lows[i]),
+                    default_mapping["close_col"]: str(data.closes[i]),
+                    default_mapping["volume_col"]: str(data.volumes[i]),
                     default_mapping["is_closed_col"]: data.is_closed[i]
                 })
         else:
@@ -84,5 +84,5 @@ def to_csv(
             for i in range(len(data)):
                 writer.writerow({
                     timestamp_col: data.timestamps[i].isoformat(),
-                    default_mapping["value_col"]: float(data.values[i])
+                    default_mapping["value_col"]: str(data.values[i])
                 })

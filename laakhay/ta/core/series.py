@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import decimal
 from dataclasses import dataclass
-from typing import Generic, TypeVar, Iterator, overload, TypeAlias, Any, Union
+from typing import Generic, TypeVar, Iterator, overload, TypeAlias, Any, Union, Literal
 
 from .types import Timestamp, Symbol, Price, Qty
 
@@ -68,42 +68,22 @@ class Series(Generic[T]):
     def __add__(self, other: T) -> Series[T]: ...
 
     def __add__(self, other: Series[T] | T) -> Series[T]:
-        """Concatenate series or add a scalar to all values."""
+        """Element-wise addition or scalar addition."""
         if isinstance(other, Series):
-            if self.symbol != other.symbol or self.timeframe != other.timeframe:
-                raise ValueError("Cannot add series with different symbols or timeframes")
-            
-            # Check if series have same length and timestamps for element-wise operations
-            if len(self) == len(other):
-                # Check if timestamps are the same (for element-wise operations)
-                if self.timestamps == other.timestamps:
-                    try:
-                        new_values_list = []
-                        for v1, v2 in zip(self.values, other.values):
-                            new_values_list.append(v1 + v2)  # type: ignore
-                        new_values = tuple(new_values_list)  # type: ignore[misc]
-                        return Series[T](
-                            timestamps=self.timestamps,
-                            values=new_values,  # type: ignore[arg-type]
-                            symbol=self.symbol,
-                            timeframe=self.timeframe
-                        )
-                    except TypeError:
-                        # Fall through to concatenation if element-wise fails
-                        pass
-            
-            # Concatenate and sort by timestamp
-            combined_timestamps = self.timestamps + other.timestamps
-            combined_values = self.values + other.values  # type: ignore[misc]
-            
-            # Sort by timestamp while maintaining value correspondence
-            sorted_pairs = sorted(zip(combined_timestamps, combined_values))
-            sorted_timestamps = tuple(pair[0] for pair in sorted_pairs)
-            sorted_values = tuple(pair[1] for pair in sorted_pairs)
-            
+            self._validate_series_alignment(other, operation="add")
+            try:
+                new_values_list = []
+                for v1, v2 in zip(self.values, other.values):
+                    new_values_list.append(v1 + v2)  # type: ignore
+                new_values = tuple(new_values_list)  # type: ignore[misc]
+            except TypeError:
+                raise TypeError(
+                    f"Cannot add series values of types {type(self.values[0])} and {type(other.values[0])}"
+                )
+
             return Series[T](
-                timestamps=sorted_timestamps,
-                values=sorted_values,
+                timestamps=self.timestamps,
+                values=new_values,  # type: ignore[arg-type]
                 symbol=self.symbol,
                 timeframe=self.timeframe
             )
@@ -127,10 +107,7 @@ class Series(Generic[T]):
     def __sub__(self, other: Series[T] | T) -> Series[T]:
         """Subtract scalar or element-wise subtract series."""
         if isinstance(other, Series):
-            # Element-wise series subtraction (requires both series to have same length and timestamps)
-            if len(self) != len(other):
-                raise ValueError(f"Cannot subtract series of different lengths: {len(self)} vs {len(other)}")
-            
+            self._validate_series_alignment(other, operation="subtract")
             try:
                 new_values_list = []
                 for v1, v2 in zip(self.values, other.values):
@@ -164,10 +141,7 @@ class Series(Generic[T]):
     def __mul__(self, other: Series[T] | T) -> Series[T]:
         """Multiply series by scalar or element-wise multiply by series."""
         if isinstance(other, Series):
-            # Element-wise series multiplication
-            if len(self) != len(other):
-                raise ValueError(f"Cannot multiply series of different lengths: {len(self)} vs {len(other)}")
-            
+            self._validate_series_alignment(other, operation="multiply")
             try:
                 new_values_list = []
                 for v1, v2 in zip(self.values, other.values):
@@ -201,10 +175,7 @@ class Series(Generic[T]):
     def __truediv__(self, other: Series[T] | T) -> Series[T]:
         """Divide series by scalar or element-wise divide by series."""
         if isinstance(other, Series):
-            # Element-wise series division
-            if len(self) != len(other):
-                raise ValueError(f"Cannot divide series of different lengths: {len(self)} vs {len(other)}")
-            
+            self._validate_series_alignment(other, operation="divide")
             try:
                 new_values_list = []
                 for v1, v2 in zip(self.values, other.values):
@@ -238,7 +209,77 @@ class Series(Generic[T]):
                 symbol=self.symbol,
                 timeframe=self.timeframe
             )
-    
+
+    def __mod__(self, other: Series[T] | T) -> Series[T]:
+        """Modulo operation between series or with scalar."""
+        if isinstance(other, Series):
+            self._validate_series_alignment(other, operation="modulo")
+            try:
+                new_values = tuple(v1 % v2 for v1, v2 in zip(self.values, other.values))  # type: ignore[misc]
+            except (ZeroDivisionError, decimal.InvalidOperation):
+                raise ValueError("Cannot perform modulo with zero divisor in series") from None
+            except TypeError:
+                raise TypeError(
+                    f"Cannot perform modulo on series values of types {type(self.values[0])} and {type(other.values[0])}"
+                )
+
+            return Series[T](
+                timestamps=self.timestamps,
+                values=new_values,  # type: ignore[arg-type]
+                symbol=self.symbol,
+                timeframe=self.timeframe
+            )
+        else:
+            try:
+                new_values = []
+                for v in self.values:
+                    new_values.append(v % other)  # type: ignore
+            except (ZeroDivisionError, decimal.InvalidOperation):
+                raise ValueError("Cannot perform modulo with scalar zero") from None
+            except TypeError:
+                raise TypeError(
+                    f"Cannot perform modulo on series values of type {type(self.values[0]) if self.values else 'unknown'} with scalar {type(other)}"
+                )
+
+            return Series[T](
+                timestamps=self.timestamps,
+                values=tuple(new_values),  # type: ignore[arg-type]
+                symbol=self.symbol,
+                timeframe=self.timeframe
+            )
+
+    def __pow__(self, other: Series[T] | T) -> Series[T]:
+        """Power operation between series or with scalar exponent."""
+        if isinstance(other, Series):
+            self._validate_series_alignment(other, operation="power")
+            try:
+                new_values = tuple(v1 ** v2 for v1, v2 in zip(self.values, other.values))  # type: ignore[misc]
+            except TypeError:
+                raise TypeError(
+                    f"Cannot perform power on series values of types {type(self.values[0])} and {type(other.values[0])}"
+                )
+
+            return Series[T](
+                timestamps=self.timestamps,
+                values=new_values,  # type: ignore[arg-type]
+                symbol=self.symbol,
+                timeframe=self.timeframe
+            )
+        else:
+            try:
+                new_values = tuple(v ** other for v in self.values)  # type: ignore[misc]
+            except TypeError:
+                raise TypeError(
+                    f"Cannot perform power on series values of type {type(self.values[0]) if self.values else 'unknown'} with scalar {type(other)}"
+                )
+
+            return Series[T](
+                timestamps=self.timestamps,
+                values=new_values,  # type: ignore[arg-type]
+                symbol=self.symbol,
+                timeframe=self.timeframe
+            )
+
     def __neg__(self) -> Series[T]:
         """Unary negation of series."""
         try:
@@ -264,84 +305,6 @@ class Series(Generic[T]):
             timeframe=self.timeframe
         )
     
-    def __mod__(self, other: Series[T] | T) -> Series[T]:
-        """Modulo series by scalar or element-wise modulo by series."""
-        if isinstance(other, Series):
-            # Element-wise series modulo
-            if len(self) != len(other):
-                raise ValueError(f"Cannot perform modulo on series of different lengths: {len(self)} vs {len(other)}")
-            
-            try:
-                new_values_list = []
-                for v1, v2 in zip(self.values, other.values):
-                    new_values_list.append(v1 % v2)  # type: ignore
-                new_values = tuple(new_values_list)  # type: ignore[misc]
-            except TypeError:
-                raise TypeError(f"Cannot perform modulo on series values of types {type(self.values[0])} and {type(other.values[0])}")
-            except (ZeroDivisionError, decimal.InvalidOperation):
-                raise ZeroDivisionError("Cannot perform modulo with zero in series")
-            
-            return Series[T](
-                timestamps=self.timestamps,
-                values=new_values,  # type: ignore[arg-type]
-                symbol=self.symbol,
-                timeframe=self.timeframe
-            )
-        else:
-            # Scalar modulo
-            try:
-                new_values_list = []
-                for v in self.values:
-                    new_values_list.append(v % other)  # type: ignore
-                new_values = tuple(new_values_list)  # type: ignore[misc]
-            except TypeError:
-                raise TypeError(f"Cannot perform modulo on series values of type {type(self.values[0]) if self.values else 'unknown'} with {type(other)}")
-            except (ZeroDivisionError, decimal.InvalidOperation):
-                raise ZeroDivisionError("Cannot perform modulo with zero in series")
-            return Series[T](
-                timestamps=self.timestamps,
-                values=new_values,  # type: ignore[arg-type]
-                symbol=self.symbol,
-                timeframe=self.timeframe
-            )
-    
-    def __pow__(self, other: Series[T] | T) -> Series[T]:
-        """Power series by scalar or element-wise power by series."""
-        if isinstance(other, Series):
-            # Element-wise series power
-            if len(self) != len(other):
-                raise ValueError(f"Cannot perform power on series of different lengths: {len(self)} vs {len(other)}")
-            
-            try:
-                new_values_list = []
-                for v1, v2 in zip(self.values, other.values):
-                    new_values_list.append(v1 ** v2)  # type: ignore
-                new_values = tuple(new_values_list)  # type: ignore[misc]
-            except TypeError:
-                raise TypeError(f"Cannot perform power on series values of types {type(self.values[0])} and {type(other.values[0])}")
-            
-            return Series[T](
-                timestamps=self.timestamps,
-                values=new_values,  # type: ignore[arg-type]
-                symbol=self.symbol,
-                timeframe=self.timeframe
-            )
-        else:
-            # Scalar power
-            try:
-                new_values_list = []
-                for v in self.values:
-                    new_values_list.append(v ** other)  # type: ignore
-                new_values = tuple(new_values_list)  # type: ignore[misc]
-            except TypeError:
-                raise TypeError(f"Cannot perform power on series values of type {type(self.values[0]) if self.values else 'unknown'} with {type(other)}")
-            return Series[T](
-                timestamps=self.timestamps,
-                values=new_values,  # type: ignore[arg-type]
-                symbol=self.symbol,
-                timeframe=self.timeframe
-            )
-
     def slice_by_time(self, start: Timestamp, end: Timestamp) -> Series[T]:
         """Slice series by time range using binary search for efficiency."""
         if start > end:
@@ -398,6 +361,141 @@ class Series(Generic[T]):
             timeframe=data['timeframe'],
         )
 
+    def _validate_series_alignment(self, other: Series[Any], *, operation: str) -> None:
+        """Ensure two series are aligned before performing arithmetic."""
+        if self.symbol != other.symbol or self.timeframe != other.timeframe:
+            raise ValueError(
+                f"Cannot {operation} series with different symbols or timeframes: "
+                f"({self.symbol},{self.timeframe}) vs ({other.symbol},{other.timeframe})"
+            )
+        if len(self) != len(other):
+            raise ValueError(
+                f"Cannot {operation} series with different lengths: {len(self)} vs {len(other)}"
+            )
+        if self.timestamps != other.timestamps:
+            raise ValueError(f"Cannot {operation} series with different timestamp alignment")
+
 # Type aliases for common series types
 PriceSeries: TypeAlias = Series[Price]
 QtySeries: TypeAlias = Series[Qty]
+
+
+def align_series(
+    left: Series[Any],
+    right: Series[Any],
+    *,
+    how: Literal["inner", "outer", "left", "right"] = "inner",
+    fill: Literal["none", "ffill"] = "none",
+    left_fill_value: Any | None = None,
+    right_fill_value: Any | None = None,
+    symbol: Symbol | None = None,
+    timeframe: str | None = None,
+) -> tuple[Series[Any], Series[Any]]:
+    """Align two series to a common timestamp set with explicit strategy.
+
+    Args:
+        left: First series.
+        right: Second series.
+        how: Join strategy ("inner", "outer", "left", "right").
+        fill: Gap handling strategy. "none" raises on missing values, "ffill" propagates
+              the last observed value (optionally seeded with fill_value parameters).
+        left_fill_value: Seed value for left series when fill="ffill" and no prior value exists.
+        right_fill_value: Seed value for right series when fill="ffill" and no prior value exists.
+        symbol: Output symbol metadata. If omitted, requires both series to share symbol.
+        timeframe: Output timeframe metadata. If omitted, requires both series to share timeframe.
+
+    Returns:
+        Tuple of aligned Series instances sharing metadata (symbol/timeframe).
+
+    Raises:
+        ValueError: If metadata differs without overrides, timestamps cannot be combined
+                    under the chosen strategy, or missing values cannot be filled.
+    """
+
+    supported_how = {"inner", "outer", "left", "right"}
+    if how not in supported_how:
+        raise ValueError(f"Unsupported alignment strategy '{how}'. Expected one of {supported_how}.")
+
+    if symbol is None:
+        if left.symbol != right.symbol:
+            raise ValueError(
+                "Series have different symbols; provide 'symbol' to align under a common identifier."
+            )
+        target_symbol = left.symbol
+    else:
+        target_symbol = symbol
+
+    if timeframe is None:
+        if left.timeframe != right.timeframe:
+            raise ValueError(
+                "Series have different timeframes; provide 'timeframe' to align under a common timeframe."
+            )
+        target_timeframe = left.timeframe
+    else:
+        target_timeframe = timeframe
+
+    left_ts = set(left.timestamps)
+    right_ts = set(right.timestamps)
+
+    if how == "inner":
+        target_ts = sorted(left_ts & right_ts)
+    elif how == "outer":
+        target_ts = sorted(left_ts | right_ts)
+    elif how == "left":
+        target_ts = list(left.timestamps)
+    else:  # how == "right"
+        target_ts = list(right.timestamps)
+
+    if not target_ts:
+        raise ValueError("Alignment resulted in an empty timestamp set.")
+
+    def build_values(
+        series: Series[Any],
+        timestamps: list[Timestamp],
+        fill_value: Any | None
+    ) -> tuple[Any, ...]:
+        values_map = dict(zip(series.timestamps, series.values))
+        new_values: list[Any] = []
+        last_value: Any | None = None
+
+        for ts in timestamps:
+            if ts in values_map:
+                value = values_map[ts]
+                last_value = value
+            else:
+                if fill == "ffill":
+                    if last_value is not None:
+                        value = last_value
+                    elif fill_value is not None:
+                        value = fill_value
+                        last_value = value
+                    else:
+                        raise ValueError(
+                            f"Missing value for timestamp {ts.isoformat()} in series '{series.symbol}' "
+                            "and no forward-fill seed provided."
+                        )
+                else:
+                    raise ValueError(
+                        f"Missing value for timestamp {ts.isoformat()} in series '{series.symbol}'. "
+                        "Specify fill='ffill' or provide fill values."
+                    )
+            new_values.append(value)
+        return tuple(new_values)
+
+    aligned_left_values = build_values(left, target_ts, left_fill_value)
+    aligned_right_values = build_values(right, target_ts, right_fill_value)
+
+    aligned_left = Series[Any](
+        timestamps=tuple(target_ts),
+        values=aligned_left_values,
+        symbol=target_symbol,
+        timeframe=target_timeframe,
+    )
+    aligned_right = Series[Any](
+        timestamps=tuple(target_ts),
+        values=aligned_right_values,
+        symbol=target_symbol,
+        timeframe=target_timeframe,
+    )
+
+    return aligned_left, aligned_right

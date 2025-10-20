@@ -105,12 +105,59 @@ class Bar:
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "Bar":
         """Create a Bar from a dictionary."""
+
+        def require(field: str, aliases: list[str]) -> Any:
+            for alias in aliases:
+                if alias in data:
+                    value = data[alias]
+                    if value is None:
+                        raise ValueError(
+                            f"Field '{field}' (alias '{alias}') cannot be None"
+                        )
+                    return value
+            alias_list = ", ".join(aliases)
+            raise ValueError(
+                f"Missing required field '{field}' (aliases: {alias_list})"
+            )
+
+        def optional(aliases: list[str], default: Any) -> Any:
+            for alias in aliases:
+                if alias in data:
+                    return data[alias]
+            return default
+
+        ts_value = require("ts", ["ts", "timestamp"])
+        open_value = require("open", ["open", "open_price", "o"])
+        high_value = require("high", ["high", "high_price", "h"])
+        low_value = require("low", ["low", "low_price", "l"])
+        close_value = require("close", ["close", "close_price", "c"])
+        volume_value = require("volume", ["volume", "volume_qty", "v"])
+        is_closed_value = optional(["is_closed", "closed", "x"], True)
+
+        if not isinstance(is_closed_value, bool):
+            if isinstance(is_closed_value, str):
+                normalized = is_closed_value.strip().lower()
+                if normalized in {"true", "1", "yes", "closed"}:
+                    is_closed_value = True
+                elif normalized in {"false", "0", "no", "open"}:
+                    is_closed_value = False
+                else:
+                    raise ValueError(
+                        f"Unrecognised boolean value for 'is_closed': {is_closed_value!r}"
+                    )
+            elif isinstance(is_closed_value, (int, float)):
+                is_closed_value = bool(is_closed_value)
+            else:
+                raise ValueError(
+                    f"Unrecognised type for 'is_closed': {type(is_closed_value).__name__}"
+                )
+
         return cls(
-            ts=coerce_timestamp(data.get("ts") or data.get("timestamp")),
-            open=coerce_price(data.get("open") or data.get("open_price") or data.get("o")),
-            high=coerce_price(data.get("high") or data.get("high_price") or data.get("h")),
-            low=coerce_price(data.get("low") or data.get("low_price") or data.get("l")),
-            close=coerce_price(data.get("close") or data.get("close_price") or data.get("c")),
-            volume=coerce_qty(data.get("volume") or data.get("volume_qty") or data.get("v")),
-            is_closed=data.get("is_closed", True) or data.get("closed", True) or data.get("x", True),
+            ts=coerce_timestamp(ts_value),
+            open=coerce_price(open_value),
+            high=coerce_price(high_value),
+            low=coerce_price(low_value),
+            close=coerce_price(close_value),
+            volume=coerce_qty(volume_value),
+            is_closed=is_closed_value,
         )
