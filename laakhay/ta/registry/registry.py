@@ -107,7 +107,7 @@ class Registry:
         elif first_param.annotation != SeriesContext and not (
             hasattr(first_param.annotation, '__name__') and 
             first_param.annotation.__name__ == 'SeriesContext'
-        ):
+        ) and first_param.annotation != 'SeriesContext':
             raise ValueError(f"Indicator function '{func.__name__}' first parameter must be SeriesContext, got {first_param.annotation}")
         
         # Check return type annotation
@@ -119,6 +119,9 @@ class Registry:
                 pass
             elif return_annotation == Series:
                 # Just Series - this is also good
+                pass
+            elif isinstance(return_annotation, str) and return_annotation.startswith('Series['):
+                # String annotation like "Series[Price]" - this is good
                 pass
             elif hasattr(return_annotation, '__origin__') and return_annotation.__origin__ is tuple:
                 # Tuple return type for multi-output indicators - this is good
