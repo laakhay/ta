@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Generic, TypeVar, Iterator, overload, TypeAlias, Any, Union
 
 from .types import Timestamp, Symbol, Price, Qty
@@ -16,7 +16,6 @@ class Series(Generic[T]):
     values: tuple[T, ...]              # Corresponding values
     symbol: Symbol                     # Trading symbol
     timeframe: str                     # Timeframe (e.g., '1h', '4h')
-    metadata: dict[str, Any] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         """Validate series data integrity after initialization."""
@@ -51,8 +50,7 @@ class Series(Generic[T]):
                     timestamps=self.timestamps[index],
                     values=self.values[index],
                     symbol=self.symbol,
-                    timeframe=self.timeframe,
-                    metadata=self.metadata
+                    timeframe=self.timeframe
                 )
         except (TypeError, KeyError) as e:
             if "indices must be integers or slices" in str(e):
@@ -86,8 +84,7 @@ class Series(Generic[T]):
                 timestamps=sorted_timestamps,
                 values=sorted_values,
                 symbol=self.symbol,
-                timeframe=self.timeframe,
-                metadata={**self.metadata, **other.metadata}
+                timeframe=self.timeframe
             )
         else:
             # Scalar addition (requires T to support addition)
@@ -103,8 +100,7 @@ class Series(Generic[T]):
                 timestamps=self.timestamps,
                 values=new_values,  # type: ignore[arg-type]
                 symbol=self.symbol,
-                timeframe=self.timeframe,
-                metadata=self.metadata
+                timeframe=self.timeframe
             )
 
     def slice_by_time(self, start: Timestamp, end: Timestamp) -> Series[T]:
@@ -136,8 +132,7 @@ class Series(Generic[T]):
             timestamps=self.timestamps[start_idx:end_idx],
             values=self.values[start_idx:end_idx],
             symbol=self.symbol,
-            timeframe=self.timeframe,
-            metadata=self.metadata
+            timeframe=self.timeframe
         )
 
     def to_dict(self) -> dict[str, Any]:
@@ -147,7 +142,6 @@ class Series(Generic[T]):
             'values': list(self.values),
             'symbol': self.symbol,
             'timeframe': self.timeframe,
-            'metadata': self.metadata
         }
 
     @classmethod
@@ -163,7 +157,6 @@ class Series(Generic[T]):
             values=values,
             symbol=data['symbol'],
             timeframe=data['timeframe'],
-            metadata=data.get('metadata', {})
         )
 
 # Type aliases for common series types

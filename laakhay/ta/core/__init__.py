@@ -5,6 +5,7 @@ from .timestamps import coerce_timestamp
 from .bar import Bar
 from .series import Series, PriceSeries, QtySeries
 from .ohlcv import OHLCV
+from .dataset import Dataset, DatasetView, DatasetKey, DatasetMetadata, dataset
 
 __all__ = [
     "Bar",
@@ -12,6 +13,11 @@ __all__ = [
     "OHLCV",
     "PriceSeries",
     "QtySeries",
+    "Dataset",
+    "DatasetView",
+    "DatasetKey",
+    "DatasetMetadata",
+    "dataset",
     "Symbol",
     "Price",
     "Qty",

@@ -20,7 +20,6 @@ class OHLCV:
     is_closed: tuple[bool, ...]       # Closed flags
     symbol: Symbol
     timeframe: str
-    metadata: dict[str, Any] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         """Validate OHLCV data integrity after initialization."""
@@ -73,8 +72,7 @@ class OHLCV:
                     volumes=self.volumes[index],
                     is_closed=self.is_closed[index],
                     symbol=self.symbol,
-                    timeframe=self.timeframe,
-                    metadata=self.metadata
+                    timeframe=self.timeframe
                 )
         except (TypeError, KeyError) as e:
             if "indices must be integers or slices" in str(e):
@@ -128,8 +126,7 @@ class OHLCV:
             volumes=self.volumes[start_idx:end_idx],
             is_closed=self.is_closed[start_idx:end_idx],
             symbol=self.symbol,
-            timeframe=self.timeframe,
-            metadata=self.metadata
+            timeframe=self.timeframe
         )
 
     def to_series(self) -> dict[str, Any]:
@@ -141,36 +138,31 @@ class OHLCV:
                 timestamps=self.timestamps,
                 values=self.opens,
                 symbol=self.symbol,
-                timeframe=self.timeframe,
-                metadata=self.metadata
+                timeframe=self.timeframe
             ),
             'highs': PriceSeries(
                 timestamps=self.timestamps,
                 values=self.highs,
                 symbol=self.symbol,
-                timeframe=self.timeframe,
-                metadata=self.metadata
+                timeframe=self.timeframe
             ),
             'lows': PriceSeries(
                 timestamps=self.timestamps,
                 values=self.lows,
                 symbol=self.symbol,
-                timeframe=self.timeframe,
-                metadata=self.metadata
+                timeframe=self.timeframe
             ),
             'closes': PriceSeries(
                 timestamps=self.timestamps,
                 values=self.closes,
                 symbol=self.symbol,
-                timeframe=self.timeframe,
-                metadata=self.metadata
+                timeframe=self.timeframe
             ),
             'volumes': QtySeries(
                 timestamps=self.timestamps,
                 values=self.volumes,
                 symbol=self.symbol,
-                timeframe=self.timeframe,
-                metadata=self.metadata
+                timeframe=self.timeframe
             )
         }
 
@@ -197,8 +189,7 @@ class OHLCV:
             volumes=volumes,
             is_closed=is_closed,
             symbol=symbol,
-            timeframe=timeframe,
-            metadata={}
+            timeframe=timeframe
         )
 
     @classmethod
@@ -224,8 +215,7 @@ class OHLCV:
             volumes=volumes,
             is_closed=is_closed,
             symbol=data['symbol'],
-            timeframe=data['timeframe'],
-            metadata=data.get('metadata', {})
+            timeframe=data['timeframe']
         )
 
     def to_dict(self) -> dict[str, Any]:
@@ -239,6 +229,5 @@ class OHLCV:
             'volumes': [float(vol) for vol in self.volumes],
             'is_closed': list(self.is_closed),
             'symbol': self.symbol,
-            'timeframe': self.timeframe,
-            'metadata': self.metadata
+            'timeframe': self.timeframe
         }

@@ -226,8 +226,7 @@ def sample_series_data(sample_timestamps: Tuple[datetime, ...], sample_price_val
         "timestamps": sample_timestamps,
         "values": sample_price_values,
         "symbol": "BTCUSDT",
-        "timeframe": "1h",
-        "metadata": {"source": "test"}
+        "timeframe": "1h"
     }
 
 @pytest.fixture
@@ -242,8 +241,7 @@ def sample_ohlcv_data(sample_timestamps: Tuple[datetime, ...], sample_price_valu
         "volumes": sample_volumes,
         "is_closed": (True, True, True, True),
         "symbol": "BTCUSDT",
-        "timeframe": "1h",
-        "metadata": {"source": "test"}
+        "timeframe": "1h"
     }
 
 @pytest.fixture
@@ -270,8 +268,7 @@ def empty_series_data() -> Dict[str, Any]:
         "timestamps": (),
         "values": (),
         "symbol": "BTCUSDT",
-        "timeframe": "1h",
-        "metadata": {}
+        "timeframe": "1h"
     }
 
 @pytest.fixture

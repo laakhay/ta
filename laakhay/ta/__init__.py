@@ -1,4 +1,4 @@
-from .core import Bar, Price, Qty, Rate, Timestamp
+from .core import Bar, Price, Qty, Rate, Timestamp, dataset
 
 __all__ = [
     "Bar",
@@ -6,4 +6,5 @@ __all__ = [
     "Qty",
     "Rate",
     "Timestamp",
+    "dataset",
 ]
