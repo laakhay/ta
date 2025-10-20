@@ -4,12 +4,106 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Any, Dict, List, Union
+from typing import Any, Callable, Dict, List, Union
 from enum import Enum
 from datetime import datetime, timezone
+from decimal import Decimal, InvalidOperation
 
 from ..core import Series
 from ..core.types import Price
+
+
+SCALAR_SYMBOL = "__SCALAR__"
+SCALAR_TIMEFRAME = "1s"
+SCALAR_TIMESTAMP = datetime(2024, 1, 1, 0, 0, 0, tzinfo=timezone.utc)
+
+
+def _coerce_decimal(value: Any) -> Price:
+    """Coerce numeric literals into Decimals for price math."""
+    if isinstance(value, Decimal):
+        return Price(value)
+    if isinstance(value, bool):
+        return Price(Decimal(1 if value else 0))
+    if isinstance(value, (int, float, str)):
+        try:
+            return Price(Decimal(str(value)))
+        except InvalidOperation as exc:  # pragma: no cover - defensive
+            raise TypeError(f"Unsupported scalar literal {value!r}") from exc
+    raise TypeError(f"Unsupported scalar literal type: {type(value).__name__}")
+
+
+def _make_scalar_series(value: Any) -> Series[Price]:
+    """Create a single-point series representing a scalar literal."""
+    coerced = _coerce_decimal(value)
+    return Series[Price](
+        timestamps=(SCALAR_TIMESTAMP,),
+        values=(coerced,),
+        symbol=SCALAR_SYMBOL,
+        timeframe=SCALAR_TIMEFRAME,
+    )
+
+
+def _is_scalar_series(series: Series[Any]) -> bool:
+    """True if the series represents a scalar literal."""
+    return series.symbol == SCALAR_SYMBOL
+
+
+def _broadcast_scalar_series(scalar: Series[Any], reference: Series[Any]) -> Series[Any]:
+    """Broadcast a scalar series to match the metadata of a reference series."""
+    if not _is_scalar_series(scalar):
+        raise ValueError("Attempted to broadcast a non-scalar series")
+    repeated_values = tuple(scalar.values[0] for _ in reference.timestamps)
+    return Series[Any](
+        timestamps=reference.timestamps,
+        values=repeated_values,
+        symbol=reference.symbol,
+        timeframe=reference.timeframe,
+    )
+
+
+def _align_series(
+    left: Series[Any],
+    right: Series[Any],
+    *,
+    operator: OperatorType,
+) -> tuple[Series[Any], Series[Any]]:
+    """Align two series for arithmetic/comparison operations."""
+    if _is_scalar_series(left) and not _is_scalar_series(right):
+        left = _broadcast_scalar_series(left, right)
+    if _is_scalar_series(right) and not _is_scalar_series(left):
+        right = _broadcast_scalar_series(right, left)
+
+    if len(left) != len(right):
+        raise ValueError(
+            f"Cannot perform {operator.value} on series of different lengths: {len(left)} vs {len(right)}"
+        )
+    if left.symbol != right.symbol or left.timeframe != right.timeframe:
+        raise ValueError(
+            f"Cannot perform {operator.value} on series with mismatched metadata "
+            f"({left.symbol},{left.timeframe}) vs ({right.symbol},{right.timeframe})"
+        )
+    if left.timestamps != right.timestamps:
+        raise ValueError(
+            f"Cannot perform {operator.value} on series with different timestamp alignment"
+        )
+    return left, right
+
+
+def _comparison_series(
+    left: Series[Any],
+    right: Series[Any],
+    operator: OperatorType,
+    compare: Callable[[Any, Any], bool],
+) -> Series[bool]:
+    """Produce a boolean series from comparing two aligned series."""
+    left_aligned, right_aligned = _align_series(left, right, operator=operator)
+    result_values = tuple(compare(lv, rv) for lv, rv in zip(left_aligned.values, right_aligned.values))
+    return Series[bool](
+        timestamps=left_aligned.timestamps,
+        values=result_values,
+        symbol=left_aligned.symbol,
+        timeframe=left_aligned.timeframe,
+    )
 
 
 class OperatorType(Enum):
@@ -131,17 +225,7 @@ class Literal(ExpressionNode):
         """Evaluate literal value."""
         if isinstance(self.value, Series):
             return self.value
-        
-        # Convert scalar to Series with consistent timestamp
-        # Use a fixed timestamp to ensure consistent evaluation
-        # All literals use the same timestamp so they can be combined element-wise
-        timestamp = datetime(2024, 1, 1, 0, 0, 0, tzinfo=timezone.utc)
-        return Series[Any](
-            timestamps=(timestamp,),
-            values=(Price(self.value),),
-            symbol="LITERAL",
-            timeframe="1s"
-        )
+        return _make_scalar_series(self.value)
     
     def dependencies(self) -> List[str]:  # type: ignore[override]
         """Literal has no dependencies."""
@@ -170,105 +254,48 @@ class BinaryOp(ExpressionNode):
         """Evaluate binary operation."""
         left_result = self.left.evaluate(context)
         right_result = self.right.evaluate(context)
-        
-        # For element-wise operations, we need to handle different cases:
-        # 1. Both Series have same length -> element-wise operation
-        # 2. One Series has length 1 (scalar) -> broadcast to other Series length
-        # 3. Different lengths -> error for now (could be enhanced with alignment)
-        
-        if len(left_result) != len(right_result):
-            # Handle scalar broadcasting
-            if len(left_result) == 1:
-                # Left is scalar, broadcast to right
-                left_result = Series(
-                    timestamps=right_result.timestamps,
-                    values=tuple(left_result.values[0] for _ in right_result.values),
-                    symbol=left_result.symbol,
-                    timeframe=left_result.timeframe
-                )
-            elif len(right_result) == 1:
-                # Right is scalar, broadcast to left
-                right_result = Series(
-                    timestamps=left_result.timestamps,
-                    values=tuple(right_result.values[0] for _ in left_result.values),
-                    symbol=right_result.symbol,
-                    timeframe=right_result.timeframe
-                )
-            else:
-                raise ValueError(f"Cannot perform {self.operator.value} operation on series of different lengths: {len(left_result)} vs {len(right_result)}")
-        
-        # Perform element-wise operations
-        if self.operator == OperatorType.ADD:
-            return left_result + right_result
-        elif self.operator == OperatorType.SUB:
-            return left_result - right_result
-        elif self.operator == OperatorType.MUL:
-            return left_result * right_result
-        elif self.operator == OperatorType.DIV:
-            return left_result / right_result
-        elif self.operator == OperatorType.MOD:
-            return left_result % right_result
-        elif self.operator == OperatorType.POW:
-            return left_result ** right_result
-        elif self.operator == OperatorType.EQ:
-            # Comparison operators - for now, create a simple boolean series
-            # In a full implementation, this would return boolean values
-            timestamp = datetime(2024, 1, 1, 0, 0, 0, tzinfo=timezone.utc)
-            # Simple comparison - check if first values are equal
-            result_value = 1 if left_result.values[0] == right_result.values[0] else 0
-            return Series(
-                timestamps=(timestamp,),
-                values=(Price(result_value),),
-                symbol="COMPARISON",
-                timeframe="1s"
-            )
-        elif self.operator == OperatorType.NE:
-            timestamp = datetime(2024, 1, 1, 0, 0, 0, tzinfo=timezone.utc)
-            result_value = 1 if left_result.values[0] != right_result.values[0] else 0
-            return Series(
-                timestamps=(timestamp,),
-                values=(Price(result_value),),
-                symbol="COMPARISON",
-                timeframe="1s"
-            )
-        elif self.operator == OperatorType.LT:
-            timestamp = datetime(2024, 1, 1, 0, 0, 0, tzinfo=timezone.utc)
-            result_value = 1 if left_result.values[0] < right_result.values[0] else 0
-            return Series(
-                timestamps=(timestamp,),
-                values=(Price(result_value),),
-                symbol="COMPARISON",
-                timeframe="1s"
-            )
-        elif self.operator == OperatorType.LE:
-            timestamp = datetime(2024, 1, 1, 0, 0, 0, tzinfo=timezone.utc)
-            result_value = 1 if left_result.values[0] <= right_result.values[0] else 0
-            return Series(
-                timestamps=(timestamp,),
-                values=(Price(result_value),),
-                symbol="COMPARISON",
-                timeframe="1s"
-            )
-        elif self.operator == OperatorType.GT:
-            timestamp = datetime(2024, 1, 1, 0, 0, 0, tzinfo=timezone.utc)
-            result_value = 1 if left_result.values[0] > right_result.values[0] else 0
-            return Series(
-                timestamps=(timestamp,),
-                values=(Price(result_value),),
-                symbol="COMPARISON",
-                timeframe="1s"
-            )
-        elif self.operator == OperatorType.GE:
-            timestamp = datetime(2024, 1, 1, 0, 0, 0, tzinfo=timezone.utc)
-            result_value = 1 if left_result.values[0] >= right_result.values[0] else 0
-            return Series(
-                timestamps=(timestamp,),
-                values=(Price(result_value),),
-                symbol="COMPARISON",
-                timeframe="1s"
-            )
-        else:
-            raise NotImplementedError(f"Binary operator {self.operator} not implemented")
+
+        if self.operator in {
+            OperatorType.ADD,
+            OperatorType.SUB,
+            OperatorType.MUL,
+            OperatorType.DIV,
+            OperatorType.MOD,
+            OperatorType.POW,
+        }:
+            left_aligned, right_aligned = _align_series(left_result, right_result, operator=self.operator)
+            try:
+                if self.operator == OperatorType.ADD:
+                    return left_aligned + right_aligned
+                if self.operator == OperatorType.SUB:
+                    return left_aligned - right_aligned
+                if self.operator == OperatorType.MUL:
+                    return left_aligned * right_aligned
+                if self.operator == OperatorType.DIV:
+                    return left_aligned / right_aligned
+                if self.operator == OperatorType.MOD:
+                    return left_aligned % right_aligned
+                if self.operator == OperatorType.POW:
+                    return left_aligned ** right_aligned
+            except ValueError:
+                raise
+            except InvalidOperation as exc:
+                raise ValueError("Invalid arithmetic operation in expression") from exc
+
+        if self.operator == OperatorType.EQ:
+            return _comparison_series(left_result, right_result, self.operator, lambda a, b: a == b)
+        if self.operator == OperatorType.NE:
+            return _comparison_series(left_result, right_result, self.operator, lambda a, b: a != b)
+        if self.operator == OperatorType.LT:
+            return _comparison_series(left_result, right_result, self.operator, lambda a, b: a < b)
+        if self.operator == OperatorType.LE:
+            return _comparison_series(left_result, right_result, self.operator, lambda a, b: a <= b)
+        if self.operator == OperatorType.GT:
+            return _comparison_series(left_result, right_result, self.operator, lambda a, b: a > b)
+        if self.operator == OperatorType.GE:
+            return _comparison_series(left_result, right_result, self.operator, lambda a, b: a >= b)
+
+        raise NotImplementedError(f"Binary operator {self.operator} not implemented")
     
     def dependencies(self) -> List[str]:  # type: ignore[override]
         """Get dependencies from both operands."""
