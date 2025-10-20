@@ -123,6 +123,9 @@ class Registry:
             elif isinstance(return_annotation, str) and return_annotation.startswith('Series['):
                 # String annotation like "Series[Price]" - this is good
                 pass
+            elif isinstance(return_annotation, str) and return_annotation.startswith('Tuple['):
+                # String annotation like "Tuple[Series[Price], ...]" - this is good
+                pass
             elif hasattr(return_annotation, '__origin__') and return_annotation.__origin__ is tuple:
                 # Tuple return type for multi-output indicators - this is good
                 pass
