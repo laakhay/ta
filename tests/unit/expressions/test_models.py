@@ -3,29 +3,29 @@
 
 from __future__ import annotations
 
-import pytest
+from datetime import UTC, datetime
 from decimal import Decimal, InvalidOperation
-from datetime import datetime, timezone
 
-from laakhay.ta.expressions.models import (
-    ExpressionNode,
-    Literal,
-    BinaryOp,
-    UnaryOp,
-    OperatorType,
-    _align_series,
-    _broadcast_scalar_series,
-    _comparison_series,
-    _coerce_decimal,
-    _make_scalar_series,
-    _wrap_literal,
-    SCALAR_SYMBOL,
-)
+import pytest
+
 from laakhay.ta.core.series import Series
 from laakhay.ta.core.types import Price
+from laakhay.ta.expressions.models import (
+    SCALAR_SYMBOL,
+    BinaryOp,
+    ExpressionNode,
+    Literal,
+    OperatorType,
+    UnaryOp,
+    _align_series,
+    _broadcast_scalar_series,
+    _coerce_decimal,
+    _comparison_series,
+    _make_scalar_series,
+    _wrap_literal,
+)
 
-
-UTC = timezone.utc
+UTC = UTC
 
 
 # ---------------------------------------------------------------------
@@ -248,7 +248,7 @@ class TestFinancialCriticalScenarios:
         expr = BinaryOp(OperatorType.MUL, BinaryOp(OperatorType.ADD, Literal(10), Literal(20)), Literal(10))
         deps = expr.dependencies()
         assert isinstance(deps, list)
-    
+
     def test_price_calculation_precision(self):
         p1 = Decimal("100.123456789")
         p2 = Decimal("200.987654321")

@@ -3,20 +3,20 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, Optional
+from typing import Any
 
 
 @dataclass(frozen=True)
 class ParamSchema:
     """Schema definition for an indicator parameter."""
-    
+
     name: str
     type: type
-    default: Optional[Any] = None
+    default: Any | None = None
     required: bool = True
     description: str = ""
-    valid_values: Optional[list[Any]] = None
-    
+    valid_values: list[Any] | None = None
+
     def __post_init__(self) -> None:
         """Validate parameter schema."""
         if not self.name:
@@ -35,11 +35,11 @@ class ParamSchema:
 @dataclass(frozen=True)
 class OutputSchema:
     """Schema definition for an indicator output."""
-    
+
     name: str
     type: type
     description: str = ""
-    
+
     def __post_init__(self) -> None:
         """Validate output schema."""
         if not self.name:
@@ -49,13 +49,13 @@ class OutputSchema:
 @dataclass(frozen=True)
 class IndicatorSchema:
     """Complete schema for an indicator."""
-    
+
     name: str
     description: str = ""
     parameters: dict[str, ParamSchema] = field(default_factory=lambda: dict[str, ParamSchema]())
     outputs: dict[str, OutputSchema] = field(default_factory=lambda: dict[str, OutputSchema]())
     aliases: list[str] = field(default_factory=lambda: list[str]())
-    
+
     def to_dict(self) -> dict[str, Any]:
         """Convert schema to dictionary representation."""
         return {
@@ -80,7 +80,7 @@ class IndicatorSchema:
             },
             "aliases": self.aliases,
         }
-    
+
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> IndicatorSchema:
         """Create schema from dictionary representation."""
@@ -93,7 +93,7 @@ class IndicatorSchema:
             "list": list,
             "dict": dict,
         }
-        
+
         parameters: dict[str, ParamSchema] = {}
         for name, param_data in data.get("parameters", {}).items():
             param_type_name: str = param_data["type"]
@@ -108,7 +108,7 @@ class IndicatorSchema:
                 description=param_data.get("description", ""),
                 valid_values=param_data.get("valid_values"),
             )
-        
+
         outputs: dict[str, OutputSchema] = {}
         for name, output_data in data.get("outputs", {}).items():
             output_type_name: str = output_data["type"]
@@ -120,7 +120,7 @@ class IndicatorSchema:
                 type=output_type,
                 description=output_data.get("description", ""),
             )
-        
+
         return cls(
             name=data["name"],
             description=data.get("description", ""),

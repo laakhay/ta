@@ -4,14 +4,14 @@ from __future__ import annotations
 
 import csv
 from pathlib import Path
-from typing import Any, Union
+from typing import Any
 
 from .core import OHLCV, Series
 
 
 def to_csv(
-    data: Union[OHLCV, Series[Any]],
-    path: Union[str, Path],
+    data: OHLCV | Series[Any],
+    path: str | Path,
     timestamp_col: str = "timestamp",
     **col_mapping: str
 ) -> None:
@@ -35,19 +35,19 @@ def to_csv(
     """
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
-    
+
     # Default column mappings
     default_mapping = {
         "open_col": "open",
         "high_col": "high",
-        "low_col": "low", 
+        "low_col": "low",
         "close_col": "close",
         "volume_col": "volume",
         "is_closed_col": "is_closed",
         "value_col": "value"
     }
     default_mapping.update(col_mapping)
-    
+
     with path.open('w', newline='', encoding='utf-8') as f:
         if isinstance(data, OHLCV):
             # OHLCV data
@@ -60,10 +60,10 @@ def to_csv(
                 default_mapping["volume_col"],
                 default_mapping["is_closed_col"]
             ]
-            
+
             writer = csv.DictWriter(f, fieldnames=fieldnames)
             writer.writeheader()
-            
+
             for i in range(len(data)):
                 writer.writerow({
                     timestamp_col: data.timestamps[i].isoformat(),
@@ -77,10 +77,10 @@ def to_csv(
         else:
             # Series data (since Union[OHLCV, Series[Any]], if not OHLCV, must be Series)
             fieldnames = [timestamp_col, default_mapping["value_col"]]
-            
+
             writer = csv.DictWriter(f, fieldnames=fieldnames)
             writer.writeheader()
-            
+
             for i in range(len(data)):
                 writer.writerow({
                     timestamp_col: data.timestamps[i].isoformat(),

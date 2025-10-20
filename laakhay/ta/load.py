@@ -5,21 +5,20 @@ from __future__ import annotations
 import csv
 from decimal import Decimal
 from pathlib import Path
-from typing import Union
 
 from .core import OHLCV, Series
-from .core.types import Price, Symbol, Timestamp
 from .core.timestamps import coerce_timestamp
+from .core.types import Price, Symbol, Timestamp
 
 
 def from_csv(
-    path: Union[str, Path],
+    path: str | Path,
     symbol: Symbol,
     timeframe: str,
     source: str = "csv",
     timestamp_col: str = "timestamp",
     **col_mapping: str
-) -> Union[OHLCV, Series[Price]]:
+) -> OHLCV | Series[Price]:
     """
     Load CSV file into OHLCV or Series.
     
@@ -49,11 +48,11 @@ def from_csv(
     path = Path(path)
     if not path.exists():
         raise FileNotFoundError(f"CSV file not found: {path}")
-    
+
     # Default column mappings
     default_mapping = {
         "open_col": "open",
-        "high_col": "high", 
+        "high_col": "high",
         "low_col": "low",
         "close_col": "close",
         "volume_col": "volume",
@@ -61,7 +60,7 @@ def from_csv(
         "value_col": "value"
     }
     default_mapping.update(col_mapping)
-    
+
     timestamps: list[Timestamp] = []
     opens: list[Price] = []
     highs: list[Price] = []
@@ -70,13 +69,13 @@ def from_csv(
     volumes: list[Price] = []
     is_closed: list[bool] = []
     values: list[Price] = []
-    
+
     with path.open('r', encoding='utf-8') as f:
         reader = csv.DictReader(f)
-        
+
         if not reader.fieldnames:
             raise ValueError("CSV file is empty or has no headers")
-        
+
         for row_num, row in enumerate(reader, start=2):  # Start at 2 for header
             try:
                 # Parse timestamp
@@ -84,7 +83,7 @@ def from_csv(
                     raise ValueError(f"Timestamp column '{timestamp_col}' not found in CSV")
                 timestamp = coerce_timestamp(row[timestamp_col])
                 timestamps.append(timestamp)
-                
+
                 # Check if we have OHLCV data
                 ohlcv_cols = [
                     default_mapping["open_col"],
@@ -93,9 +92,9 @@ def from_csv(
                     default_mapping["close_col"],
                     default_mapping["volume_col"]
                 ]
-                
+
                 has_ohlcv = all(col in row for col in ohlcv_cols)
-                
+
                 if has_ohlcv:
                     # Parse OHLCV data
                     try:
@@ -106,7 +105,7 @@ def from_csv(
                         volumes.append(Decimal(str(row[default_mapping["volume_col"]])))
                     except Exception as e:
                         raise ValueError(f"Invalid numeric data: {e}")
-                    
+
                     # Parse is_closed (default to True if not present)
                     is_closed_val = row.get(default_mapping["is_closed_col"], "true").lower()
                     is_closed.append(is_closed_val in ("true", "1", "yes", "closed"))
@@ -118,13 +117,13 @@ def from_csv(
                         values.append(Decimal(str(row[default_mapping["value_col"]])))
                     except Exception as e:
                         raise ValueError(f"Invalid numeric data: {e}")
-                    
+
             except (ValueError, KeyError) as e:
                 raise ValueError(f"Error parsing row {row_num}: {e}")
-    
+
     if not timestamps:
         raise ValueError("No valid data rows found in CSV")
-    
+
     # Return OHLCV if we have OHLCV data, otherwise Series
     if opens:  # We have OHLCV data
         return OHLCV(

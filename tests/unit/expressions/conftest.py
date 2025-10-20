@@ -1,19 +1,20 @@
 """Shared fixtures for expressions tests."""
 
-import pytest
+from datetime import UTC, datetime
 from decimal import Decimal
-from datetime import datetime, timezone
 
-from laakhay.ta.expressions.models import Literal, BinaryOp, UnaryOp, OperatorType
-from laakhay.ta.expressions.operators import Expression, as_expression
+import pytest
+
 from laakhay.ta.core.series import Series
 from laakhay.ta.core.types import Price
+from laakhay.ta.expressions.models import BinaryOp, Literal, OperatorType, UnaryOp
+from laakhay.ta.expressions.operators import Expression
 
 
 @pytest.fixture
 def timestamp():
     """Standard timestamp for tests."""
-    return datetime(2024, 1, 1, 0, 0, 0, tzinfo=timezone.utc)
+    return datetime(2024, 1, 1, 0, 0, 0, tzinfo=UTC)
 
 
 @pytest.fixture
@@ -25,7 +26,7 @@ def test_series(timestamp):
 @pytest.fixture
 def multi_point_series(timestamp):
     """Multi-point series for tests."""
-    timestamp2 = datetime(2024, 1, 1, 0, 0, 1, tzinfo=timezone.utc)
+    timestamp2 = datetime(2024, 1, 1, 0, 0, 1, tzinfo=UTC)
     return Series(
         timestamps=(timestamp, timestamp2),
         values=(Price(Decimal("100")), Price(Decimal("200"))),

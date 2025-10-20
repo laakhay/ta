@@ -2,16 +2,16 @@
 
 from __future__ import annotations
 
-import pytest
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
-from laakhay.ta.core import Dataset, DatasetKey, DatasetMetadata, OHLCV, Series
+import pytest
+
+from laakhay.ta.core import OHLCV, Dataset, DatasetKey, DatasetMetadata, Series
 from laakhay.ta.core.dataset import dataset as make_dataset
 from laakhay.ta.core.types import Price
 
-
-UTC = timezone.utc
+UTC = UTC
 
 
 # ---------------------------------------------------------------------

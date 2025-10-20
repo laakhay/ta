@@ -1,26 +1,23 @@
-"""Volume Weighted Average Price (VWAP) indicator."""
+"""Volume Weighted Average Price (VWAP) indicator using primitives."""
 
 from __future__ import annotations
 
-from decimal import Decimal
-from typing import Any
-
 from ...core import Series
 from ...core.types import Price
-from ...registry.registry import register
-from ...registry.models import SeriesContext
-from ...expressions.operators import Expression
 from ...expressions.models import Literal
-from ..utils import calculate_typical_price
+from ...expressions.operators import Expression
+from ...registry.models import SeriesContext
+from ...registry.registry import register
+from ..primitives import typical_price, cumulative_sum
 
 
 @register("vwap", description="Volume Weighted Average Price")
 def vwap(ctx: SeriesContext) -> Series[Price]:
     """
-    Volume Weighted Average Price indicator.
+    Volume Weighted Average Price indicator using primitives.
     
-    Calculates VWAP using typical price (HLC/3) weighted by volume.
-    Requires high, low, close, and volume series.
+    VWAP = Sum(Price * Volume) / Sum(Volume)
+    where Price = (High + Low + Close) / 3
     """
     # Get required series
     required_series = ['high', 'low', 'close', 'volume']
@@ -28,52 +25,42 @@ def vwap(ctx: SeriesContext) -> Series[Price]:
     if missing:
         raise ValueError(f"VWAP requires series: {required_series}, missing: {missing}")
     
-    high_series = ctx.high
-    low_series = ctx.low
-    close_series = ctx.close
-    volume_series = ctx.volume
-    
     # Validate series lengths
-    series_lengths = [len(high_series), len(low_series), len(close_series), len(volume_series)]
+    series_lengths = [len(getattr(ctx, s)) for s in required_series]
     if len(set(series_lengths)) > 1:
         raise ValueError("All series must have the same length")
+
+    # Calculate typical price using primitive
+    typical = typical_price(ctx)
     
-    n = len(close_series)
-    if n == 0:
-        return Series[Price](timestamps=(), values=(), symbol=close_series.symbol, timeframe=close_series.timeframe)
+    # Calculate Price * Volume using expressions
+    typical_expr = Expression(Literal(typical))
+    volume_expr = Expression(Literal(ctx.volume))
+    pv_expr = typical_expr * volume_expr
+
+    # Evaluate Price * Volume
+    context = {}
+    pv_series = pv_expr.evaluate(context)
+
+    # Calculate cumulative sums
+    pv_ctx = SeriesContext(close=pv_series)
+    vol_ctx = SeriesContext(close=ctx.volume)
     
-    # Use expression system to calculate typical price
-    typical_price_series = calculate_typical_price(high_series, low_series, close_series)
+    cumulative_pv = cumulative_sum(pv_ctx)
+    cumulative_vol = cumulative_sum(vol_ctx)
+
+    # VWAP = cumulative_pv / cumulative_vol using expressions
+    # Handle zero volume case by falling back to typical price
+    pv_cum_expr = Expression(Literal(cumulative_pv))
+    vol_cum_expr = Expression(Literal(cumulative_vol))
     
-    vwap_values: list[Price] = []
-    vwap_stamps: list[Any] = []
+    # Check if all volumes are zero
+    all_zero_volume = all(vol == 0 for vol in ctx.volume.values)
     
-    cumulative_volume = Decimal('0')
-    cumulative_volume_price = Decimal('0')
-    
-    for i in range(n):
-        # Get typical price from expression result
-        typical_price = Decimal(str(typical_price_series.values[i]))
-        
-        # Get volume
-        volume = Decimal(str(volume_series.values[i]))
-        
-        # Update cumulative values
-        cumulative_volume += volume
-        cumulative_volume_price += typical_price * volume
-        
-        # Calculate VWAP
-        if cumulative_volume > 0:
-            vwap_value = cumulative_volume_price / cumulative_volume
-        else:
-            vwap_value = typical_price  # Fallback to typical price if no volume
-        
-        vwap_values.append(Price(vwap_value))
-        vwap_stamps.append(close_series.timestamps[i])
-    
-    return Series[Price](
-        timestamps=tuple(vwap_stamps),
-        values=tuple(vwap_values),
-        symbol=close_series.symbol,
-        timeframe=close_series.timeframe,
-    )
+    if all_zero_volume:
+        # Fallback to typical price when volume is zero
+        return typical_price(ctx)
+    else:
+        # Direct division without epsilon - let the expression system handle it
+        vwap_expr = pv_cum_expr / vol_cum_expr
+        return vwap_expr.evaluate(context)

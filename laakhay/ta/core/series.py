@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 import decimal
+from collections.abc import Iterator
 from dataclasses import dataclass
-from typing import Generic, TypeVar, Iterator, overload, TypeAlias, Any, Union, Literal
+from typing import Any, Generic, Literal, TypeAlias, TypeVar, overload
 
-from .types import Timestamp, Symbol, Price, Qty
+from .types import Price, Qty, Symbol, Timestamp
 
 T = TypeVar('T')
 
@@ -40,7 +41,7 @@ class Series(Generic[T]):
     def __len__(self) -> int:
         return self.length
 
-    def __getitem__(self, index: Union[int, slice]) -> Union[tuple[Timestamp, T], Series[T]]:
+    def __getitem__(self, index: int | slice) -> tuple[Timestamp, T] | Series[T]:
         """Access single data point or slice the series."""
         try:
             if isinstance(index, int):
@@ -60,7 +61,7 @@ class Series(Generic[T]):
 
     def __iter__(self) -> Iterator[tuple[Timestamp, T]]:
         """Iterate over (timestamp, value) pairs."""
-        return zip(self.timestamps, self.values)
+        return zip(self.timestamps, self.values, strict=False)
 
     @overload
     def __add__(self, other: Series[T]) -> Series[T]: ...
@@ -73,7 +74,7 @@ class Series(Generic[T]):
             self._validate_series_alignment(other, operation="add")
             try:
                 new_values_list = []
-                for v1, v2 in zip(self.values, other.values):
+                for v1, v2 in zip(self.values, other.values, strict=False):
                     new_values_list.append(v1 + v2)  # type: ignore
                 new_values = tuple(new_values_list)  # type: ignore[misc]
             except TypeError:
@@ -103,19 +104,19 @@ class Series(Generic[T]):
                 symbol=self.symbol,
                 timeframe=self.timeframe
             )
-    
+
     def __sub__(self, other: Series[T] | T) -> Series[T]:
         """Subtract scalar or element-wise subtract series."""
         if isinstance(other, Series):
             self._validate_series_alignment(other, operation="subtract")
             try:
                 new_values_list = []
-                for v1, v2 in zip(self.values, other.values):
+                for v1, v2 in zip(self.values, other.values, strict=False):
                     new_values_list.append(v1 - v2)  # type: ignore
                 new_values = tuple(new_values_list)  # type: ignore[misc]
             except TypeError:
                 raise TypeError(f"Cannot subtract series values of types {type(self.values[0])} and {type(other.values[0])}")
-            
+
             return Series[T](
                 timestamps=self.timestamps,
                 values=new_values,  # type: ignore[arg-type]
@@ -137,19 +138,19 @@ class Series(Generic[T]):
                 symbol=self.symbol,
                 timeframe=self.timeframe
             )
-    
+
     def __mul__(self, other: Series[T] | T) -> Series[T]:
         """Multiply series by scalar or element-wise multiply by series."""
         if isinstance(other, Series):
             self._validate_series_alignment(other, operation="multiply")
             try:
                 new_values_list = []
-                for v1, v2 in zip(self.values, other.values):
+                for v1, v2 in zip(self.values, other.values, strict=False):
                     new_values_list.append(v1 * v2)  # type: ignore
                 new_values = tuple(new_values_list)  # type: ignore[misc]
             except TypeError:
                 raise TypeError(f"Cannot multiply series values of types {type(self.values[0])} and {type(other.values[0])}")
-            
+
             return Series[T](
                 timestamps=self.timestamps,
                 values=new_values,  # type: ignore[arg-type]
@@ -171,21 +172,21 @@ class Series(Generic[T]):
                 symbol=self.symbol,
                 timeframe=self.timeframe
             )
-    
+
     def __truediv__(self, other: Series[T] | T) -> Series[T]:
         """Divide series by scalar or element-wise divide by series."""
         if isinstance(other, Series):
             self._validate_series_alignment(other, operation="divide")
             try:
                 new_values_list = []
-                for v1, v2 in zip(self.values, other.values):
+                for v1, v2 in zip(self.values, other.values, strict=False):
                     new_values_list.append(v1 / v2)  # type: ignore
                 new_values = tuple(new_values_list)  # type: ignore[misc]
             except TypeError:
                 raise TypeError(f"Cannot divide series values of types {type(self.values[0])} and {type(other.values[0])}")
             except ZeroDivisionError:
                 raise ValueError("Cannot divide by zero in series")
-            
+
             return Series[T](
                 timestamps=self.timestamps,
                 values=new_values,  # type: ignore[arg-type]
@@ -215,7 +216,7 @@ class Series(Generic[T]):
         if isinstance(other, Series):
             self._validate_series_alignment(other, operation="modulo")
             try:
-                new_values = tuple(v1 % v2 for v1, v2 in zip(self.values, other.values))  # type: ignore[misc]
+                new_values = tuple(v1 % v2 for v1, v2 in zip(self.values, other.values, strict=False))  # type: ignore[misc]
             except (ZeroDivisionError, decimal.InvalidOperation):
                 raise ValueError("Cannot perform modulo with zero divisor in series") from None
             except TypeError:
@@ -253,7 +254,7 @@ class Series(Generic[T]):
         if isinstance(other, Series):
             self._validate_series_alignment(other, operation="power")
             try:
-                new_values = tuple(v1 ** v2 for v1, v2 in zip(self.values, other.values))  # type: ignore[misc]
+                new_values = tuple(v1 ** v2 for v1, v2 in zip(self.values, other.values, strict=False))  # type: ignore[misc]
             except TypeError:
                 raise TypeError(
                     f"Cannot perform power on series values of types {type(self.values[0])} and {type(other.values[0])}"
@@ -295,7 +296,7 @@ class Series(Generic[T]):
             symbol=self.symbol,
             timeframe=self.timeframe
         )
-    
+
     def __pos__(self) -> Series[T]:
         """Unary plus of series (returns copy)."""
         return Series[T](
@@ -304,12 +305,12 @@ class Series(Generic[T]):
             symbol=self.symbol,
             timeframe=self.timeframe
         )
-    
+
     def slice_by_time(self, start: Timestamp, end: Timestamp) -> Series[T]:
         """Slice series by time range using binary search for efficiency."""
         if start > end:
             raise ValueError("Start time must be <= end time")
-        
+
         # Binary search for start index
         left, right = 0, len(self.timestamps)
         while left < right:
@@ -319,7 +320,7 @@ class Series(Generic[T]):
             else:
                 right = mid
         start_idx = left
-        
+
         # Binary search for end index
         left, right = start_idx, len(self.timestamps)
         while left < right:
@@ -329,7 +330,7 @@ class Series(Generic[T]):
             else:
                 right = mid
         end_idx = left
-        
+
         return Series[T](
             timestamps=self.timestamps[start_idx:end_idx],
             values=self.values[start_idx:end_idx],
@@ -350,10 +351,10 @@ class Series(Generic[T]):
     def from_dict(cls, data: dict[str, Any]) -> Series[T]:
         """Create series from dictionary format."""
         from .timestamps import coerce_timestamp
-        
+
         timestamps = tuple(coerce_timestamp(ts) for ts in data['timestamps'])
         values = tuple(data['values'])
-        
+
         return cls(
             timestamps=timestamps,
             values=values,
@@ -454,7 +455,7 @@ def align_series(
         timestamps: list[Timestamp],
         fill_value: Any | None
     ) -> tuple[Any, ...]:
-        values_map = dict(zip(series.timestamps, series.values))
+        values_map = dict(zip(series.timestamps, series.values, strict=False))
         new_values: list[Any] = []
         last_value: Any | None = None
 

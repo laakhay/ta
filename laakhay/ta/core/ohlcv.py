@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterator
 from dataclasses import dataclass
-from typing import Any, Iterator, Union
+from typing import Any
 
 from .bar import Bar
-from .types import Timestamp, Symbol, Price, Qty
+from .types import Price, Qty, Symbol, Timestamp
+
 
 @dataclass(slots=True, frozen=True)
 class OHLCV:
@@ -48,7 +50,7 @@ class OHLCV:
     def __len__(self) -> int:
         return self.length
 
-    def __getitem__(self, index: Union[int, slice]) -> Union[Bar, OHLCV]:
+    def __getitem__(self, index: int | slice) -> Bar | OHLCV:
         """Access single bar or slice the OHLCV series."""
         try:
             if isinstance(index, int):
@@ -96,7 +98,7 @@ class OHLCV:
         """Slice OHLCV by time range using binary search for efficiency."""
         if start > end:
             raise ValueError("Start time must be <= end time")
-        
+
         # Binary search for start index
         left, right = 0, len(self.timestamps)
         while left < right:
@@ -106,7 +108,7 @@ class OHLCV:
             else:
                 right = mid
         start_idx = left
-        
+
         # Binary search for end index
         left, right = start_idx, len(self.timestamps)
         while left < right:
@@ -116,7 +118,7 @@ class OHLCV:
             else:
                 right = mid
         end_idx = left
-        
+
         return OHLCV(
             timestamps=self.timestamps[start_idx:end_idx],
             opens=self.opens[start_idx:end_idx],
@@ -136,7 +138,11 @@ class OHLCV:
         - If field is provided (one of: open, high, low, close, volume), return a single Series for that field
         """
         # Import here to avoid circular imports
-        from .series import PriceSeries, QtySeries, Series  # type: ignore[import-untyped]
+        from .series import (  # type: ignore[import-untyped]
+            PriceSeries,
+            QtySeries,
+            Series,
+        )
 
         if field is None:
             return {
@@ -198,7 +204,7 @@ class OHLCV:
         """Create OHLCV from a list of Bar objects."""
         if not bars:
             raise ValueError("Cannot create OHLCV from empty bar list")
-        
+
         timestamps = tuple(bar.ts for bar in bars)
         opens = tuple(bar.open for bar in bars)
         highs = tuple(bar.high for bar in bars)
@@ -206,7 +212,7 @@ class OHLCV:
         closes = tuple(bar.close for bar in bars)
         volumes = tuple(bar.volume for bar in bars)
         is_closed = tuple(bar.is_closed for bar in bars)
-        
+
         return cls(
             timestamps=timestamps,
             opens=opens,
@@ -222,9 +228,9 @@ class OHLCV:
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> OHLCV:
         """Create OHLCV from dictionary format."""
-        from .timestamps import coerce_timestamp
         from .coercers import coerce_price, coerce_qty
-        
+        from .timestamps import coerce_timestamp
+
         timestamps = tuple(coerce_timestamp(ts) for ts in data['timestamps'])
         opens = tuple(coerce_price(price) for price in data['opens'])
         highs = tuple(coerce_price(price) for price in data['highs'])
@@ -232,7 +238,7 @@ class OHLCV:
         closes = tuple(coerce_price(price) for price in data['closes'])
         volumes = tuple(coerce_qty(vol) for vol in data['volumes'])
         is_closed = tuple(data.get('is_closed', [True] * len(timestamps)))
-        
+
         return cls(
             timestamps=timestamps,
             opens=opens,

@@ -2,17 +2,17 @@
 
 from __future__ import annotations
 
-import pytest
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
-from datetime import datetime, timezone, timedelta
 from typing import Any
+
+import pytest
 
 from laakhay.ta.core import OHLCV
 from laakhay.ta.core.bar import Bar
 from laakhay.ta.core.types import Timestamp
 
-
-UTC = timezone.utc
+UTC = UTC
 
 
 # ---------------------------------------------------------------------
