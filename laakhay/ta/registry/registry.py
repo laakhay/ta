@@ -152,15 +152,12 @@ class Registry:
         # Process remaining parameters
         for param_name, param in param_items:
             param_type = self._get_param_type(param.annotation)
-            default = param.default if param.default != inspect.Parameter.empty else None
-            required = param.default == inspect.Parameter.empty
-            
-            # Handle Optional parameters - if type is None, it's optional
-            if default is None and not required:
-                # This is an Optional parameter without a default - make it required with None default
-                required = True
-                default = None
-            
+            has_default = param.default != inspect.Parameter.empty
+            default = param.default if has_default else None
+
+            # Determine required flag without forcing Optional[T]=None to required.
+            required = not has_default
+
             parameters[param_name] = ParamSchema(
                 name=param_name,
                 type=param_type,  # type: ignore[arg-type]
@@ -185,7 +182,7 @@ class Registry:
             return Any  # type: ignore[return-value]
         if isinstance(annotation, type):
             return annotation  # type: ignore[return-value]
-        
+
         # Handle typing annotations
         origin = getattr(annotation, '__origin__', None)
         args = getattr(annotation, '__args__', ())
@@ -206,11 +203,13 @@ class Registry:
         
         # Handle Union types (e.g., Union[int, float])
         elif origin is Union:
-            # For now, return the first non-None type, or Any if all are None
             non_none_types = [arg for arg in args if arg is not type(None)]
-            if non_none_types:
+            if not non_none_types:
+                return Any  # Only None specified
+            if len(non_none_types) == 1:
                 return self._get_param_type(non_none_types[0])
-            return Any  # type: ignore[return-value]
+            # For multiple concrete types, return the first non-None type
+            return self._get_param_type(non_none_types[0])
         
         # Handle Optional types (Union[T, None])
         elif str(annotation).startswith('typing.Union') and len(args) == 2 and type(None) in args:

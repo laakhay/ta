@@ -7,7 +7,7 @@ from typing import Any, Callable
 from inspect import Signature
 
 from ..core import Series
-from .schemas import IndicatorSchema
+from .schemas import IndicatorSchema, ParamSchema
 
 
 @dataclass(frozen=True)
@@ -48,7 +48,7 @@ class IndicatorHandle:
         """Call the indicator function."""
         return self.func(*args, **kwargs)
     
-    def with_overrides(self, **overrides: Any) -> IndicatorHandle:
+    def with_overrides(self, **overrides: Any) -> 'IndicatorHandle':
         """Create a new handle with parameter overrides for partial application."""
         # Validate overrides against schema
         for param_name, value in overrides.items():
@@ -56,20 +56,31 @@ class IndicatorHandle:
                 raise ValueError(f"Unknown parameter '{param_name}' for indicator '{self.name}'")
             
             param_schema = self.schema.parameters[param_name]
-            if not isinstance(value, param_schema.type):
+
+            expected_type = param_schema.type
+
+            # Skip runtime isinstance checks for typing.Any
+            if expected_type is Any:
+                continue
+
+            # Handle None values for optional parameters
+            if value is None and not param_schema.required:
+                continue  # Allow None for optional parameters
+
+            if not isinstance(value, expected_type):
                 # Allow some type coercion for common cases
-                if param_schema.type == int and isinstance(value, (float, str)):
+                if expected_type == int and isinstance(value, (float, str)):
                     try:
                         overrides[param_name] = int(value)
                     except (ValueError, TypeError):
-                        raise ValueError(f"Parameter '{param_name}' expects {param_schema.type.__name__}, got {type(value).__name__}")
-                elif param_schema.type == float and isinstance(value, (int, str)):
+                        raise ValueError(f"Parameter '{param_name}' expects {expected_type.__name__}, got {type(value).__name__}")
+                elif expected_type == float and isinstance(value, (int, str)):
                     try:
                         overrides[param_name] = float(value)
                     except (ValueError, TypeError):
-                        raise ValueError(f"Parameter '{param_name}' expects {param_schema.type.__name__}, got {type(value).__name__}")
+                        raise ValueError(f"Parameter '{param_name}' expects {expected_type.__name__}, got {type(value).__name__}")
                 else:
-                    raise ValueError(f"Parameter '{param_name}' expects {param_schema.type.__name__}, got {type(value).__name__}")
+                    raise ValueError(f"Parameter '{param_name}' expects {expected_type.__name__}, got {type(value).__name__}")
         
         # Create a partially applied function
         def partial_func(*args: Any, **kwargs: Any) -> Series[Any]:

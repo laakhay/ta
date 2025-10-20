@@ -21,11 +21,13 @@ class ParamSchema:
         """Validate parameter schema."""
         if not self.name:
             raise ValueError("Parameter name must be a non-empty string")
+
+        # Required parameters must not provide a default.
         if self.required and self.default is not None:
             raise ValueError("Required parameters cannot have default values")
-        if not self.required and self.default is None:
-            raise ValueError("Optional parameters must have default values")
-        if self.valid_values is not None and self.default is not None:
+
+        # Optional parameters may have None default; ensure selectable defaults are legitimate.
+        if not self.required and self.default is not None and self.valid_values is not None:
             if self.default not in self.valid_values:
                 raise ValueError(f"Default value {self.default} not in valid_values")
 
