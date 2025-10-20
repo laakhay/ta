@@ -187,6 +187,19 @@ class ExpressionNode(ABC):
         """Greater than or equal operator."""
         return BinaryOp(OperatorType.GE, self, _wrap_literal(other))
     
+    # Logical bitwise overloads to represent boolean logic in expressions
+    def __and__(self, other: Union[ExpressionNode, Series[Any], float, int]) -> BinaryOp:
+        """Logical AND (element-wise) using bitwise '&'."""
+        return BinaryOp(OperatorType.AND, self, _wrap_literal(other))
+    
+    def __or__(self, other: Union[ExpressionNode, Series[Any], float, int]) -> BinaryOp:
+        """Logical OR (element-wise) using bitwise '|'."""
+        return BinaryOp(OperatorType.OR, self, _wrap_literal(other))
+    
+    def __invert__(self) -> UnaryOp:
+        """Logical NOT (element-wise) using bitwise '~'."""
+        return UnaryOp(OperatorType.NOT, self)
+
     def __hash__(self) -> int:
         """Hash function for use in sets and dictionaries."""
         return hash((type(self).__name__, id(self)))
@@ -295,6 +308,32 @@ class BinaryOp(ExpressionNode):
         if self.operator == OperatorType.GE:
             return _comparison_series(left_result, right_result, self.operator, lambda a, b: a >= b)
 
+        # Logical operations: element-wise boolean logic on aligned series
+        if self.operator in {OperatorType.AND, OperatorType.OR}:
+            left_aligned, right_aligned = _align_series(left_result, right_result, operator=self.operator)
+
+            def _truthy(v: Any) -> bool:
+                if isinstance(v, bool):
+                    return v
+                if isinstance(v, (int, float, Decimal)):
+                    return bool(Decimal(str(v)))
+                try:
+                    return bool(Decimal(str(v)))
+                except Exception:
+                    return bool(v)
+
+            if self.operator == OperatorType.AND:
+                values = tuple(_truthy(lv) and _truthy(rv) for lv, rv in zip(left_aligned.values, right_aligned.values))
+            else:
+                values = tuple(_truthy(lv) or _truthy(rv) for lv, rv in zip(left_aligned.values, right_aligned.values))
+
+            return Series[bool](
+                timestamps=left_aligned.timestamps,
+                values=values,
+                symbol=left_aligned.symbol,
+                timeframe=left_aligned.timeframe,
+            )
+
         raise NotImplementedError(f"Binary operator {self.operator} not implemented")
     
     def dependencies(self) -> List[str]:  # type: ignore[override]
@@ -325,6 +364,23 @@ class UnaryOp(ExpressionNode):
             return -operand_result
         elif self.operator == OperatorType.POS:
             return operand_result
+        elif self.operator == OperatorType.NOT:
+            def _truthy(v: Any) -> bool:
+                if isinstance(v, bool):
+                    return v
+                if isinstance(v, (int, float, Decimal)):
+                    return bool(Decimal(str(v)))
+                try:
+                    return bool(Decimal(str(v)))
+                except Exception:
+                    return bool(v)
+
+            return Series[bool](
+                timestamps=operand_result.timestamps,
+                values=tuple(not _truthy(v) for v in operand_result.values),
+                symbol=operand_result.symbol,
+                timeframe=operand_result.timeframe,
+            )
         else:
             raise NotImplementedError(f"Unary operator {self.operator} not implemented")
     

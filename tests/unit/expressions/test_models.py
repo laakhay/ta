@@ -161,9 +161,10 @@ class TestBinaryOp:
             op.evaluate({})
 
     def test_unsupported_operator_raises(self):
+        # AND is supported: truthy AND truthy -> True
         op = BinaryOp(OperatorType.AND, Literal(10), Literal(20))
-        with pytest.raises(NotImplementedError, match="Binary operator OperatorType.AND not implemented"):
-            op.evaluate({})
+        out = op.evaluate({})
+        assert isinstance(out, Series) and len(out) == 1 and out.values[0] is True
 
 
 # ---------------------------------------------------------------------
@@ -183,9 +184,10 @@ class TestUnaryOp:
         assert isinstance(res2, Series) and res2.values[0] == Price(10)
 
     def test_unsupported_operator_raises(self):
+        # NOT is supported: not truthy -> False
         op = UnaryOp(OperatorType.NOT, Literal(10))
-        with pytest.raises(NotImplementedError, match="Unary operator OperatorType.NOT not implemented"):
-            op.evaluate({})
+        out = op.evaluate({})
+        assert isinstance(out, Series) and len(out) == 1 and out.values[0] is False
 
 
 # ---------------------------------------------------------------------
