@@ -51,3 +51,8 @@ line-length = 88
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "C90", "I", "N", "UP", "B"]
+
+[dependency-groups]
+dev = [
+    "pytest-cov>=7.0.0",
+]
