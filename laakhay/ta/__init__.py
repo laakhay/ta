@@ -1,18 +1,88 @@
 from .core import Bar, Price, Qty, Rate, Timestamp, dataset
-from .load import from_csv
 from .dump import to_csv
-from .registry import register, describe_indicator, SeriesContext, ParamSchema, OutputSchema, IndicatorSchema, list_indicators, list_all_names
-from .public_api import indicator
 from .engine import Engine
-from .expressions import Expression, ExpressionNode, BinaryOp, UnaryOp, Literal, as_expression
-from .public_api import ta, IndicatorHandle, TASeries
+from .expressions import (
+    BinaryOp,
+    Expression,
+    ExpressionNode,
+    Literal,
+    UnaryOp,
+    as_expression,
+)
+from .primitives import cumulative_sum as _cumulative_sum
+from .primitives import diff as _diff
+from .primitives import negative_values as _negative_values
+from .primitives import positive_values as _positive_values
+from .primitives import rolling_max as _rolling_max
+
+# Import primitives and create wrapper functions
+from .primitives import rolling_mean as _rolling_mean
+from .primitives import rolling_min as _rolling_min
+from .primitives import rolling_std as _rolling_std
+from .primitives import rolling_sum as _rolling_sum
+from .primitives import shift as _shift
+from .load import from_csv
+from .public_api import IndicatorHandle, TASeries, indicator, ta
+from .registry import (
+    IndicatorSchema,
+    OutputSchema,
+    ParamSchema,
+    SeriesContext,
+    describe_indicator,
+    list_all_names,
+    list_indicators,
+    register,
+)
+
+
+# Create wrapper functions that can be called directly
+def rolling_mean(period: int):
+    """Create a rolling mean indicator."""
+    return indicator("rolling_mean", period=period)
+
+def rolling_sum(period: int):
+    """Create a rolling sum indicator."""
+    return indicator("rolling_sum", period=period)
+
+def rolling_max(period: int):
+    """Create a rolling max indicator."""
+    return indicator("max", period=period)
+
+def rolling_min(period: int):
+    """Create a rolling min indicator."""
+    return indicator("min", period=period)
+
+def rolling_std(period: int):
+    """Create a rolling standard deviation indicator."""
+    return indicator("rolling_std", period=period)
+
+def diff():
+    """Create a difference indicator."""
+    return indicator("diff")
+
+def shift(periods: int):
+    """Create a shift indicator."""
+    return indicator("shift", periods=periods)
+
+
+def cumulative_sum():
+    """Create a cumulative sum indicator."""
+    return indicator("cumulative_sum")
+
+def positive_values():
+    """Create a positive values indicator."""
+    return indicator("positive_values")
+
+def negative_values():
+    """Create a negative values indicator."""
+    return indicator("negative_values")
 
 # Import indicators to trigger registration
 from . import indicators
 
 __all__ = [
     "Bar",
-    "Price", 
+    "Price",
     "Qty",
     "Rate",
     "Timestamp",
@@ -31,7 +101,7 @@ __all__ = [
     "Expression",
     "ExpressionNode",
     "BinaryOp",
-    "UnaryOp", 
+    "UnaryOp",
     "Literal",
     "as_expression",
     "Engine",
@@ -39,4 +109,19 @@ __all__ = [
     "ta",
     "IndicatorHandle",
     "TASeries",
+    # Primitives
+    "rolling_mean",
+    "rolling_sum",
+    "rolling_max",
+    "rolling_min",
+    "rolling_std",
+    "diff",
+    "shift",
+    "cumulative_sum",
+    "positive_values",
+    "negative_values",
+    "rolling_ema",
+    "true_range",
+    "typical_price",
+    "sign",
 ]

@@ -16,7 +16,7 @@ If strict=True:
 
 from __future__ import annotations
 
-from datetime import datetime, date, timezone
+from datetime import UTC, date, datetime
 from decimal import Decimal
 from typing import Any
 
@@ -35,9 +35,9 @@ _FALLBACK_STRPTIME_PATTERNS: tuple[str, ...] = (
 def _to_utc(dt: datetime) -> datetime:
     """Return a UTC-aware datetime. Naive → assume UTC; aware → convert to UTC."""
     return (
-        dt.replace(tzinfo=timezone.utc)
+        dt.replace(tzinfo=UTC)
         if dt.tzinfo is None
-        else dt.astimezone(timezone.utc)
+        else dt.astimezone(UTC)
     )
 
 
@@ -106,11 +106,11 @@ def coerce_timestamp(value: TimestampLike | Any, *, strict: bool = False) -> Tim
 
     if isinstance(value, date):
         # Treat date-only as midnight UTC
-        return datetime(value.year, value.month, value.day, tzinfo=timezone.utc)
+        return datetime(value.year, value.month, value.day, tzinfo=UTC)
 
     if isinstance(value, (int, float, Decimal)):
         secs = _detect_epoch_seconds(value)
-        return datetime.fromtimestamp(secs, tz=timezone.utc)
+        return datetime.fromtimestamp(secs, tz=UTC)
 
     # only string reaches here
     s = value.strip()
@@ -128,13 +128,13 @@ def coerce_timestamp(value: TimestampLike | Any, *, strict: bool = False) -> Tim
     # 2) Integer-like epoch string (with optional sign)
     if _is_integerish(s):
         secs = _detect_epoch_seconds(int(s))
-        return datetime.fromtimestamp(secs, tz=timezone.utc)
+        return datetime.fromtimestamp(secs, tz=UTC)
 
     # 3) Float-like epoch string (e.g., "1688495599.123" or "1.697e9")
     try:
         f = float(s)
         secs = _detect_epoch_seconds(f)
-        return datetime.fromtimestamp(secs, tz=timezone.utc)
+        return datetime.fromtimestamp(secs, tz=UTC)
     except Exception:
         pass
 

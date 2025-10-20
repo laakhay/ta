@@ -6,7 +6,7 @@ against a dataset of named series.
 
 from __future__ import annotations
 
-from typing import Any, Dict
+from typing import Any
 
 from .core import Series
 from .expressions.models import ExpressionNode, Literal
@@ -20,9 +20,9 @@ class Engine:
     """
 
     def __init__(self) -> None:
-        self._cache: Dict[int, Series[Any]] = {}
+        self._cache: dict[int, Series[Any]] = {}
 
-    def evaluate(self, expression: ExpressionNode, dataset: Dict[str, Series[Any]]) -> Series[Any]:
+    def evaluate(self, expression: ExpressionNode, dataset: dict[str, Series[Any]]) -> Series[Any]:
         """Evaluate an expression node with given dataset mapping.
 
         The dataset should be a mapping from series names used in the
