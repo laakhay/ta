@@ -3,7 +3,7 @@ from .types import PriceLike, QtyLike, RateLike, TimestampLike
 from .coercers import coerce_price, coerce_qty, coerce_rate
 from .timestamps import coerce_timestamp
 from .bar import Bar
-from .series import Series, PriceSeries, QtySeries
+from .series import Series, PriceSeries, QtySeries, align_series
 from .ohlcv import OHLCV
 from .dataset import Dataset, DatasetView, DatasetKey, DatasetMetadata, dataset
 
@@ -31,4 +31,5 @@ __all__ = [
     "coerce_qty",
     "coerce_rate",
     "coerce_timestamp",
+    "align_series",
 ]
