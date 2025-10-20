@@ -21,8 +21,27 @@ class DatasetKey:
     source: str = "default"
 
     def __str__(self) -> str:  # type: ignore[override]
-        """String representation of the key."""
-        return f"{self.symbol}_{self.timeframe}_{self.source}"
+        """String representation of the key using structured format."""
+        # Use a structured format that can handle underscores in symbols
+        # Format: "symbol|timeframe|source" to avoid conflicts with underscores
+        return f"{self.symbol}|{self.timeframe}|{self.source}"
+    
+    def to_dict(self) -> dict[str, str]:
+        """Convert key to dictionary format for safe serialization."""
+        return {
+            "symbol": self.symbol,
+            "timeframe": self.timeframe,
+            "source": self.source
+        }
+    
+    @classmethod
+    def from_dict(cls, data: dict[str, str]) -> "DatasetKey":
+        """Create key from dictionary format."""
+        return cls(
+            symbol=data["symbol"],
+            timeframe=data["timeframe"],
+            source=data.get("source", "default")
+        )
 
 
 @dataclass(frozen=True)
@@ -149,22 +168,24 @@ class Dataset:
         from .series import Series
         
         for key_str, series_data in data.get("series", {}).items():
-            # Parse key from string representation
-            parts = key_str.split("_")
+            # Parse key from new structured format: symbol|timeframe|source
+            parts = key_str.split("|")
             if len(parts) >= 2:
                 symbol = parts[0]
                 timeframe = parts[1]
                 source = parts[2] if len(parts) > 2 else "default"
-                
-                # Determine series type and create appropriate object
-                if "opens" in series_data and "highs" in series_data:
-                    # OHLCV data
-                    series = OHLCV.from_dict(series_data)
-                else:
-                    # Series data
-                    series = Series[Any].from_dict(series_data)
-                
-                dataset.add_series(symbol, timeframe, series, source)
+            else:
+                continue
+            
+            # Determine series type and create appropriate object
+            if "opens" in series_data and "highs" in series_data:
+                # OHLCV data
+                series = OHLCV.from_dict(series_data)
+            else:
+                # Series data
+                series = Series[Any].from_dict(series_data)
+            
+            dataset.add_series(symbol, timeframe, series, source)
         
         return dataset
 
@@ -273,8 +294,8 @@ def dataset(*series: Union[OHLCV, Series[Any]],
     
     # Add series passed as keyword arguments
     for key_str, series_obj in kwargs.items():
-        # Parse key format: 'symbol_timeframe_source' or 'symbol_timeframe'
-        parts = key_str.split('_')
+        # Parse key format: 'symbol|timeframe|source'
+        parts = key_str.split('|')
         if len(parts) >= 2:
             symbol = parts[0]
             timeframe = parts[1]
