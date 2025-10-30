@@ -11,6 +11,8 @@ from enum import Enum
 from typing import Any
 
 from ..core import Series
+from ..core.series import align_series
+from .alignment import get_policy
 from ..core.types import Price
 
 SCALAR_SYMBOL = "__SCALAR__"
@@ -67,26 +69,14 @@ def _align_series(
     *,
     operator: OperatorType,
 ) -> tuple[Series[Any], Series[Any]]:
-    """Align two series for arithmetic/comparison operations."""
+    """Align two series for arithmetic/comparison operations using policy defaults."""
     if _is_scalar_series(left) and not _is_scalar_series(right):
         left = _broadcast_scalar_series(left, right)
     if _is_scalar_series(right) and not _is_scalar_series(left):
         right = _broadcast_scalar_series(right, left)
 
-    if len(left) != len(right):
-        raise ValueError(
-            f"Cannot perform {operator.value} on series of different lengths: {len(left)} vs {len(right)}"
-        )
-    if left.symbol != right.symbol or left.timeframe != right.timeframe:
-        raise ValueError(
-            f"Cannot perform {operator.value} on series with mismatched metadata "
-            f"({left.symbol},{left.timeframe}) vs ({right.symbol},{right.timeframe})"
-        )
-    if left.timestamps != right.timestamps:
-        raise ValueError(
-            f"Cannot perform {operator.value} on series with different timestamp alignment"
-        )
-    return left, right
+    how, fill, lfv, rfv = get_policy()
+    return align_series(left, right, how=how, fill=fill, left_fill_value=lfv, right_fill_value=rfv)
 
 
 def _comparison_series(

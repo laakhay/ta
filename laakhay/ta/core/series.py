@@ -5,7 +5,7 @@ from __future__ import annotations
 import decimal
 from collections.abc import Iterator
 from dataclasses import dataclass
-from typing import Any, Generic, Literal, TypeAlias, TypeVar, overload
+from typing import Any, Generic, Literal, TypeAlias, TypeVar
 
 from .types import Price, Qty, Symbol, Timestamp
 
@@ -18,6 +18,7 @@ class Series(Generic[T]):
     values: tuple[T, ...]              # Corresponding values
     symbol: Symbol                     # Trading symbol
     timeframe: str                     # Timeframe (e.g., '1h', '4h')
+    availability_mask: tuple[bool, ...] | None = None  # True where value is valid/available
 
     def __post_init__(self) -> None:
         """Validate series data integrity after initialization."""
@@ -27,6 +28,9 @@ class Series(Generic[T]):
         if len(self.timestamps) > 1:
             if any(later < earlier for earlier, later in zip(self.timestamps, self.timestamps[1:], strict=False)):
                 raise ValueError("Timestamps must be sorted")
+
+        if self.availability_mask is not None and len(self.availability_mask) != len(self.timestamps):
+            raise ValueError("Availability mask must match length of series")
 
     @property
     def length(self) -> int:
@@ -63,11 +67,6 @@ class Series(Generic[T]):
         """Iterate over (timestamp, value) pairs."""
         return zip(self.timestamps, self.values, strict=False)
 
-    @overload
-    def __add__(self, other: Series[T]) -> Series[T]: ...
-    @overload
-    def __add__(self, other: T) -> Series[T]: ...
-
     def __add__(self, other: Series[T] | T) -> Series[T]:
         """Element-wise addition or scalar addition."""
         if isinstance(other, Series):
@@ -86,12 +85,12 @@ class Series(Generic[T]):
                 timestamps=self.timestamps,
                 values=new_values,  # type: ignore[arg-type]
                 symbol=self.symbol,
-                timeframe=self.timeframe
+                timeframe=self.timeframe,
+                availability_mask=self.availability_mask
             )
         else:
             # Scalar addition (requires T to support addition)
             try:
-                # Use a more explicit approach to avoid type checker issues
                 new_values_list = []
                 for v in self.values:
                     new_values_list.append(v + other)  # type: ignore
@@ -102,7 +101,8 @@ class Series(Generic[T]):
                 timestamps=self.timestamps,
                 values=new_values,  # type: ignore[arg-type]
                 symbol=self.symbol,
-                timeframe=self.timeframe
+                timeframe=self.timeframe,
+                availability_mask=self.availability_mask
             )
 
     def __sub__(self, other: Series[T] | T) -> Series[T]:
@@ -121,10 +121,10 @@ class Series(Generic[T]):
                 timestamps=self.timestamps,
                 values=new_values,  # type: ignore[arg-type]
                 symbol=self.symbol,
-                timeframe=self.timeframe
+                timeframe=self.timeframe,
+                availability_mask=_and_masks(self.availability_mask, other.availability_mask)
             )
         else:
-            # Scalar subtraction
             try:
                 new_values_list = []
                 for v in self.values:
@@ -136,7 +136,8 @@ class Series(Generic[T]):
                 timestamps=self.timestamps,
                 values=new_values,  # type: ignore[arg-type]
                 symbol=self.symbol,
-                timeframe=self.timeframe
+                timeframe=self.timeframe,
+                availability_mask=self.availability_mask
             )
 
     def __mul__(self, other: Series[T] | T) -> Series[T]:
@@ -155,10 +156,10 @@ class Series(Generic[T]):
                 timestamps=self.timestamps,
                 values=new_values,  # type: ignore[arg-type]
                 symbol=self.symbol,
-                timeframe=self.timeframe
+                timeframe=self.timeframe,
+                availability_mask=_and_masks(self.availability_mask, other.availability_mask)
             )
         else:
-            # Scalar multiplication
             try:
                 new_values_list = []
                 for v in self.values:
@@ -170,7 +171,8 @@ class Series(Generic[T]):
                 timestamps=self.timestamps,
                 values=new_values,  # type: ignore[arg-type]
                 symbol=self.symbol,
-                timeframe=self.timeframe
+                timeframe=self.timeframe,
+                availability_mask=self.availability_mask
             )
 
     def __truediv__(self, other: Series[T] | T) -> Series[T]:
@@ -191,10 +193,10 @@ class Series(Generic[T]):
                 timestamps=self.timestamps,
                 values=new_values,  # type: ignore[arg-type]
                 symbol=self.symbol,
-                timeframe=self.timeframe
+                timeframe=self.timeframe,
+                availability_mask=_and_masks(self.availability_mask, other.availability_mask)
             )
         else:
-            # Scalar division
             try:
                 new_values_list = []
                 for v in self.values:
@@ -208,7 +210,8 @@ class Series(Generic[T]):
                 timestamps=self.timestamps,
                 values=new_values,  # type: ignore[arg-type]
                 symbol=self.symbol,
-                timeframe=self.timeframe
+                timeframe=self.timeframe,
+                availability_mask=self.availability_mask
             )
 
     def __mod__(self, other: Series[T] | T) -> Series[T]:
@@ -228,7 +231,8 @@ class Series(Generic[T]):
                 timestamps=self.timestamps,
                 values=new_values,  # type: ignore[arg-type]
                 symbol=self.symbol,
-                timeframe=self.timeframe
+                timeframe=self.timeframe,
+                availability_mask=_and_masks(self.availability_mask, other.availability_mask)
             )
         else:
             try:
@@ -264,7 +268,8 @@ class Series(Generic[T]):
                 timestamps=self.timestamps,
                 values=new_values,  # type: ignore[arg-type]
                 symbol=self.symbol,
-                timeframe=self.timeframe
+                timeframe=self.timeframe,
+                availability_mask=self.availability_mask
             )
         else:
             try:
@@ -294,7 +299,8 @@ class Series(Generic[T]):
             timestamps=self.timestamps,
             values=new_values,  # type: ignore[arg-type]
             symbol=self.symbol,
-            timeframe=self.timeframe
+            timeframe=self.timeframe,
+            availability_mask=self.availability_mask
         )
 
     def __pos__(self) -> Series[T]:
@@ -303,7 +309,8 @@ class Series(Generic[T]):
             timestamps=self.timestamps,
             values=self.values,
             symbol=self.symbol,
-            timeframe=self.timeframe
+            timeframe=self.timeframe,
+            availability_mask=self.availability_mask
         )
 
     def slice_by_time(self, start: Timestamp, end: Timestamp) -> Series[T]:
@@ -345,6 +352,7 @@ class Series(Generic[T]):
             'values': list(self.values),
             'symbol': self.symbol,
             'timeframe': self.timeframe,
+            'availability_mask': list(self.availability_mask) if self.availability_mask is not None else None,
         }
 
     @classmethod
@@ -360,6 +368,7 @@ class Series(Generic[T]):
             values=values,
             symbol=data['symbol'],
             timeframe=data['timeframe'],
+            availability_mask=(tuple(data['availability_mask']) if data.get('availability_mask') is not None else None),
         )
 
     def _validate_series_alignment(self, other: Series[Any], *, operation: str) -> None:
@@ -375,6 +384,18 @@ class Series(Generic[T]):
             )
         if self.timestamps != other.timestamps:
             raise ValueError(f"Cannot {operation} series with different timestamp alignment")
+
+
+def _and_masks(a: tuple[bool, ...] | None, b: tuple[bool, ...] | None) -> tuple[bool, ...] | None:
+    if a is None and b is None:
+        return None
+    if a is None:
+        return b
+    if b is None:
+        return a
+    if len(a) != len(b):
+        raise ValueError("Cannot combine availability masks of different lengths")
+    return tuple(x and y for x, y in zip(a, b, strict=False))
 
 # Type aliases for common series types
 PriceSeries: TypeAlias = Series[Price]
@@ -486,17 +507,32 @@ def align_series(
     aligned_left_values = build_values(left, target_ts, left_fill_value)
     aligned_right_values = build_values(right, target_ts, right_fill_value)
 
+    def build_mask(series: Series[Any], timestamps: list[Timestamp]) -> tuple[bool, ...] | None:
+        if series.availability_mask is None:
+            return None
+        index_map = {ts: i for i, ts in enumerate(series.timestamps)}
+        out: list[bool] = []
+        for ts in timestamps:
+            if ts in index_map:
+                out.append(series.availability_mask[index_map[ts]])
+            else:
+                # Filled via join; consider available
+                out.append(True)
+        return tuple(out)
+
     aligned_left = Series[Any](
         timestamps=tuple(target_ts),
         values=aligned_left_values,
         symbol=target_symbol,
         timeframe=target_timeframe,
+        availability_mask=build_mask(left, target_ts),
     )
     aligned_right = Series[Any](
         timestamps=tuple(target_ts),
         values=aligned_right_values,
         symbol=target_symbol,
         timeframe=target_timeframe,
+        availability_mask=build_mask(right, target_ts),
     )
 
     return aligned_left, aligned_right
