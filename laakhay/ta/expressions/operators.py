@@ -162,15 +162,23 @@ class Expression:
                 context = {name: getattr(series_context, name) for name in series_context.available_series}
                 return self.evaluate(context)
 
-            # Fan-out: evaluate per dataset key
+            # Use requirements to build minimal per-key contexts
+            req = self.requirements()
+            required_fields = sorted({f.name for f in req.fields} or {"close"})
+
+            # Gather unique (symbol, timeframe)
+            st_pairs = {(k.symbol, k.timeframe) for k in data.keys}
             results: dict[tuple[str, str, str], Series[Any]] = {}
-            for key, series in data:
-                from ..core.dataset import Dataset as _Dataset
-                per_ds = _Dataset()
-                per_ds.add_series(key.symbol, key.timeframe, series, key.source)
-                series_context = per_ds.to_context()
-                context = {name: getattr(series_context, name) for name in series_context.available_series}
-                results[(key.symbol, key.timeframe, key.source)] = self.evaluate(context)
+            # Simple cache for contexts per (symbol,timeframe)
+            context_cache: dict[tuple[str, str], dict[str, Series[Any]]] = {}
+            for symbol, timeframe in st_pairs:
+                # Build or reuse context
+                key2 = (symbol, timeframe)
+                if key2 not in context_cache:
+                    sc = data.build_context(symbol, timeframe, required_fields)
+                    context_cache[key2] = {name: getattr(sc, name) for name in sc.available_series}
+                out = self.evaluate(context_cache[key2])
+                results[(symbol, timeframe, 'default')] = out
             return results
         raise TypeError("Expression.run expects a Series or Dataset")
 

@@ -238,6 +238,44 @@ class Dataset:
             raise KeyError(f"No series found for key: {key}")
         return self._series[key]
 
+    def build_context(self, symbol: Symbol, timeframe: str, required_fields: list[str]) -> "SeriesContext":
+        """Build a SeriesContext for a specific symbol/timeframe using only required fields.
+
+        Prefers OHLCV series when present; falls back to individual source series.
+        """
+        from ..registry.models import SeriesContext
+
+        # Try to find an OHLCV for this symbol/timeframe
+        ohlcv: OHLCV | None = None
+        for key, series in self._series.items():
+            if key.symbol == symbol and key.timeframe == timeframe and hasattr(series, 'to_series'):
+                ohlcv = series  # type: ignore[assignment]
+                break
+
+        ctx: dict[str, Series[Any]] = {}
+        for field in required_fields:
+            if ohlcv is not None and field in {"open", "high", "low", "close", "volume", "price"}:
+                src_name = "close" if field == "price" else field
+                ctx[field if field != "price" else "price"] = ohlcv.to_series(src_name)  # type: ignore[arg-type]
+                continue
+            # Fallback to individual series by source
+            found = False
+            for key, series in self._series.items():
+                if key.symbol == symbol and key.timeframe == timeframe:
+                    wanted = field if field != "price" else "close"
+                    if key.source == wanted:
+                        ctx[field] = series  # type: ignore[assignment]
+                        found = True
+                        break
+            if not found and field == "price":
+                # try close as default
+                for key, series in self._series.items():
+                    if key.symbol == symbol and key.timeframe == timeframe and key.source == "close":
+                        ctx["price"] = series  # type: ignore[assignment]
+                        found = True
+                        break
+        return SeriesContext(**ctx)
+
     def to_dict(self) -> dict[str, Any]:
         """Convert dataset to dictionary format."""
         series_dict = {}
