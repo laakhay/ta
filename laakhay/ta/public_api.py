@@ -81,6 +81,27 @@ class IndicatorHandle:
         # Call the registry handle with the context and parameters
         return self._registry_handle(ctx, **self.params)
 
+    def run(self, data: Dataset | Series[Price]) -> Series[Price] | dict[tuple[str, str, str], Series[Price]]:
+        """Convenience method to evaluate on a Series or Dataset.
+
+        - Series: evaluates directly and returns a Series.
+        - Dataset: iterates keys and returns a dict keyed by (symbol, timeframe, source).
+        """
+        if isinstance(data, Series):
+            return self(data)
+        if isinstance(data, Dataset):
+            if data.is_empty:
+                return {}
+            if len(data.keys) == 1:
+                return self(data)
+            results: dict[tuple[str, str, str], Series[Price]] = {}
+            for key, series in data:
+                per_ds = Dataset()
+                per_ds.add_series(key.symbol, key.timeframe, series, key.source)
+                results[(key.symbol, key.timeframe, key.source)] = self(per_ds)
+            return results
+        raise TypeError("IndicatorHandle.run expects a Series or Dataset")
+
     def _to_expression(self) -> Expression:
         """Convert this handle to an expression for algebraic composition.
         
@@ -286,6 +307,38 @@ class TANamespace:
         This provides the alternative API: ta(close_series).sma(20)
         """
         return TASeries(series, **additional_series)
+
+    def __getattr__(self, name: str) -> Any:
+        """Dynamic access to indicator factories on the ta namespace.
+
+        Enables calls like: ta.sma(20), ta.ema(50), etc.
+        """
+        # Ensure indicators are registered before accessing registry
+        registry = get_global_registry()
+
+        # Attempt to resolve by name or alias via the registry
+        handle = registry.get(name) if hasattr(registry, "get") else None
+
+        # If not found yet, try to reload indicator modules (defensive)
+        if handle is None:
+            import importlib
+            import sys
+            # First, ensure the indicators package is imported to trigger registrations
+            try:
+                importlib.import_module('laakhay.ta.indicators')
+            except Exception:
+                pass
+            for module_name in list(sys.modules.keys()):
+                if module_name.startswith('laakhay.ta.indicators.') and module_name != 'laakhay.ta.indicators.__init__':
+                    importlib.reload(sys.modules[module_name])
+            handle = registry.get(name) if hasattr(registry, "get") else None
+
+        if handle is not None:
+            def factory(**params: Any) -> IndicatorHandle:
+                return IndicatorHandle(name, **params)
+            return factory
+
+        raise AttributeError(f"Indicator '{name}' not found")
 
 
 class TASeries:

@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 from ..core import Series
+from ..core.dataset import Dataset
 from .models import BinaryOp, ExpressionNode, Literal, OperatorType, UnaryOp
 
 
@@ -139,6 +140,38 @@ class Expression:
     def describe(self) -> str:
         """Get human-readable description of this expression."""
         return self._node.describe()
+
+    def run(self, data: Series[Any] | Dataset) -> Series[Any] | dict[tuple[str, str, str], Series[Any]]:
+        """Evaluate the expression against a Series or Dataset.
+
+        - Series: evaluates directly and returns a Series.
+        - Dataset: iterates keys and returns a dict keyed by (symbol, timeframe, source).
+        """
+        if isinstance(data, Series):
+            context: dict[str, Series[Any]] = {"close": data}
+            return self.evaluate(context)
+        if isinstance(data, Dataset):
+            # If dataset is empty, return empty mapping
+            if data.is_empty:
+                return {}
+
+            # If single series, keep compatibility and return a single Series
+            if len(data.keys) == 1:
+                series_context = data.to_context()
+                context = {name: getattr(series_context, name) for name in series_context.available_series}
+                return self.evaluate(context)
+
+            # Fan-out: evaluate per dataset key
+            results: dict[tuple[str, str, str], Series[Any]] = {}
+            for key, series in data:
+                from ..core.dataset import Dataset as _Dataset
+                per_ds = _Dataset()
+                per_ds.add_series(key.symbol, key.timeframe, series, key.source)
+                series_context = per_ds.to_context()
+                context = {name: getattr(series_context, name) for name in series_context.available_series}
+                results[(key.symbol, key.timeframe, key.source)] = self.evaluate(context)
+            return results
+        raise TypeError("Expression.run expects a Series or Dataset")
 
 
 def _to_node(value: Expression | ExpressionNode | Series[Any] | float | int) -> ExpressionNode:
