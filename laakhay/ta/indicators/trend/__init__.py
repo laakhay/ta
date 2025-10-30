@@ -4,14 +4,14 @@ This module contains trend-following indicators that help identify
 market direction and trend strength.
 """
 
-from .sma import sma
+from .bbands import bbands
 from .ema import ema
 from .macd import macd
-from .bbands import bbands
+from .sma import sma
 
 __all__ = [
     "sma",
     "ema",
-    "macd", 
+    "macd",
     "bbands",
 ]

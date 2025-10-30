@@ -2,7 +2,7 @@
 
 import pytest
 
-from laakhay.ta.registry import ParamSchema, OutputSchema, IndicatorSchema
+from laakhay.ta.registry import IndicatorSchema, OutputSchema, ParamSchema
 
 
 class TestParamSchema:
@@ -16,7 +16,7 @@ class TestParamSchema:
             required=True,
             description="Period length"
         )
-        
+
         assert param.name == "period"
         assert param.type == int
         assert param.required is True
@@ -32,7 +32,7 @@ class TestParamSchema:
             required=False,
             description="Data source"
         )
-        
+
         assert param.name == "source"
         assert param.type == str
         assert param.required is False
@@ -49,7 +49,7 @@ class TestParamSchema:
             description="Calculation method",
             valid_values=["sma", "ema", "wma"]
         )
-        
+
         assert param.valid_values == ["sma", "ema", "wma"]
 
     def test_parameter_validation_errors(self) -> None:
@@ -57,26 +57,26 @@ class TestParamSchema:
         # Required parameter with default should fail
         with pytest.raises(ValueError, match="Required parameters cannot have default values"):
             ParamSchema(name="period", type=int, required=True, default=20)
-        
+
         # Optional parameter without default should now be allowed (None is valid default)
         # This should not raise an error anymore
         param = ParamSchema(name="source", type=str, required=False)
         assert param.default is None
-        
+
         # Empty name should fail
         with pytest.raises(ValueError, match="Parameter name must be a non-empty string"):
             ParamSchema(name="", type=int)
-        
+
         # None name should fail
         with pytest.raises(ValueError, match="Parameter name must be a non-empty string"):
             ParamSchema(name=None, type=int)  # type: ignore[arg-type]
-        
+
         # Default value not in valid_values should fail
         with pytest.raises(ValueError, match="Default value 99 not in valid_values"):
             ParamSchema(
-                name="period", 
-                type=int, 
-                default=99, 
+                name="period",
+                type=int,
+                default=99,
                 required=False,
                 valid_values=[5, 10, 20]
             )
@@ -92,7 +92,7 @@ class TestOutputSchema:
             type=float,
             description="MACD line values"
         )
-        
+
         assert output.name == "macd"
         assert output.type == float
         assert output.description == "MACD line values"
@@ -100,7 +100,7 @@ class TestOutputSchema:
     def test_output_schema_minimal(self) -> None:
         """Test output schema with minimal fields."""
         output = OutputSchema(name="signal", type=bool)
-        
+
         assert output.name == "signal"
         assert output.type == bool
         assert output.description == ""
@@ -110,7 +110,7 @@ class TestOutputSchema:
         # Empty name should fail
         with pytest.raises(ValueError, match="Output name must be a non-empty string"):
             OutputSchema(name="", type=float)
-        
+
         # None name should fail
         with pytest.raises(ValueError, match="Output name must be a non-empty string"):
             OutputSchema(name=None, type=float)  # type: ignore[arg-type]
@@ -123,7 +123,7 @@ class TestIndicatorSchema:
         """Test basic indicator schema creation."""
         param = ParamSchema(name="period", type=int, required=True, description="Period length")
         output = OutputSchema(name="sma", type=float, description="SMA values")
-        
+
         schema = IndicatorSchema(
             name="sma",
             description="Simple Moving Average",
@@ -131,7 +131,7 @@ class TestIndicatorSchema:
             outputs={"sma": output},
             aliases=["simple_ma", "moving_average"]
         )
-        
+
         assert schema.name == "sma"
         assert schema.description == "Simple Moving Average"
         assert len(schema.parameters) == 1
@@ -141,7 +141,7 @@ class TestIndicatorSchema:
     def test_indicator_schema_minimal(self) -> None:
         """Test indicator schema with minimal fields."""
         schema = IndicatorSchema(name="rsi")
-        
+
         assert schema.name == "rsi"
         assert schema.description == ""
         assert len(schema.parameters) == 0
@@ -157,16 +157,16 @@ class TestIndicatorSchema:
             description="Period length"
         )
         output = OutputSchema(name="rsi", type=float, description="RSI values")
-        
+
         schema = IndicatorSchema(
             name="rsi",
             description="Relative Strength Index",
             parameters={"period": param},
             outputs={"rsi": output}
         )
-        
+
         result = schema.to_dict()
-        
+
         assert result["name"] == "rsi"
         assert result["description"] == "Relative Strength Index"
         assert "period" in result["parameters"]
@@ -195,9 +195,9 @@ class TestIndicatorSchema:
             },
             "aliases": ["simple_ma"]
         }
-        
+
         schema = IndicatorSchema.from_dict(data)
-        
+
         assert schema.name == "sma"
         assert schema.description == "Simple Moving Average"
         assert len(schema.parameters) == 1
@@ -219,7 +219,7 @@ class TestIndicatorSchema:
             valid_values=[5, 12, 26]
         )
         output = OutputSchema(name="macd", type=float, description="MACD line")
-        
+
         original = IndicatorSchema(
             name="macd",
             description="MACD indicator",
@@ -227,11 +227,11 @@ class TestIndicatorSchema:
             outputs={"macd": output},
             aliases=["macd_line"]
         )
-        
+
         # Round-trip through dict
         data = original.to_dict()
         restored = IndicatorSchema.from_dict(data)
-        
+
         assert restored.name == original.name
         assert restored.description == original.description
         assert len(restored.parameters) == len(original.parameters)
@@ -253,7 +253,7 @@ class TestIndicatorSchema:
         }
         with pytest.raises(ValueError, match="Unsupported parameter type: unknown_type"):
             IndicatorSchema.from_dict(data_with_unknown_param)
-        
+
         # Unknown output type should fail
         data_with_unknown_output = {
             "name": "test",
@@ -270,19 +270,20 @@ class TestIndicatorSchema:
 
 class TestRegistryCriticalIssues:
     """Test critical issues with the registry system identified in the audit."""
-    
+
     def test_indicator_overrides_handles_any_type(self):
         """Test that indicator overrides handle Any type without isinstance error."""
+        from inspect import signature
         from typing import Any
+
         from laakhay.ta.core.series import Series
         from laakhay.ta.core.types import Price
         from laakhay.ta.registry.models import IndicatorHandle
-        from inspect import signature
-        
+
         def test_indicator(series: Series[Price], param: Any) -> Series[Price]:
             """Test indicator with unannotated param."""
             return series
-        
+
         # This should work but may fail due to isinstance(Any) issue
         schema = IndicatorSchema(
             name="test",
@@ -296,7 +297,7 @@ class TestRegistryCriticalIssues:
                 )
             }
         )
-        
+
         handle = IndicatorHandle(
             name="test",
             func=test_indicator,
@@ -304,7 +305,7 @@ class TestRegistryCriticalIssues:
             schema=schema,
             aliases=[]
         )
-        
+
         # This should not raise TypeError
         try:
             result = handle.with_overrides(param="test_value")
@@ -314,19 +315,20 @@ class TestRegistryCriticalIssues:
                 pytest.fail("Registry should handle Any type without isinstance error")
             else:
                 raise
-    
+
     def test_optional_parameters_work_correctly(self):
         """Test that optional parameters work correctly."""
+        from inspect import signature
         from typing import Optional
+
         from laakhay.ta.core.series import Series
         from laakhay.ta.core.types import Price
         from laakhay.ta.registry.models import IndicatorHandle
-        from inspect import signature
-        
-        def test_indicator(series: Series[Price], optional_param: Optional[int] = None) -> Series[Price]:
+
+        def test_indicator(series: Series[Price], optional_param: int | None = None) -> Series[Price]:
             """Test indicator with optional parameter."""
             return series
-        
+
         # This should work - optional params should be optional
         schema = IndicatorSchema(
             name="test",
@@ -341,7 +343,7 @@ class TestRegistryCriticalIssues:
                 )
             }
         )
-        
+
         handle = IndicatorHandle(
             name="test",
             func=test_indicator,
@@ -349,7 +351,7 @@ class TestRegistryCriticalIssues:
             schema=schema,
             aliases=[]
         )
-        
+
         # This should work without providing the optional parameter
         result = handle.with_overrides()
         assert result is not None

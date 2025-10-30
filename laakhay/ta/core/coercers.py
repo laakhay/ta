@@ -2,7 +2,8 @@
 
 from decimal import Decimal
 from typing import Any
-from .types import PriceLike, QtyLike, RateLike, Price, Qty, Rate
+
+from .types import Price, PriceLike, Qty, QtyLike, Rate, RateLike
 
 
 def coerce_price(value: PriceLike | Any) -> Price:

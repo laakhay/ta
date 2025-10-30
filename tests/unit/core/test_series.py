@@ -1,18 +1,18 @@
 """Tests for Series + align_series."""
 
-import pytest
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
-from datetime import datetime, timezone, timedelta
+
+import pytest
 
 from laakhay.ta.core.series import Series, align_series
 from laakhay.ta.core.types import Price
-
 
 # ---------------------------------------------------------------------
 # Helpers & fixtures
 # ---------------------------------------------------------------------
 
-UTC = timezone.utc
+UTC = UTC
 
 def ts(*parts) -> tuple[datetime, ...]:
     """Datetime tuple helper: ts((y,m,d,h=0), ...) -> (dt1, dt2, ...)."""

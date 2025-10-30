@@ -1,11 +1,12 @@
 """Functional tests for indicator execution with Engine."""
 
-import pytest
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
 
-from laakhay.ta import Bar, Price, dataset, Engine, indicator
-from laakhay.ta.core import Series, OHLCV
+import pytest
+
+from laakhay.ta import Bar, Engine, Price, dataset, indicator
+from laakhay.ta.core import OHLCV, Series
 from laakhay.ta.core.types import Price
 
 
@@ -17,7 +18,7 @@ class TestIndicatorsFunctional:
         # Create sample bars
         bars = [
             Bar(
-                ts=datetime(2024, 1, 1, tzinfo=timezone.utc),
+                ts=datetime(2024, 1, 1, tzinfo=UTC),
                 open=Price("100"),
                 high=Price("105"),
                 low=Price("95"),
@@ -26,7 +27,7 @@ class TestIndicatorsFunctional:
                 is_closed=True
             ),
             Bar(
-                ts=datetime(2024, 1, 2, tzinfo=timezone.utc),
+                ts=datetime(2024, 1, 2, tzinfo=UTC),
                 open=Price("102"),
                 high=Price("108"),
                 low=Price("98"),
@@ -35,7 +36,7 @@ class TestIndicatorsFunctional:
                 is_closed=True
             ),
             Bar(
-                ts=datetime(2024, 1, 3, tzinfo=timezone.utc),
+                ts=datetime(2024, 1, 3, tzinfo=UTC),
                 open=Price("106"),
                 high=Price("112"),
                 low=Price("104"),
@@ -44,25 +45,25 @@ class TestIndicatorsFunctional:
                 is_closed=True
             ),
         ]
-        
+
         # Convert bars to OHLCV
         ohlcv = OHLCV.from_bars(bars, symbol="BTCUSDT", timeframe="1h")
-        
+
         # Create dataset from OHLCV
         ds = dataset(ohlcv)
-        
+
         # Create SMA indicator handle
         sma_2 = indicator("sma", period=2)
-        
+
         # Test that we can get the schema
         schema = sma_2.schema
         assert schema["name"] == "sma"
         # Check that period parameter exists
         assert "period" in schema["params"]
-        
+
         # Test indicator execution
         result = sma_2(ds)
-        
+
         # Verify result
         assert isinstance(result, Series)
         assert len(result.values) == 2  # SMA(2) on 3 bars = 2 results
@@ -76,7 +77,7 @@ class TestIndicatorsFunctional:
         # Create sample bars
         bars = [
             Bar(
-                ts=datetime(2024, 1, 1, tzinfo=timezone.utc),
+                ts=datetime(2024, 1, 1, tzinfo=UTC),
                 open=Price("100"),
                 high=Price("105"),
                 low=Price("95"),
@@ -85,7 +86,7 @@ class TestIndicatorsFunctional:
                 is_closed=True
             ),
             Bar(
-                ts=datetime(2024, 1, 2, tzinfo=timezone.utc),
+                ts=datetime(2024, 1, 2, tzinfo=UTC),
                 open=Price("102"),
                 high=Price("108"),
                 low=Price("98"),
@@ -94,27 +95,27 @@ class TestIndicatorsFunctional:
                 is_closed=True
             ),
         ]
-        
+
         # Convert bars to OHLCV
         ohlcv = OHLCV.from_bars(bars, symbol="BTCUSDT", timeframe="1h")
-        
+
         # Create dataset from OHLCV
         ds = dataset(ohlcv)
-        
+
         # Create SMA indicator handle
         sma_2 = indicator("sma", period=2)
-        
+
         # Test that indicator handle can be used as expression
-        from laakhay.ta.expressions import Literal, BinaryOp, OperatorType
-        
+        from laakhay.ta.expressions import BinaryOp, Literal, OperatorType
+
         # Create expression: sma + 10
         literal_10 = Literal(10)
         add_expr = BinaryOp(OperatorType.ADD, sma_2, literal_10)
-        
+
         # Evaluate with engine
         engine = Engine()
         result = engine.evaluate(add_expr, ds)
-        
+
         # Verify result
         assert isinstance(result, Series)
         assert len(result.values) == 1  # SMA(2) on 2 bars = 1 result
@@ -126,7 +127,7 @@ class TestIndicatorsFunctional:
         # Create sample bars
         bars = [
             Bar(
-                ts=datetime(2024, 1, 1, tzinfo=timezone.utc),
+                ts=datetime(2024, 1, 1, tzinfo=UTC),
                 open=Price("100"),
                 high=Price("105"),
                 low=Price("95"),
@@ -135,7 +136,7 @@ class TestIndicatorsFunctional:
                 is_closed=True
             ),
             Bar(
-                ts=datetime(2024, 1, 2, tzinfo=timezone.utc),
+                ts=datetime(2024, 1, 2, tzinfo=UTC),
                 open=Price("102"),
                 high=Price("108"),
                 low=Price("98"),
@@ -144,7 +145,7 @@ class TestIndicatorsFunctional:
                 is_closed=True
             ),
             Bar(
-                ts=datetime(2024, 1, 3, tzinfo=timezone.utc),
+                ts=datetime(2024, 1, 3, tzinfo=UTC),
                 open=Price("106"),
                 high=Price("112"),
                 low=Price("104"),
@@ -153,27 +154,27 @@ class TestIndicatorsFunctional:
                 is_closed=True
             ),
         ]
-        
+
         # Convert bars to OHLCV
         ohlcv = OHLCV.from_bars(bars, symbol="BTCUSDT", timeframe="1h")
-        
+
         # Create dataset from OHLCV
         ds = dataset(ohlcv)
-        
+
         # Create multiple indicators
         sma_2 = indicator("sma", period=2)
         sma_3 = indicator("sma", period=3)
-        
+
         # Test both indicators
         result_2 = sma_2(ds)
         result_3 = sma_3(ds)
-        
+
         # Verify results
         assert isinstance(result_2, Series)
         assert isinstance(result_3, Series)
         assert len(result_2.values) == 2  # SMA(2) on 3 bars = 2 results
         assert len(result_3.values) == 1  # SMA(3) on 3 bars = 1 result
-        
+
         # SMA(2) first result: (102 + 106) / 2 = 104
         assert result_2.values[0] == Price(Decimal("104"))
         # SMA(3) result: (102 + 106 + 110) / 3 = 106
@@ -183,10 +184,10 @@ class TestIndicatorsFunctional:
         """Test indicator error handling."""
         # Create empty dataset
         ds = dataset()
-        
+
         # Create SMA indicator
         sma_2 = indicator("sma", period=2)
-        
+
         # Test that indicator raises appropriate error for empty dataset
         with pytest.raises(ValueError, match="SeriesContext has no series to operate on"):
             sma_2(ds)

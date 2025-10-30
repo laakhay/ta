@@ -2,14 +2,15 @@
 
 from __future__ import annotations
 
-import pytest
+from datetime import UTC, datetime
 from decimal import Decimal
-from datetime import datetime, timezone
-from typing import Dict, Any
+from typing import Any
+
+import pytest
 
 from laakhay.ta.core.bar import Bar
 
-UTC = timezone.utc
+UTC = UTC
 
 
 # ---------------------------------------------------------------------
@@ -70,9 +71,9 @@ class TestBar:
 
     def test_from_dict_key_variants(
         self,
-        sample_bar_dict: Dict[str, Any],
-        sample_bar_dict_alternative_keys: Dict[str, Any],
-        sample_bar_dict_short_keys: Dict[str, Any],
+        sample_bar_dict: dict[str, Any],
+        sample_bar_dict_alternative_keys: dict[str, Any],
+        sample_bar_dict_short_keys: dict[str, Any],
     ) -> None:
         assert Bar.from_dict(sample_bar_dict).open == Decimal("100")
         assert Bar.from_dict(sample_bar_dict_alternative_keys).open == Decimal("100")

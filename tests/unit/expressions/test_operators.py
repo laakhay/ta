@@ -3,16 +3,17 @@
 
 from __future__ import annotations
 
-import pytest
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
-from datetime import datetime, timezone, timedelta
 
-from laakhay.ta.expressions.operators import Expression, as_expression
-from laakhay.ta.expressions.models import Literal, BinaryOp, UnaryOp, OperatorType
+import pytest
+
 from laakhay.ta.core.series import Series
 from laakhay.ta.core.types import Price
+from laakhay.ta.expressions.models import BinaryOp, Literal, OperatorType, UnaryOp
+from laakhay.ta.expressions.operators import Expression, as_expression
 
-UTC = timezone.utc
+UTC = UTC
 
 
 # ---------------------------------------------------------------------
