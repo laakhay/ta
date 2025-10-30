@@ -9,6 +9,7 @@ from typing import Any
 from .core import Dataset, Series
 from .core.types import Price
 from .expressions import Expression, as_expression
+from .expressions.requirements import SignalRequirements, compute_requirements
 from .expressions.models import BinaryOp, ExpressionNode, Literal, OperatorType, UnaryOp
 from .registry.models import SeriesContext
 from .registry.registry import get_global_registry
@@ -133,6 +134,10 @@ class IndicatorHandle:
         """Get human-readable description of this indicator handle."""
         params_str = ", ".join(f"{k}={v}" for k, v in self.params.items())
         return f"{self.name}({params_str})"
+
+    def requirements(self) -> SignalRequirements:
+        """Compute requirements for this indicator as a single-node expression."""
+        return compute_requirements(self._to_expression()._node)
 
     # Algebraic operators for composition
     def __add__(self, other: Any) -> Expression:

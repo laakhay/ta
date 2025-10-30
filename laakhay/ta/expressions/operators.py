@@ -6,6 +6,7 @@ from typing import Any
 
 from ..core import Series
 from ..core.dataset import Dataset
+from .requirements import SignalRequirements, compute_requirements
 from .models import BinaryOp, ExpressionNode, Literal, OperatorType, UnaryOp
 
 
@@ -172,6 +173,10 @@ class Expression:
                 results[(key.symbol, key.timeframe, key.source)] = self.evaluate(context)
             return results
         raise TypeError("Expression.run expects a Series or Dataset")
+
+    def requirements(self) -> SignalRequirements:
+        """Return requirements for this expression (fields, lookbacks, derived nodes)."""
+        return compute_requirements(self._node)
 
 
 def _to_node(value: Expression | ExpressionNode | Series[Any] | float | int) -> ExpressionNode:
