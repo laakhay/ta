@@ -76,7 +76,16 @@ def _align_series(
         right = _broadcast_scalar_series(right, left)
 
     how, fill, lfv, rfv = get_policy()
-    return align_series(left, right, how=how, fill=fill, left_fill_value=lfv, right_fill_value=rfv)
+    return align_series(
+        left,
+        right,
+        how=how,
+        fill=fill,
+        left_fill_value=lfv,
+        right_fill_value=rfv,
+        symbol=left.symbol,
+        timeframe=left.timeframe,
+    )
 
 
 def _comparison_series(
