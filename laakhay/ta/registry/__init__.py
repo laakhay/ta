@@ -4,6 +4,8 @@ from .models import IndicatorHandle, SeriesContext
 from .registry import (
     Registry,
     describe_indicator,
+    describe_all,
+    indicator_info,
     get_global_registry,
     indicator,
     list_all_names,
@@ -22,6 +24,8 @@ __all__ = [
     "register",
     "indicator",
     "describe_indicator",
+    "describe_all",
+    "indicator_info",
     "list_indicators",
     "list_all_names",
     "get_global_registry",

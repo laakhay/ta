@@ -139,8 +139,78 @@ class Expression:
         return self._node.dependencies()
 
     def describe(self) -> str:
-        """Get human-readable description of this expression."""
-        return self._node.describe()
+        """Get human-readable description of this expression with diagnostics."""
+        base = self._node.describe()
+        req = self.requirements()
+        fields = ", ".join(f"{f.name}[{f.timeframe or '-'}]:{f.min_lookback}" for f in req.fields)
+        derived = ", ".join(f"{d.name}({', '.join(f'{k}={v}' for k,v in d.params.items())})" for d in req.derived)
+        parts = [f"expr: {base}"]
+        if fields:
+            parts.append(f"fields: {fields}")
+        if derived:
+            parts.append(f"derived: {derived}")
+        return " | ".join(parts)
+
+    def to_dot(self) -> str:
+        """Return a Graphviz DOT representation of the expression graph.
+
+        Note: No external dependency; returns a DOT string that can be rendered by graphviz tools.
+        """
+        from .models import BinaryOp, UnaryOp, Literal, ExpressionNode
+
+        lines = ["digraph Expression {", "  rankdir=LR;"]
+        node_ids: dict[int, str] = {}
+        counter = 0
+
+        def nid(n: ExpressionNode) -> str:
+            nonlocal counter
+            i = id(n)
+            if i not in node_ids:
+                node_ids[i] = f"n{counter}"
+                counter += 1
+            return node_ids[i]
+
+        def label(n: ExpressionNode) -> str:
+            t = type(n).__name__
+            if isinstance(n, BinaryOp):
+                return f"{t}\\n{n.operator.value}"
+            if isinstance(n, UnaryOp):
+                return f"{t}\\n{n.operator.value}"
+            if isinstance(n, Literal):
+                v = n.value
+                if hasattr(v, 'symbol') and hasattr(v, 'timeframe'):
+                    return f"Literal\\nSeries({getattr(v,'symbol','?')} {getattr(v,'timeframe','?')})"
+                return f"Literal\\n{str(v)[:24]}"
+            # Duck-typed IndicatorNode
+            if n.__class__.__name__ == 'IndicatorNode' and hasattr(n, 'name'):
+                return f"Indicator\\n{getattr(n,'name')}"
+            return t
+
+        edges: list[tuple[str, str]] = []
+
+        def walk(n: ExpressionNode):
+            me = nid(n)
+            lines.append(f"  {me} [shape=box,label=\"{label(n)}\"];\n")
+            if isinstance(n, BinaryOp):
+                for child in (n.left, n.right):
+                    ce = nid(child)
+                    edges.append((me, ce))
+                    walk(child)
+            elif isinstance(n, UnaryOp):
+                ce = nid(n.operand)
+                edges.append((me, ce))
+                walk(n.operand)
+            elif isinstance(n, Literal):
+                return
+            else:
+                # Unknown node may still expose children via attributes; skip
+                return
+
+        walk(self._node)
+        for a, b in edges:
+            lines.append(f"  {a} -> {b};")
+        lines.append("}")
+        return "\n".join(lines)
 
     def run(self, data: Series[Any] | Dataset) -> Series[Any] | dict[tuple[str, str, str], Series[Any]]:
         """Evaluate the expression against a Series or Dataset.

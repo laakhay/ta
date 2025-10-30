@@ -127,13 +127,13 @@ class Registry:
             elif isinstance(return_annotation, str) and return_annotation.startswith('Tuple['):
                 # String annotation like "Tuple[Series[Price], ...]" - this is good
                 pass
-            elif hasattr(return_annotation, '__origin__') and return_annotation.__origin__ is tuple:
+            elif hasattr(return_annotation, '__origin__') and getattr(return_annotation, '__origin__', None) is tuple:
                 # Tuple return type for multi-output indicators - this is good
                 pass
             elif str(return_annotation).startswith('tuple['):
                 # Handle tuple[...] syntax from Python 3.9+
                 pass
-            elif hasattr(return_annotation, '__origin__') and return_annotation.__origin__ is dict:
+            elif hasattr(return_annotation, '__origin__') and getattr(return_annotation, '__origin__', None) is dict:
                 # Dict return type for named outputs - this is good
                 pass
             else:
@@ -215,7 +215,7 @@ class Registry:
         elif origin is Union:
             non_none_types = [arg for arg in args if arg is not type(None)]
             if not non_none_types:
-                return Any  # Only None specified
+                return type(Any)  # Only None specified
             if len(non_none_types) == 1:
                 return self._get_param_type(non_none_types[0])
             # For multiple concrete types, return the first non-None type
@@ -364,3 +364,15 @@ def list_indicators() -> list[str]:
 def list_all_names() -> list[str]:
     """List all registered indicator names and aliases."""
     return get_global_registry().list_all_names()
+
+
+# Developer utilities
+def describe_all() -> dict[str, IndicatorSchema]:
+    """Return schema for all registered indicators keyed by name."""
+    reg = get_global_registry()
+    return {name: handle.schema for name, handle in reg._indicators.items()}
+
+
+def indicator_info(name: str) -> IndicatorSchema:
+    """Return schema for a single indicator by name/alias."""
+    return describe_indicator(name)
