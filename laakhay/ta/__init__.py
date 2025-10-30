@@ -77,6 +77,19 @@ def negative_values():
     """Create a negative values indicator."""
     return indicator("negative_values")
 
+# New resample/sync convenience factories
+def downsample(factor: int = 2, agg: str = "last", target: str = "close"):
+    return indicator("downsample", factor=factor, agg=agg, target=target)
+
+def upsample(factor: int = 2, method: str = "ffill"):
+    return indicator("upsample", factor=factor, method=method)
+
+def sync_timeframe(reference: "Series" = None, fill: str = "ffill"):
+    # This returns a partially applied indicator; reference passed at call time
+    if reference is None:
+        return indicator("sync_timeframe", fill=fill)
+    return indicator("sync_timeframe", reference=reference, fill=fill)
+
 # Import indicators to trigger registration
 from . import indicators
 
@@ -124,4 +137,8 @@ __all__ = [
     "true_range",
     "typical_price",
     "sign",
+    # Resample/sync
+    "downsample",
+    "upsample",
+    "sync_timeframe",
 ]
