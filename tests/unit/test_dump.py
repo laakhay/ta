@@ -9,7 +9,7 @@ import pytest
 
 from laakhay.ta.core import OHLCV, Series
 from laakhay.ta.core.types import Price
-from laakhay.ta.dump import to_csv
+from laakhay.ta.io.csv import to_csv
 
 
 class TestDumpCSV:
@@ -207,7 +207,7 @@ class TestCSVExportCriticalIssues:
         """Test that CSV export preserves Decimal precision."""
         import os
 
-        from laakhay.ta.load import from_csv
+        from laakhay.ta.io.csv import from_csv
 
         # Create series with Decimal values
         series = Series[Price](
@@ -238,7 +238,7 @@ class TestCSVExportCriticalIssues:
         import os
 
         from laakhay.ta.core.types import Qty
-        from laakhay.ta.load import from_csv
+        from laakhay.ta.io.csv import from_csv
 
         ohlcv = OHLCV(
             timestamps=(datetime(2024, 1, 1, tzinfo=UTC),),

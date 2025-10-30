@@ -7,7 +7,7 @@ from pathlib import Path
 import pytest
 
 from laakhay.ta.core import OHLCV, Series
-from laakhay.ta.load import from_csv
+from laakhay.ta.io.csv import from_csv
 
 
 class TestLoadCSV:
