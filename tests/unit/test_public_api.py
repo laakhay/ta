@@ -235,7 +235,7 @@ class TestTASeries:
         ta_series = ta(close_series)
 
         with pytest.raises(AttributeError, match="Indicator 'invalid' not found"):
-            ta_series.invalid
+            _ = ta_series.invalid
 
     def test_ta_series_algebraic_operations(self):
         """Test algebraic operations on TASeries."""

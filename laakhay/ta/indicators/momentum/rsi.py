@@ -3,14 +3,15 @@
 from __future__ import annotations
 
 from .. import (
-    register,
-    SeriesContext,
-    Price,
     Expression,
     Literal,
+    Price,
+    Series,
+    SeriesContext,
     diff,
     negative_values,
     positive_values,
+    register,
     rolling_mean,
 )
 

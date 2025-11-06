@@ -5,11 +5,14 @@ from __future__ import annotations
 from collections.abc import Iterator
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
-from typing import Any, TypeVar
+from typing import TYPE_CHECKING, Any, TypeVar
 
 from .ohlcv import OHLCV
 from .series import Series
 from .types import Symbol, Timestamp
+
+if TYPE_CHECKING:
+    from ..registry.models import SeriesContext
 
 T = TypeVar("T")
 
@@ -249,7 +252,7 @@ class Dataset:
 
     def build_context(
         self, symbol: Symbol, timeframe: str, required_fields: list[str]
-    ) -> "SeriesContext":
+    ) -> SeriesContext:
         """Build a SeriesContext for a specific symbol/timeframe using only required fields.
 
         Prefers OHLCV series when present; falls back to individual source series.
@@ -278,8 +281,8 @@ class Dataset:
                 ctx.setdefault("volume", ohlcv.to_series("volume"))  # type: ignore[arg-type]
             except (KeyError, AttributeError, ValueError):
                 pass
-        for field in required_fields:
-            if ohlcv is not None and field in {
+        for required_field in required_fields:
+            if ohlcv is not None and required_field in {
                 "open",
                 "high",
                 "low",
@@ -287,19 +290,22 @@ class Dataset:
                 "volume",
                 "price",
             }:
-                src_name = "close" if field == "price" else field
-                ctx[field if field != "price" else "price"] = ohlcv.to_series(src_name)  # type: ignore[arg-type]
+                src_name = "close" if required_field == "price" else required_field
+                key_name = "price" if required_field == "price" else required_field
+                ctx[key_name] = ohlcv.to_series(src_name)  # type: ignore[arg-type]
                 continue
             # Fallback to individual series by source
             found = False
             for key, series in self._series.items():
                 if key.symbol == symbol and key.timeframe == timeframe:
-                    wanted = field if field != "price" else "close"
+                    wanted = (
+                        required_field if required_field != "price" else "close"
+                    )
                     if key.source == wanted:
-                        ctx[field] = series  # type: ignore[assignment]
+                        ctx[required_field] = series  # type: ignore[assignment]
                         found = True
                         break
-            if not found and field == "price":
+            if not found and required_field == "price":
                 # try close as default
                 for key, series in self._series.items():
                     if (

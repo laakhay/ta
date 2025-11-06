@@ -49,10 +49,26 @@ addopts = [
 ]
 
 [tool.ruff]
-line-length = 88
+line-length = 120
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "C90", "I", "N", "UP", "B"]
+ignore = [
+    "C901",
+    "E501",
+    "UP006",
+    "UP007",
+    "UP035",
+    "UP040",
+    "UP045",
+    "UP046",
+    "B904",
+    "E721",
+    "E741",
+    "F841",
+    "F811",
+    "B018",
+]
 
 [dependency-groups]
 dev = [

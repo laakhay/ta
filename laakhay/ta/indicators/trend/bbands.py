@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from .. import register, SeriesContext, Price, Expression, Literal
-from ...primitives import rolling_mean, rolling_std  # type: ignore
 from ...core import Series
+from ...primitives import rolling_mean, rolling_std  # type: ignore
+from .. import Expression, Literal, Price, SeriesContext, register
 
 
 @register("bbands", description="Bollinger Bands with upper, middle, and lower bands")

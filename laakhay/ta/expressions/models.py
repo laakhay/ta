@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import operator as _py_operator
 from abc import ABC, abstractmethod
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -11,8 +12,8 @@ from enum import Enum
 from typing import Any
 
 from ..core import Series
-from ..core.types import Price
 from ..core.series import align_series
+from ..core.types import Price
 
 
 class OperatorType(Enum):
@@ -43,8 +44,6 @@ class OperatorType(Enum):
     NEG = "-"
     POS = "+"
 
-
-import operator as _py_operator
 
 _OPERATOR_MAP = {
     _py_operator.add: OperatorType.ADD,
@@ -88,7 +87,7 @@ def _coerce_decimal(value: Any) -> Price:
         return Price(value)
     if isinstance(value, bool):
         return Price(Decimal(1 if value else 0))
-    if isinstance(value, (int, float, str)):
+    if isinstance(value, int | float | str):
         try:
             return Price(Decimal(str(value)))
         except InvalidOperation as exc:  # pragma: no cover - defensive
@@ -414,7 +413,7 @@ class BinaryOp(ExpressionNode):
                 def _truthy(v: Any) -> bool:
                     if isinstance(v, bool):
                         return v
-                    if isinstance(v, (int, float, Decimal)):
+                    if isinstance(v, int | float | Decimal):
                         return bool(Decimal(str(v)))
                     try:
                         return bool(Decimal(str(v)))
@@ -479,7 +478,7 @@ class UnaryOp(ExpressionNode):
             def _truthy(v: Any) -> bool:
                 if isinstance(v, bool):
                     return v
-                if isinstance(v, (int, float, Decimal)):
+                if isinstance(v, int | float | Decimal):
                     return bool(Decimal(str(v)))
                 try:
                     return bool(Decimal(str(v)))

@@ -20,7 +20,7 @@ class TestParamSchema:
         )
 
         assert param.name == "period"
-        assert param.type == int
+        assert param.type is int
         assert param.required is True
         assert param.default is None
         assert param.description == "Period length"
@@ -36,7 +36,7 @@ class TestParamSchema:
         )
 
         assert param.name == "source"
-        assert param.type == str
+        assert param.type is str
         assert param.required is False
         assert param.default == "binance"
         assert param.description == "Data source"
@@ -98,7 +98,7 @@ class TestOutputSchema:
         output = OutputSchema(name="macd", type=float, description="MACD line values")
 
         assert output.name == "macd"
-        assert output.type == float
+        assert output.type is float
         assert output.description == "MACD line values"
 
     def test_output_schema_minimal(self) -> None:
@@ -106,7 +106,7 @@ class TestOutputSchema:
         output = OutputSchema(name="signal", type=bool)
 
         assert output.name == "signal"
-        assert output.type == bool
+        assert output.type is bool
         assert output.description == ""
 
     def test_output_schema_validation_errors(self) -> None:
@@ -333,7 +333,6 @@ class TestRegistryCriticalIssues:
     def test_optional_parameters_work_correctly(self):
         """Test that optional parameters work correctly."""
         from inspect import signature
-        from typing import Optional
 
         from laakhay.ta.core.series import Series
         from laakhay.ta.core.types import Price
@@ -352,7 +351,7 @@ class TestRegistryCriticalIssues:
             parameters={
                 "optional_param": ParamSchema(
                     name="optional_param",
-                    type=Optional[int],
+                    type=int | None,
                     required=False,  # Should be False for optional params
                     default=None,  # Add default for optional param
                     description="Optional param",

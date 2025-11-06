@@ -5,31 +5,32 @@ the expression system to create complex indicators.
 """
 
 from __future__ import annotations
+
+from collections.abc import Callable, Iterable
 from decimal import Decimal
-from typing import Any, Callable, Iterable, Tuple
+from typing import Any, Tuple
 
 from ..core import Series
+from ..core.series import Series as CoreSeries
 from ..core.types import Price
 from ..registry.models import SeriesContext
 from ..registry.registry import register
-from ..core.series import Series as CoreSeries
-from ..core.series import align_series as _align_series
 
 # Import kernel functions with proper type annotations
 from ._kernels import (  # type: ignore
-    _empty_like,  # type: ignore
     _build_like,  # type: ignore
     _dec,  # type: ignore
-    ew_unary,  # type: ignore
+    _empty_like,  # type: ignore
     ew_binary,  # type: ignore
-    rolling_kernel,  # type: ignore
-    rolling_sum_recipe,  # type: ignore
-    rolling_mean_recipe,  # type: ignore
-    rolling_std_recipe,  # type: ignore
-    rolling_max_deque,  # type: ignore
-    rolling_min_deque,  # type: ignore
+    ew_unary,  # type: ignore
     rolling_argmax_deque,  # type: ignore
     rolling_argmin_deque,  # type: ignore
+    rolling_kernel,  # type: ignore
+    rolling_max_deque,  # type: ignore
+    rolling_mean_recipe,  # type: ignore
+    rolling_min_deque,  # type: ignore
+    rolling_std_recipe,  # type: ignore
+    rolling_sum_recipe,  # type: ignore
 )
 
 # Type aliases for better linter support
@@ -388,7 +389,7 @@ def typical_price(ctx: SeriesContext) -> Series[Price]:
         return _empty_like(c)  # type: ignore
     out = [
         (_dec(hv) + _dec(lv) + _dec(cv)) / Decimal(3)
-        for hv, lv, cv in zip(h.values, l.values, c.values)
+        for hv, lv, cv in zip(h.values, l.values, c.values, strict=False)
     ]  # type: ignore
     res = _build_like(c, c.timestamps, out)  # type: ignore
     return CoreSeries[Price](
@@ -635,9 +636,7 @@ def sync_timeframe(
                     total = (t1 - t0).total_seconds()
                     w = (ts - t0).total_seconds() / total if total != 0 else 0.0
                     # compute Decimal blend
-                    from decimal import Decimal as D
-
-                    out_vals.append(v0 + (v1 - v0) * D(str(w)))
+                    out_vals.append(v0 + (v1 - v0) * Decimal(str(w)))
     else:
         raise ValueError("sync_timeframe fill must be 'ffill' or 'linear'")
     res = _build_like(src, ref_ts, out_vals)  # type: ignore

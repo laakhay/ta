@@ -198,7 +198,7 @@ def _node_label(node: ExpressionNode) -> str:
             return f"Literal\\nSeries({getattr(v, 'symbol', '?')} {getattr(v, 'timeframe', '?')})"
         return f"Literal\\n{str(v)[:24]}"
     if node.__class__.__name__ == "IndicatorNode" and hasattr(node, "name"):
-        return f"Indicator\\n{getattr(node, 'name')}"
+        return f"Indicator\\n{node.name}"
     return t
 
 

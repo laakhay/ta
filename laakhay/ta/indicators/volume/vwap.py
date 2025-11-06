@@ -6,9 +6,9 @@ from ...core import Series
 from ...core.types import Price
 from ...expressions.models import Literal
 from ...expressions.operators import Expression
+from ...primitives import cumulative_sum, typical_price
 from ...registry.models import SeriesContext
 from ...registry.registry import register
-from ...primitives import typical_price, cumulative_sum
 
 
 @register("vwap", description="Volume Weighted Average Price")

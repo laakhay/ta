@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from .. import register, SeriesContext, Price, Expression, Literal
-from ...primitives import rolling_ema
 from ...core import Series
+from ...primitives import rolling_ema
+from .. import Expression, Literal, Price, SeriesContext, register
 
 
 @register("macd", description="MACD (Moving Average Convergence Divergence)")

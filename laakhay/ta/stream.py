@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable, Iterable, Mapping
 from dataclasses import dataclass, field
-from typing import Any, Callable, Dict, Iterable, List, Mapping, Tuple
+from typing import Any, Dict, List, Tuple
 
 from .core import Dataset
 from .core.bar import Bar

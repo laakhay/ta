@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from collections import deque
 from typing import Any, Dict, List, Set, Tuple
 
 from ..core import Series
@@ -103,14 +102,14 @@ def _collect_requirements(graph: Graph) -> SignalRequirements:
     for node in graph.nodes.values():
         expr_node = node.node
         if _is_indicator_node(expr_node):
-            name = getattr(expr_node, "name")
+            name = expr_node.name
             handle = registry.get(name)
             metadata: IndicatorMetadata | None = (
                 handle.schema.metadata if handle else None
             )
 
             params = (
-                getattr(expr_node, "params") if hasattr(expr_node, "params") else {}
+                expr_node.params if hasattr(expr_node, "params") else {}
             )
 
             if name == "select" and "field" in params:

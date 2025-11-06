@@ -1,8 +1,10 @@
 # laakhay/ta/_kernels.py
 from __future__ import annotations
+
 from collections import deque
+from collections.abc import Callable, Iterable
 from decimal import Decimal, InvalidOperation
-from typing import Callable, Iterable, Optional, Tuple, Any
+from typing import Any, Tuple
 
 from ..core import Series
 from ..core.types import Price
@@ -11,7 +13,7 @@ DecimalOp1 = Callable[[Decimal], Decimal]
 DecimalOp2 = Callable[[Decimal, Decimal], Decimal]
 InitFn = Callable[[Iterable[Decimal]], Tuple[Any, Decimal]]
 UpdateFn = Callable[[Any, Decimal, Decimal], Tuple[Any, Decimal]]
-FinalizeFn = Callable[[Any], Optional[Decimal]]
+FinalizeFn = Callable[[Any], Decimal | None]
 
 
 def _dec(x: Any) -> Decimal:
@@ -19,7 +21,7 @@ def _dec(x: Any) -> Decimal:
         return x
     if isinstance(x, Price):
         return Decimal(str(x))
-    if isinstance(x, (int, float, str)):
+    if isinstance(x, int | float | str):
         try:
             return Decimal(str(x))
         except InvalidOperation as e:
@@ -63,7 +65,7 @@ def ew_unary(src: Series[Price], op: DecimalOp1) -> Series[Price]:
 
 def ew_binary(a: Series[Price], b: Series[Price], op: DecimalOp2) -> Series[Price]:
     _align2(a, b)
-    vals = (op(_dec(x), _dec(y)) for x, y in zip(a.values, b.values))
+    vals = (op(_dec(x), _dec(y)) for x, y in zip(a.values, b.values, strict=False))
     return _build_like(a, a.timestamps, vals)
 
 
@@ -92,10 +94,10 @@ def rolling_kernel(
     src: Series[Price],
     period: int,
     *,
-    init: Optional[InitFn] = None,
-    update: Optional[UpdateFn] = None,
-    finalize: Optional[FinalizeFn] = None,
-    window_eval: Optional[Callable[[Iterable[Decimal]], Decimal]] = None,
+    init: InitFn | None = None,
+    update: UpdateFn | None = None,
+    finalize: FinalizeFn | None = None,
+    window_eval: Callable[[Iterable[Decimal]], Decimal] | None = None,
 ) -> Series[Price]:
     """Right-aligned rolling outputs. Returns empty if len < period.
     Choose one of:

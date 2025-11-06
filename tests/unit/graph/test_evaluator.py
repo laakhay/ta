@@ -1,14 +1,16 @@
-import pytest
 import operator
+
+import pytest
+
+from laakhay.ta.expressions.models import BinaryOp, Literal, UnaryOp
 from laakhay.ta.graph.evaluator import Evaluator
 from laakhay.ta.graph.types import (
-    PlanResult,
+    AlignmentPolicy,
     Graph,
     GraphNode,
-    AlignmentPolicy,
+    PlanResult,
     SignalRequirements,
 )
-from laakhay.ta.expressions.models import Literal, BinaryOp, UnaryOp
 
 
 # Minimal mocks and helpers

@@ -3,12 +3,12 @@
 from __future__ import annotations
 
 from ...core import Series
-from ...core.types import Qty, Price
+from ...core.types import Price, Qty
 from ...expressions.models import Literal
 from ...expressions.operators import Expression
+from ...primitives import cumulative_sum, sign
 from ...registry.models import SeriesContext
 from ...registry.registry import register
-from ...primitives import cumulative_sum, sign
 
 
 @register("obv", description="On-Balance Volume indicator")

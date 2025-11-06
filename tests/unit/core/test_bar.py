@@ -61,7 +61,7 @@ class TestBar:
         assert bar.total_range == Decimal("20")  # 110-90
 
     @pytest.mark.parametrize(
-        "o,h,l,c,v,closed,exp_o,exp_v,exp_closed",
+        "o,h,low,c,v,closed,exp_o,exp_v,exp_closed",
         [
             (100, 110, 95, 105, 1000, True, "100", "1000", True),
             (
@@ -83,7 +83,7 @@ class TestBar:
         sample_datetime_utc: datetime,
         o,
         h,
-        l,
+        low,
         c,
         v,
         closed,
@@ -91,7 +91,7 @@ class TestBar:
         exp_v,
         exp_closed,
     ) -> None:
-        bar = Bar.from_raw(sample_datetime_utc, o, h, l, c, v, closed)
+        bar = Bar.from_raw(sample_datetime_utc, o, h, low, c, v, closed)
         assert bar.open == Decimal(exp_o)
         assert bar.volume == Decimal(exp_v)
         assert bar.is_closed is exp_closed

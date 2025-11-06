@@ -5,7 +5,7 @@ from decimal import Decimal
 
 import pytest
 
-from laakhay.ta import Bar, Engine, Price, dataset
+from laakhay.ta import Bar, Engine, dataset
 from laakhay.ta.core import Series
 from laakhay.ta.core.types import Price
 from laakhay.ta.expressions import BinaryOp, Literal, OperatorType

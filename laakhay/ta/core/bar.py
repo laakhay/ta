@@ -154,7 +154,7 @@ class Bar:
                     raise ValueError(
                         f"Unrecognised boolean value for 'is_closed': {is_closed_value!r}"
                     )
-            elif isinstance(is_closed_value, (int, float)):
+            elif isinstance(is_closed_value, int | float):
                 is_closed_value = bool(is_closed_value)
             else:
                 raise ValueError(

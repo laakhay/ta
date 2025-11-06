@@ -6,10 +6,10 @@ from decimal import Decimal
 from laakhay.ta.core.series import Series
 from laakhay.ta.core.types import Price
 from laakhay.ta.primitives import (
+    downsample,
     rolling_argmax,
     rolling_argmin,
     select,
-    downsample,
 )
 from laakhay.ta.registry.models import SeriesContext
 

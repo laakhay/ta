@@ -11,7 +11,6 @@ from ..core import Series
 from .models import IndicatorHandle, SeriesContext
 from .schemas import IndicatorMetadata, IndicatorSchema, OutputSchema, ParamSchema
 
-
 # Metadata hints for built-in indicators/primitives. These entries drive the
 # planner so we can infer required fields and lookback windows without relying
 # on string heuristics.

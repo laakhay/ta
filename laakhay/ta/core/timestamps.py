@@ -104,7 +104,7 @@ def coerce_timestamp(value: TimestampLike | Any, *, strict: bool = False) -> Tim
         # Treat date-only as midnight UTC
         return datetime(value.year, value.month, value.day, tzinfo=UTC)
 
-    if isinstance(value, (int, float, Decimal)):
+    if isinstance(value, int | float | Decimal):
         secs = _detect_epoch_seconds(value)
         return datetime.fromtimestamp(secs, tz=UTC)
 

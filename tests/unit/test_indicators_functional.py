@@ -5,7 +5,7 @@ from decimal import Decimal
 
 import pytest
 
-from laakhay.ta import Bar, Engine, Price, dataset, indicator
+from laakhay.ta import Bar, Engine, dataset, indicator
 from laakhay.ta.core import OHLCV, Series
 from laakhay.ta.core.types import Price
 

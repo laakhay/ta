@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from decimal import Decimal
-from typing import Literal, Dict
+from typing import Dict, Literal
 
 from ...core import Series
 from ...core.series import Series as CoreSeries

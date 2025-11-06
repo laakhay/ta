@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from decimal import Decimal
-from typing import Iterable, Literal, Dict
+from typing import Dict, Literal
 
 from ...core import Series
 from ...core.series import Series as CoreSeries

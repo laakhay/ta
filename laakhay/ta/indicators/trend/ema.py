@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from .. import register, SeriesContext, Price
-from ...primitives import rolling_ema  # type: ignore
 from ...core import Series
+from ...primitives import rolling_ema  # type: ignore
+from .. import Price, SeriesContext, register
 
 
 @register("ema", description="Exponential Moving Average over a price series")

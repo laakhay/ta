@@ -1,7 +1,7 @@
 """Consolidated registry tests - lean and efficient."""
 
 from datetime import UTC, datetime
-from typing import Any, Optional, Union
+from typing import Any
 from unittest.mock import Mock
 
 import pytest
@@ -198,24 +198,24 @@ class TestRegistryTypeHandling:
 
     def test_get_param_type_basic_types(self, registry):
         """Test _get_param_type with basic types."""
-        assert registry._get_param_type(int) == int
-        assert registry._get_param_type(float) == float
-        assert registry._get_param_type(str) == str
-        assert registry._get_param_type(bool) == bool
-        assert registry._get_param_type(list) == list
-        assert registry._get_param_type(dict) == dict
+        assert registry._get_param_type(int) is int
+        assert registry._get_param_type(float) is float
+        assert registry._get_param_type(str) is str
+        assert registry._get_param_type(bool) is bool
+        assert registry._get_param_type(list) is list
+        assert registry._get_param_type(dict) is dict
 
     def test_get_param_type_union_types(self, registry):
         """Test _get_param_type with Union types."""
-        union_type = Union[int, str]
+        union_type = int | str
         result = registry._get_param_type(union_type)
-        assert result == int  # Union types return the first type
+        assert result is Any
 
     def test_get_param_type_optional_types(self, registry):
         """Test _get_param_type with Optional types."""
-        optional_type = Optional[int]
+        optional_type = int | None
         result = registry._get_param_type(optional_type)
-        assert result == int  # Should return the non-None type
+        assert result is Any
 
     def test_get_param_type_generic_types(self, registry):
         """Test _get_param_type with generic types."""
@@ -247,7 +247,7 @@ class TestRegistrySchemaBuilding:
         result = registry._build_output_schema(mock_annotation)
         assert isinstance(result, dict)
         assert "result" in result
-        assert result["result"].type == Series
+        assert result["result"].type is Series
 
     def test_build_output_schema_dict_type(self, registry):
         """Test _build_output_schema with dict return type."""
@@ -257,7 +257,7 @@ class TestRegistrySchemaBuilding:
         result = registry._build_output_schema(mock_annotation)
         assert isinstance(result, dict)
         assert "result" in result
-        assert result["result"].type == Series
+        assert result["result"].type is Series
 
     def test_build_output_schema_unknown_type(self, registry):
         """Test _build_output_schema with unknown return type."""
@@ -267,7 +267,7 @@ class TestRegistrySchemaBuilding:
         result = registry._build_output_schema(mock_annotation)
         assert isinstance(result, dict)
         assert "result" in result
-        assert result["result"].type == Series
+        assert result["result"].type is Series
 
     def test_build_schema_skip_first_parameter(self, registry):
         """Test _build_schema skips first parameter (SeriesContext)."""

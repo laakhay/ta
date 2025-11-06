@@ -4,9 +4,9 @@ from __future__ import annotations
 
 from ...core import Series
 from ...core.types import Price
+from ...primitives import rolling_mean, true_range
 from ...registry.models import SeriesContext
 from ...registry.registry import register
-from ...primitives import true_range, rolling_mean
 
 
 @register("atr", description="Average True Range indicator")

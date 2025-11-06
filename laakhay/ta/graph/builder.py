@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import hashlib
-from dataclasses import dataclass
 from typing import Any, Dict, Tuple
 
 from ..expressions.models import BinaryOp, ExpressionNode, Literal, UnaryOp
@@ -26,7 +25,7 @@ def build_graph(root: ExpressionNode) -> Graph:
     counter = 0
 
     def _hash_value(value: Any) -> str:
-        if isinstance(value, (int, float, str)):
+        if isinstance(value, int | float | str):
             rep = str(value)
         else:
             rep = repr(value)
@@ -52,8 +51,8 @@ def build_graph(root: ExpressionNode) -> Graph:
             signature = ("Literal", literal_repr)
             children = ()
         elif _is_indicator_node(node):
-            params_sig = tuple(sorted(getattr(node, "params").items()))
-            signature = ("Indicator", getattr(node, "name"), params_sig)
+            params_sig = tuple(sorted(node.params.items()))
+            signature = ("Indicator", node.name, params_sig)
             children = ()
         else:
             # Fallback for unknown node types: use object id to keep determinism per instance

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from typing import Any, Iterable
+from collections.abc import Iterable
+from typing import Any
 
 from ..core import Bar, Price, Qty, Rate, Series, Timestamp, dataset
 from ..engine import Engine
@@ -13,16 +14,6 @@ from ..expressions import (
     as_expression,
 )
 from ..io.csv import from_csv, to_csv
-from ..primitives import cumulative_sum as _cumulative_sum
-from ..primitives import diff as _diff
-from ..primitives import negative_values as _negative_values
-from ..primitives import positive_values as _positive_values
-from ..primitives import rolling_max as _rolling_max
-from ..primitives import rolling_mean as _rolling_mean
-from ..primitives import rolling_min as _rolling_min
-from ..primitives import rolling_std as _rolling_std
-from ..primitives import rolling_sum as _rolling_sum
-from ..primitives import shift as _shift
 from ..registry import (
     IndicatorSchema,
     OutputSchema,
@@ -37,8 +28,8 @@ from ..registry import (
 )
 from .handle import IndicatorHandle
 from .namespace import (
-    TASeries,
     TANamespace,
+    TASeries,
     indicator,
     literal,
     ref,
@@ -80,7 +71,7 @@ def _call_indicator(
         )
 
     params: dict[str, Any] = {}
-    for name_key, value in zip(param_order, args):
+    for name_key, value in zip(param_order, args, strict=False):
         if value is not None:
             params[name_key] = value
     params.update(kwargs)
@@ -210,7 +201,6 @@ def vwap(*args: Any, **kwargs: Any):
 
 # Trigger indicator registrations
 from .. import indicators  # noqa: F401,E402
-
 
 __all__ = [
     "Bar",

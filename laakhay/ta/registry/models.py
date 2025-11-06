@@ -74,14 +74,14 @@ class IndicatorHandle:
 
             if not isinstance(value, expected_type):
                 # Allow some type coercion for common cases
-                if expected_type == int and isinstance(value, (float, str)):
+                if expected_type == int and isinstance(value, float | str):
                     try:
                         overrides[param_name] = int(value)
                     except (ValueError, TypeError):
                         raise ValueError(
                             f"Parameter '{param_name}' expects {expected_type.__name__}, got {type(value).__name__}"
                         )
-                elif expected_type == float and isinstance(value, (int, str)):
+                elif expected_type == float and isinstance(value, int | str):
                     try:
                         overrides[param_name] = float(value)
                     except (ValueError, TypeError):

@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
 
 import pytest
@@ -10,9 +10,9 @@ from laakhay.ta.core.types import Price
 
 def make_dataset() -> Dataset:
     timestamps = [
-        datetime(2024, 1, 1, tzinfo=timezone.utc),
-        datetime(2024, 1, 2, tzinfo=timezone.utc),
-        datetime(2024, 1, 3, tzinfo=timezone.utc),
+        datetime(2024, 1, 1, tzinfo=UTC),
+        datetime(2024, 1, 2, tzinfo=UTC),
+        datetime(2024, 1, 3, tzinfo=UTC),
     ]
     close_vals = [Price(Decimal("100")), Price(Decimal("105")), Price(Decimal("110"))]
     open_vals = [Price(Decimal("98")), Price(Decimal("104")), Price(Decimal("111"))]

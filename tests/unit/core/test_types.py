@@ -3,6 +3,7 @@
 from datetime import date, datetime
 from decimal import Decimal
 
+from laakhay.ta.core.coercers import coerce_price, coerce_qty, coerce_rate
 from laakhay.ta.core.types import (
     Price,
     PriceLike,
@@ -22,11 +23,11 @@ class TestTypes:
     def test_type_aliases(self) -> None:
         """Test that type aliases are correctly defined."""
         # Test core types
-        assert Price == Decimal
-        assert Qty == Decimal
-        assert Rate == Decimal
-        assert Symbol == str
-        assert Timestamp == datetime
+        assert Price is Decimal
+        assert Qty is Decimal
+        assert Rate is Decimal
+        assert Symbol is str
+        assert Timestamp is datetime
 
         # Test that they work as expected
         price: Price = Decimal("100.50")
@@ -46,17 +47,17 @@ class TestTypes:
         # Test PriceLike
         price_like_values = [Decimal("100"), 100, 100.5, "100.25"]
         for value in price_like_values:
-            assert isinstance(value, (PriceLike,))
+            assert isinstance(value, PriceLike)
 
         # Test QtyLike
         qty_like_values = [Decimal("1000"), 1000, 1000.5, "1000.25"]
         for value in qty_like_values:
-            assert isinstance(value, (QtyLike,))
+            assert isinstance(value, QtyLike)
 
         # Test RateLike
         rate_like_values = [Decimal("5"), 5, 5.5, "5.25"]
         for value in rate_like_values:
-            assert isinstance(value, (RateLike,))
+            assert isinstance(value, RateLike)
 
         # Test TimestampLike
         timestamp_like_values = [
@@ -65,11 +66,11 @@ class TestTypes:
             1704110400,
         ]
         for value in timestamp_like_values:
-            assert isinstance(value, (TimestampLike,))
+            assert isinstance(value, TimestampLike)
 
         # Test that date is included in TimestampLike
         date_obj = date(2024, 1, 1)
-        assert isinstance(date_obj, (TimestampLike,))
+        assert isinstance(date_obj, TimestampLike)
 
     def test_type_operations(
         self,
@@ -100,5 +101,3 @@ class TestTypes:
         assert result_rate == Decimal("10.5")
 
 
-# Import coercion functions for testing
-from laakhay.ta.core.coercers import coerce_price, coerce_qty, coerce_rate

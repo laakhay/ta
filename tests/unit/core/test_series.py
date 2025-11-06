@@ -135,8 +135,11 @@ def test_properties_nonempty_and_empty():
     ],
 )
 def test_elementwise_ops(multi_series, other_series_same_t, op, expected0, expected1):
-    left, right = multi_series, other_series_same_t
-    result = eval(f"left {op} right")
+    result = eval(
+        f"left {op} right",
+        {},
+        {"left": multi_series, "right": other_series_same_t},
+    )
     assert len(result) == 2
     assert result.values[0] == Price(expected0)
     assert result.values[1] == Price(expected1)
@@ -154,14 +157,22 @@ def test_elementwise_ops(multi_series, other_series_same_t, op, expected0, expec
     ],
 )
 def test_scalar_ops(price_series, op, scalar, expected):
-    result = eval(f"price_series {op} scalar")
+    result = eval(
+        f"price_series {op} scalar",
+        {},
+        {"price_series": price_series, "scalar": scalar},
+    )
     assert result.values[0] == Price(expected)
 
 
 @pytest.mark.parametrize("op", ["/", "%"])
 def test_zero_division_scalar(price_series, op):
     with pytest.raises(ValueError):
-        _ = eval(f"price_series {op} 0")
+        _ = eval(
+            f"price_series {op} zero",
+            {},
+            {"price_series": price_series, "zero": 0},
+        )
 
 
 @pytest.mark.parametrize("op", ["+", "-", "*", "/", "%", "**"])
@@ -169,14 +180,18 @@ def test_type_error_in_ops_with_series_values(t0, op):
     s1 = mk_series([100], (t0,), symbol="TEST", tf="1s")
     s2 = Series((t0,), ("invalid",), "TEST", "1s")
     with pytest.raises(TypeError):
-        _ = eval(f"s1 {op} s2")
+        _ = eval(f"s1 {op} s2", {}, {"s1": s1, "s2": s2})
 
 
 @pytest.mark.parametrize("rhs", ["invalid", object()])
 @pytest.mark.parametrize("op", ["+", "-", "*", "/", "%"])
 def test_type_error_in_ops_with_scalar(price_series, op, rhs):
     with pytest.raises(TypeError):
-        _ = eval(f"price_series {op} rhs")
+        _ = eval(
+            f"price_series {op} rhs",
+            {},
+            {"price_series": price_series, "rhs": rhs},
+        )
 
 
 def test_cross_instrument_arithmetic_rejected():

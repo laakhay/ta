@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from .. import register, SeriesContext, Price, rolling_mean
+from .. import Price, Series, SeriesContext, register, rolling_mean
 
 
 @register("sma", description="Simple Moving Average over a price series")

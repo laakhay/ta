@@ -1,6 +1,6 @@
 """Shared test fixtures for laakhay.ta tests."""
 
-from datetime import timezone, date, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
 from typing import Any
 
@@ -19,7 +19,7 @@ def ensure_indicators_registered():
 @pytest.fixture
 def sample_datetime_utc() -> datetime:
     """Sample UTC datetime for testing."""
-    return datetime(2024, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
+    return datetime(2024, 1, 1, 12, 0, 0, tzinfo=UTC)
 
 
 @pytest.fixture
@@ -95,7 +95,7 @@ def sample_rates() -> dict[str, int | float | str | Decimal]:
 def sample_bar_data() -> dict[str, Any]:
     """Sample bar data for testing."""
     return {
-        "ts": datetime(2024, 1, 1, 12, 0, 0, tzinfo=timezone.utc),
+        "ts": datetime(2024, 1, 1, 12, 0, 0, tzinfo=UTC),
         "open": 100,
         "high": 110,
         "low": 95,
@@ -109,7 +109,7 @@ def sample_bar_data() -> dict[str, Any]:
 def sample_bar_dict() -> dict[str, Any]:
     """Sample bar data as dictionary for testing."""
     return {
-        "ts": datetime(2024, 1, 1, 12, 0, 0, tzinfo=timezone.utc),
+        "ts": datetime(2024, 1, 1, 12, 0, 0, tzinfo=UTC),
         "open": 100,
         "high": 110,
         "low": 95,
@@ -123,7 +123,7 @@ def sample_bar_dict() -> dict[str, Any]:
 def sample_bar_dict_alternative_keys() -> dict[str, Any]:
     """Sample bar data with alternative key names for testing."""
     return {
-        "timestamp": datetime(2024, 1, 1, 12, 0, 0, tzinfo=timezone.utc),
+        "timestamp": datetime(2024, 1, 1, 12, 0, 0, tzinfo=UTC),
         "open_price": 100,
         "high_price": 110,
         "low_price": 95,
@@ -137,7 +137,7 @@ def sample_bar_dict_alternative_keys() -> dict[str, Any]:
 def sample_bar_dict_short_keys() -> dict[str, Any]:
     """Sample bar data with short key names for testing."""
     return {
-        "ts": datetime(2024, 1, 1, 12, 0, 0, tzinfo=timezone.utc),
+        "ts": datetime(2024, 1, 1, 12, 0, 0, tzinfo=UTC),
         "o": 100,
         "h": 110,
         "l": 95,
@@ -203,7 +203,7 @@ def valid_numeric_strings() -> list[str]:
 @pytest.fixture
 def sample_timestamps() -> tuple[datetime, ...]:
     """Sample timestamps for testing."""
-    base_time = datetime(2024, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
+    base_time = datetime(2024, 1, 1, 12, 0, 0, tzinfo=UTC)
     return (
         base_time,
         base_time + timedelta(hours=1),
@@ -299,7 +299,7 @@ def empty_series_data() -> dict[str, Any]:
 @pytest.fixture
 def unsorted_timestamps() -> tuple[datetime, ...]:
     """Unsorted timestamps for testing validation."""
-    base_time = datetime(2024, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
+    base_time = datetime(2024, 1, 1, 12, 0, 0, tzinfo=UTC)
     return (
         base_time + timedelta(hours=2),
         base_time,

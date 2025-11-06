@@ -7,7 +7,7 @@ import pytest
 
 from laakhay.ta.core.series import Series
 from laakhay.ta.core.types import Price
-from laakhay.ta.indicators.pattern import swing_points, swing_highs, swing_lows
+from laakhay.ta.indicators.pattern import swing_highs, swing_lows, swing_points
 from laakhay.ta.registry.models import SeriesContext
 
 

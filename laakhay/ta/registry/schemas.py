@@ -65,7 +65,7 @@ class IndicatorSchema:
         default_factory=lambda: dict[str, OutputSchema]()
     )
     aliases: list[str] = field(default_factory=lambda: list[str]())
-    metadata: "IndicatorMetadata" = field(default_factory=lambda: IndicatorMetadata())
+    metadata: IndicatorMetadata = field(default_factory=lambda: IndicatorMetadata())
     output_metadata: dict[str, dict[str, Any]] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:

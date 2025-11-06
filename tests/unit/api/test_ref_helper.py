@@ -1,6 +1,6 @@
 """Tests for the ta.ref multi-timeframe helper."""
 
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 
 import pytest
@@ -8,9 +8,6 @@ import pytest
 from laakhay.ta import ta
 from laakhay.ta.core import Dataset, Series
 from laakhay.ta.core.types import Price
-
-
-from datetime import timedelta
 
 
 def _make_series(values, step: timedelta, label: str):

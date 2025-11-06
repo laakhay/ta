@@ -6,9 +6,9 @@ from ...core import Series
 from ...core.types import Price
 from ...expressions.models import Literal
 from ...expressions.operators import Expression
+from ...primitives import rolling_max, rolling_mean, rolling_min
 from ...registry.models import SeriesContext
 from ...registry.registry import register
-from ...primitives import rolling_max, rolling_mean, rolling_min
 
 
 @register("stochastic", description="Stochastic Oscillator (%K and %D)")
@@ -66,7 +66,7 @@ def stochastic(
     low_expr = Expression(Literal(lowest_low))
 
     # Handle identical high/low case
-    if all(h == l for h, l in zip(highest_high.values, lowest_low.values)):
+    if all(h == l for h, l in zip(highest_high.values, lowest_low.values, strict=False)):
         k_series = Series[Price](
             timestamps=aligned_close.timestamps,
             values=tuple(Price("50.0") for _ in aligned_close.values),

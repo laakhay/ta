@@ -88,17 +88,17 @@ class TestOperatorType:
 
 class TestLiteral:
     def test_creation_and_describe_and_hash(self):
-        l = Literal(42)
-        assert l.value == 42
-        assert l.describe() == "42"
+        literal_node = Literal(42)
+        assert literal_node.value == 42
+        assert literal_node.describe() == "42"
         assert hash(Literal(10)) == hash(
             Literal(10)
         )  # same payload, same hash semantics
 
     def test_creation_series_and_evaluate(self):
         s = mk_series([Decimal("100")])
-        l = Literal(s)
-        out = l.evaluate({})
+        literal_node = Literal(s)
+        out = literal_node.evaluate({})
         assert (
             isinstance(out, Series)
             and len(out) == 1

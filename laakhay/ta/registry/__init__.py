@@ -3,11 +3,11 @@
 from .models import IndicatorHandle, SeriesContext
 from .registry import (
     Registry,
-    describe_indicator,
     describe_all,
-    indicator_info,
+    describe_indicator,
     get_global_registry,
     indicator,
+    indicator_info,
     list_all_names,
     list_indicators,
     register,

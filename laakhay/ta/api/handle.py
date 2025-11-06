@@ -232,7 +232,7 @@ class IndicatorHandle:
 
 
 def _to_expression(
-    value: Expression | "IndicatorHandle" | Series[Any] | float | int | Decimal,
+    value: Expression | IndicatorHandle | Series[Any] | float | int | Decimal,
 ) -> Expression:
     """Convert a value to an Expression for algebraic composition."""
     if isinstance(value, Expression):

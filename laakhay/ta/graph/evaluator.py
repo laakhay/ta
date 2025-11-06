@@ -6,9 +6,9 @@ from typing import Any
 
 from ..core import Series
 from ..core.dataset import Dataset
-from .types import PlanResult, SignalRequirements
-from ..expressions.models import BinaryOp, UnaryOp, Literal, OperatorType
 from ..core.series import align_series
+from ..expressions.models import BinaryOp, Literal, OperatorType, UnaryOp
+from .types import PlanResult, SignalRequirements
 
 
 class Evaluator:
@@ -19,7 +19,6 @@ class Evaluator:
     def evaluate(
         self, expr, data: Series[Any] | Dataset
     ) -> Series[Any] | dict[tuple[str, str, str], Series[Any]]:
-        from ..expressions.operators import Expression
 
         plan = expr._ensure_plan()
         if isinstance(data, Series):
