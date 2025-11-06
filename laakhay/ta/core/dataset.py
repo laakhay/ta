@@ -424,25 +424,33 @@ class DatasetView:
         context_dict = {}
 
         for key, series in self:
-            # Map common series types to context attributes
-            if key.source == "close" or (hasattr(series, 'values') and len(series.values) > 0):
-                context_dict["close"] = series
-            elif key.source == "high":
-                context_dict["high"] = series
-            elif key.source == "low":
-                context_dict["low"] = series
-            elif key.source == "open":
-                context_dict["open"] = series
-            elif key.source == "volume":
-                context_dict["volume"] = series
-            elif key.source == "price":
-                context_dict["price"] = series
+            if hasattr(series, "to_series"):
+                context_dict["close"] = series.to_series("close")
+                context_dict["open"] = series.to_series("open")
+                context_dict["high"] = series.to_series("high")
+                context_dict["low"] = series.to_series("low")
+                context_dict["volume"] = series.to_series("volume")
+                context_dict["price"] = series.to_series("close")
             else:
-                # Use the source name as the attribute name
-                context_dict[key.source] = series
+                if key.source == "close":
+                    context_dict["close"] = series
+                elif key.source == "high":
+                    context_dict["high"] = series
+                elif key.source == "low":
+                    context_dict["low"] = series
+                elif key.source == "open":
+                    context_dict["open"] = series
+                elif key.source == "volume":
+                    context_dict["volume"] = series
+                elif key.source == "price":
+                    context_dict["price"] = series
+                else:
+                    context_dict[key.source] = series
 
-        if not context_dict:
-            raise ValueError("No suitable series found in dataset for indicator evaluation")
+        if "close" not in context_dict and context_dict:
+            # Fallback: use the first available series as close
+            name, first_series = next(iter(context_dict.items()))
+            context_dict.setdefault("close", first_series)
 
         return SeriesContext(**context_dict)
 
