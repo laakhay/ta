@@ -13,6 +13,9 @@ from ..registry.registry import register
 from ..expressions.models import Literal
 from ..expressions.operators import Expression
 
+# Ensure namespace-level indicators (e.g., select) are registered
+from ..api.namespace import _select_indicator  # noqa: F401
+
 # Import primitives directly from the module to avoid circular imports
 from ..primitives import (
     diff, rolling_max, rolling_mean, rolling_min, rolling_sum, rolling_std, shift,
@@ -46,3 +49,4 @@ __all__ = [
     "sma", "ema", "macd", "bbands", "rsi", "stochastic", "atr", "obv", "vwap",
     "swing_points", "swing_highs", "swing_lows", "fib_retracement"
 ]
+

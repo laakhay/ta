@@ -27,6 +27,11 @@ def macd(
     if fast_period >= slow_period:
         raise ValueError("Fast period must be less than slow period")
 
+    close = ctx.close
+    if close is None or len(close) == 0:
+        empty = close.__class__(timestamps=(), values=(), symbol=close.symbol, timeframe=close.timeframe)
+        return empty, empty, empty
+
     # Calculate EMAs using rolling_ema primitive
     fast_ema = rolling_ema(ctx, fast_period)
     slow_ema = rolling_ema(ctx, slow_period)

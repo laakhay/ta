@@ -15,7 +15,12 @@ def rsi(ctx: SeriesContext, period: int = 14) -> Series[Price]:
     """
     if period <= 0:
         raise ValueError("RSI period must be positive")
-
+    close_series = ctx.close
+    if close_series is None or len(close_series) <= 1 or len(close_series) < period:
+        # Return empty series with correct meta
+        return close_series.__class__(
+            timestamps=(), values=(), symbol=close_series.symbol, timeframe=close_series.timeframe
+        )
     # Calculate price changes and separate gains/losses
     price_changes = diff(ctx)
     gains = positive_values(SeriesContext(close=price_changes))

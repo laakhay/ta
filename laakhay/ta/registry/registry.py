@@ -176,7 +176,12 @@ class Registry:
             if hasattr(return_annotation, '__origin__') and return_annotation.__origin__ is Series:
                 # Series[SomeType] - this is good
                 pass
-            elif return_annotation == Series:
+            elif (
+                return_annotation == Series
+                or getattr(return_annotation, "__name__", None) == "Series"
+                or str(return_annotation).endswith(".Series")
+                or str(return_annotation) == "Series"
+            ):
                 # Just Series - this is also good
                 pass
             elif isinstance(return_annotation, str) and return_annotation.startswith('Series['):
@@ -212,7 +217,7 @@ class Registry:
         name: str,
         description: str,
         *,
-        output_metadata: dict[str, dict[str, Any]],
+        output_metadata: dict[str, dict[str, Any]] | None = None,
     ) -> IndicatorSchema:
         """Build schema from function signature."""
         sig = inspect.signature(func)
@@ -251,7 +256,7 @@ class Registry:
             parameters=parameters,  # type: ignore[arg-type]
             outputs=outputs,
             metadata=self._infer_metadata(name),
-            output_metadata=output_metadata,
+            output_metadata=output_metadata or {},
         )
 
     def _get_param_type(self, annotation: Any) -> type:

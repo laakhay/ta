@@ -81,35 +81,47 @@ def fib_retracement(
     anchor_high_mask: list[bool] = []
     anchor_low_mask: list[bool] = []
 
-    last_high: Decimal | None = None
-    last_low: Decimal | None = None
-    last_high_idx = -1
-    last_low_idx = -1
+    current_high: Decimal | None = None
+    current_low: Decimal | None = None
+    current_high_idx = -1
+    current_low_idx = -1
 
     for idx in range(n):
         if swings.flags_high[idx]:
-            last_high = hi_vals[idx]
-            last_high_idx = idx
+            current_high = hi_vals[idx]
+            current_high_idx = idx
+        elif current_high is None or hi_vals[idx] > current_high:
+            current_high = hi_vals[idx]
+            current_high_idx = idx
+
         if swings.flags_low[idx]:
-            last_low = lo_vals[idx]
-            last_low_idx = idx
+            current_low = lo_vals[idx]
+            current_low_idx = idx
+        elif current_low is None or lo_vals[idx] < current_low:
+            current_low = lo_vals[idx]
+            current_low_idx = idx
 
-        anchor_high_vals.append(last_high if last_high is not None else hi_vals[idx])
-        anchor_low_vals.append(last_low if last_low is not None else lo_vals[idx])
-        anchor_high_mask.append(last_high is not None)
-        anchor_low_mask.append(last_low is not None)
+        anchor_high_vals.append(current_high if current_high is not None else hi_vals[idx])
+        anchor_low_vals.append(current_low if current_low is not None else lo_vals[idx])
 
+        prev_high_mask = anchor_high_mask[-1] if anchor_high_mask else False
+        prev_low_mask = anchor_low_mask[-1] if anchor_low_mask else False
+        anchor_high_confirmed = (
+            swings.flags_high[idx]
+            or (current_high is not None and current_high_idx >= 0 and swings.mask_eval[idx])
+        )
+        anchor_low_confirmed = (
+            swings.flags_low[idx]
+            or (current_low is not None and current_low_idx >= 0 and swings.mask_eval[idx])
+        )
+        anchor_high_mask.append(prev_high_mask or anchor_high_confirmed)
+        anchor_low_mask.append(prev_low_mask or anchor_low_confirmed)
     # Prepare level containers
     level_decimals = tuple(_as_decimal(lvl) for lvl in levels)
     down_values = {str(lvl): [] for lvl in level_decimals}
     down_mask = {str(lvl): [] for lvl in level_decimals}
     up_values = {str(lvl): [] for lvl in level_decimals}
     up_mask = {str(lvl): [] for lvl in level_decimals}
-
-    current_high: Decimal | None = None
-    current_low: Decimal | None = None
-    current_high_idx = -1
-    current_low_idx = -1
 
     for idx in range(n):
         if swings.flags_high[idx]:
@@ -131,16 +143,19 @@ def fib_retracement(
             for lvl in level_decimals:
                 lvl_key = str(lvl)
 
+                down_ready = anchor_high_mask[idx] and anchor_low_mask[idx]
+                up_ready = anchor_high_mask[idx] and anchor_low_mask[idx]
+
                 # Downward retracement: recent move up (high after low)
                 can_down = (
                     valid_range
                     and current_high_idx >= current_low_idx >= 0
                     and current_high > current_low
                 )
-                if can_down:
+                if can_down and down_ready:
                     down_price = current_high - (current_high - current_low) * lvl
                     down_values[lvl_key].append(down_price)
-                    down_mask[lvl_key].append(True and swings.mask_eval[idx])
+                    down_mask[lvl_key].append(True)
                 else:
                     down_values[lvl_key].append(current_high if has_high else hi_vals[idx])
                     down_mask[lvl_key].append(False)
@@ -151,10 +166,10 @@ def fib_retracement(
                     and current_low_idx >= current_high_idx >= 0
                     and current_high > current_low
                 )
-                if can_up:
+                if can_up and up_ready:
                     up_price = current_low + (current_high - current_low) * lvl
                     up_values[lvl_key].append(up_price)
-                    up_mask[lvl_key].append(True and swings.mask_eval[idx])
+                    up_mask[lvl_key].append(True)
                 else:
                     up_values[lvl_key].append(current_low if has_low else lo_vals[idx])
                     up_mask[lvl_key].append(False)

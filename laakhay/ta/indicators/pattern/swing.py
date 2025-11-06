@@ -49,6 +49,7 @@ def _compute_swings(high: Series[Price], low: Series[Price], left: int, right: i
     flags_high = [False] * n
     flags_low = [False] * n
     mask_eval = [False] * n
+    have_confirmed_high = False
 
     window = left + right
     if n <= window:
@@ -69,8 +70,9 @@ def _compute_swings(high: Series[Price], low: Series[Price], left: int, right: i
 
         if cur_high == max(hi_window) and hi_window.count(cur_high) == 1:
             flags_high[idx] = True
+            have_confirmed_high = True
 
-        if cur_low == min(lo_window) and lo_window.count(cur_low) == 1:
+        if have_confirmed_high and cur_low == min(lo_window) and lo_window.count(cur_low) == 1:
             flags_low[idx] = True
 
     return _SwingSeries(tuple(flags_high), tuple(flags_low), tuple(mask_eval))

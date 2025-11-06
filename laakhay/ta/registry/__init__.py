@@ -12,7 +12,7 @@ from .registry import (
     list_indicators,
     register,
 )
-from .schemas import IndicatorSchema, OutputSchema, ParamSchema
+from .schemas import IndicatorMetadata, IndicatorSchema, OutputSchema, ParamSchema
 
 __all__ = [
     "IndicatorHandle",
@@ -20,6 +20,7 @@ __all__ = [
     "ParamSchema",
     "OutputSchema",
     "IndicatorSchema",
+    "IndicatorMetadata",
     "Registry",
     "register",
     "indicator",

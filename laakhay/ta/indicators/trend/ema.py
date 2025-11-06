@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from .. import register, SeriesContext, Price
-from ...primitives import rolling_ema
+from ...primitives import rolling_ema  # type: ignore
 from ...core import Series
 
 
@@ -15,4 +15,4 @@ def ema(ctx: SeriesContext, period: int = 20) -> Series[Price]:
     This implementation uses the rolling_ema primitive for consistency
     and maintainability.
     """
-    return rolling_ema(ctx, period)
+    return rolling_ema(ctx, period)  # type: ignore
