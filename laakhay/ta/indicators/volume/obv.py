@@ -1,71 +1,62 @@
-"""On-Balance Volume (OBV) indicator."""
+"""On-Balance Volume (OBV) indicator using primitives."""
 
 from __future__ import annotations
 
-from decimal import Decimal
-from typing import Any
-
 from ...core import Series
 from ...core.types import Price, Qty
-from ...registry.registry import register
+from ...expressions.models import Literal
+from ...expressions.operators import Expression
+from ...primitives import cumulative_sum, sign
 from ...registry.models import SeriesContext
+from ...registry.registry import register
 
 
 @register("obv", description="On-Balance Volume indicator")
 def obv(ctx: SeriesContext) -> Series[Qty]:
     """
-    On-Balance Volume indicator.
-    
-    Calculates cumulative volume based on price direction:
+    On-Balance Volume indicator using primitives.
+
+    OBV = Cumulative sum of volume based on price direction:
     - If close > previous close: add volume
     - If close < previous close: subtract volume
     - If close = previous close: add zero
     """
-    # Get required series
-    if not hasattr(ctx, 'close') or not hasattr(ctx, 'volume'):
-        raise ValueError("OBV requires both 'close' and 'volume' series in context")
-    
-    close_series = ctx.close
-    volume_series = ctx.volume
-    
-    if len(close_series) != len(volume_series):
+    close = getattr(ctx, "close", None)
+    volume = getattr(ctx, "volume", None)
+    if close is None or volume is None:
+        raise ValueError("OBV requires both 'close' and 'volume' series")
+    if len(close) != len(volume):
         raise ValueError("Close and volume series must have the same length")
-    
-    n = len(close_series)
-    if n == 0:
-        return Series[Qty](timestamps=(), values=(), symbol=close_series.symbol, timeframe=close_series.timeframe)
-    
-    obv_values: list[Qty] = []
-    obv_stamps: list[Any] = []
-    
-    # Start with first volume value
-    obv_values.append(Qty(volume_series.values[0]))
-    obv_stamps.append(close_series.timestamps[0])
-    
-    # Calculate OBV for remaining values
-    for i in range(1, n):
-        prev_close = Decimal(str(close_series.values[i-1]))
-        curr_close = Decimal(str(close_series.values[i]))
-        curr_volume = Decimal(str(volume_series.values[i]))
-        
-        prev_obv = Decimal(str(obv_values[-1]))
-        
-        if curr_close > prev_close:
-            # Price up: add volume
-            new_obv = prev_obv + curr_volume
-        elif curr_close < prev_close:
-            # Price down: subtract volume
-            new_obv = prev_obv - curr_volume
-        else:
-            # Price unchanged: add zero
-            new_obv = prev_obv
-        
-        obv_values.append(Qty(new_obv))
-        obv_stamps.append(close_series.timestamps[i])
-    
+    if len(close) == 0:
+        return close.__class__(timestamps=(), values=(), symbol=close.symbol, timeframe=close.timeframe)
+    if len(close) == 1:
+        # For a single value, output series should also be length 1 and return input's meta
+        return close.__class__(
+            timestamps=close.timestamps,
+            values=(volume.values[0],),
+            symbol=close.symbol,
+            timeframe=close.timeframe,
+        )
+
+    # Calculate price change signs and align volume
+    price_signs = sign(ctx)
+    aligned_volume = Series[Price](
+        timestamps=ctx.volume.timestamps[1:],
+        values=ctx.volume.values[1:],
+        symbol=ctx.volume.symbol,
+        timeframe=ctx.volume.timeframe,
+    )
+
+    # Calculate directed volume: volume * sign(price_change)
+    directed_volume = (Expression(Literal(aligned_volume)) * Expression(Literal(price_signs))).evaluate({})
+
+    # Calculate OBV as cumulative sum + first volume
+    obv_series = cumulative_sum(SeriesContext(close=directed_volume))
+    first_volume = Qty(str(ctx.volume.values[0]))
+
     return Series[Qty](
-        timestamps=tuple(obv_stamps),
-        values=tuple(obv_values),
-        symbol=close_series.symbol,
-        timeframe=close_series.timeframe,
+        timestamps=(ctx.volume.timestamps[0],) + obv_series.timestamps,
+        values=(first_volume,) + tuple(Qty(str(val + first_volume)) for val in obv_series.values),
+        symbol=obv_series.symbol,
+        timeframe=obv_series.timeframe,
     )

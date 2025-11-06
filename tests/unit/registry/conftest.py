@@ -1,21 +1,22 @@
 """Shared fixtures for registry tests."""
 
-import pytest
+from datetime import UTC, datetime
 from decimal import Decimal
-from datetime import datetime, timezone
 from inspect import signature
 
-from laakhay.ta.registry.registry import Registry
-from laakhay.ta.registry.models import SeriesContext, IndicatorHandle
-from laakhay.ta.registry.schemas import ParamSchema, OutputSchema, IndicatorSchema
+import pytest
+
 from laakhay.ta.core.series import Series
 from laakhay.ta.core.types import Price
+from laakhay.ta.registry.models import IndicatorHandle, SeriesContext
+from laakhay.ta.registry.registry import Registry
+from laakhay.ta.registry.schemas import IndicatorSchema, ParamSchema
 
 
 @pytest.fixture
 def timestamp():
     """Standard timestamp for tests."""
-    return datetime(2024, 1, 1, 0, 0, 0, tzinfo=timezone.utc)
+    return datetime(2024, 1, 1, 0, 0, 0, tzinfo=UTC)
 
 
 @pytest.fixture
@@ -40,10 +41,7 @@ def registry():
 def param_schema():
     """Standard parameter schema."""
     return ParamSchema(
-        name="test_param",
-        type=float,
-        required=True,
-        description="Test parameter"
+        name="test_param", type=float, required=True, description="Test parameter"
     )
 
 
@@ -54,15 +52,17 @@ def indicator_schema(param_schema):
         name="test_indicator",
         description="Test indicator",
         parameters={"test_param": param_schema},
-        outputs={}
+        outputs={},
     )
 
 
 @pytest.fixture
 def test_function():
     """Standard test function."""
+
     def func(ctx: SeriesContext, test_param: float) -> Series[Price]:
         return Series((), (), "TEST", "1s")
+
     return func
 
 
@@ -74,5 +74,5 @@ def indicator_handle(test_function, indicator_schema):
         func=test_function,
         signature=signature(test_function),
         schema=indicator_schema,
-        aliases=[]
+        aliases=[],
     )

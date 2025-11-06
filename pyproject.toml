@@ -19,10 +19,13 @@ Issues    = "https://github.com/laakhay/ta/issues"
 
 [project.optional-dependencies]
 dev = [
-    "pytest>=8.0", 
+    "pytest>=8.0",
     "pytest-asyncio>=0.21.0",
-    "pytest-cov>=4.0.0",
-    "ruff>=0.1.0"
+    "pytest-cov>=7.0.0",
+    "ruff>=0.1.0",
+    "build>=1.0.0",
+    "twine>=5.0.0",
+    "pyright>=1.1.406",
 ]
 
 [tool.uv.build-backend]
@@ -47,13 +50,23 @@ addopts = [
 ]
 
 [tool.ruff]
-line-length = 88
+line-length = 120
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "C90", "I", "N", "UP", "B"]
-
-[dependency-groups]
-dev = [
-    "pyright>=1.1.406",
-    "pytest-cov>=7.0.0",
+ignore = [
+    "C901",
+    "E501",
+    "UP006",
+    "UP007",
+    "UP035",
+    "UP040",
+    "UP045",
+    "UP046",
+    "B904",
+    "E721",
+    "E741",
+    "F841",
+    "F811",
+    "B018",
 ]

@@ -1,30 +1,22 @@
-"""MACD (Moving Average Convergence Divergence) indicator."""
+"""MACD (Moving Average Convergence Divergence) indicator using primitives."""
 
 from __future__ import annotations
 
-from decimal import Decimal
-from typing import Any, Tuple
-
 from ...core import Series
-from ...core.types import Price
-from ...registry.registry import register
-from ...registry.models import SeriesContext
-from ...expressions.operators import Expression
-from ...expressions.models import Literal, BinaryOp, OperatorType
-from ..utils import _select_source_series
-from .ema import ema
+from ...primitives import rolling_ema
+from .. import Expression, Literal, Price, SeriesContext, register
 
 
 @register("macd", description="MACD (Moving Average Convergence Divergence)")
 def macd(
-    ctx: SeriesContext, 
-    fast_period: int = 12, 
-    slow_period: int = 26, 
-    signal_period: int = 9
-) -> Tuple[Series[Price], Series[Price], Series[Price]]:
+    ctx: SeriesContext,
+    fast_period: int = 12,
+    slow_period: int = 26,
+    signal_period: int = 9,
+) -> tuple[Series[Price], Series[Price], Series[Price]]:
     """
-    MACD indicator.
-    
+    MACD indicator using primitives.
+
     Returns (macd_line, signal_line, histogram) where:
     - macd_line = EMA(fast) - EMA(slow)
     - signal_line = EMA(macd_line)
@@ -34,36 +26,30 @@ def macd(
         raise ValueError("MACD periods must be positive")
     if fast_period >= slow_period:
         raise ValueError("Fast period must be less than slow period")
-    
-    source = _select_source_series(ctx)
-    n = len(source)
-    if n == 0:
-        empty = Series[Price](timestamps=(), values=(), symbol=source.symbol, timeframe=source.timeframe)
+
+    close = ctx.close
+    if close is None or len(close) == 0:
+        empty = close.__class__(timestamps=(), values=(), symbol=close.symbol, timeframe=close.timeframe)
         return empty, empty, empty
-    
-    # Calculate EMAs using registered ema function
-    fast_ema = ema(ctx, fast_period)
-    slow_ema = ema(ctx, slow_period)
-    
+
+    # Calculate EMAs using rolling_ema primitive
+    fast_ema = rolling_ema(ctx, fast_period)
+    slow_ema = rolling_ema(ctx, slow_period)
+
     # Use expressions to calculate MACD line (fast_ema - slow_ema)
     fast_expr = Expression(Literal(fast_ema))
     slow_expr = Expression(Literal(slow_ema))
     macd_expr = fast_expr - slow_expr
-    
+
     context = {}
     macd_line = macd_expr.evaluate(context)
-    
+
     # Calculate signal line (EMA of MACD line)
-    # Create a new context with macd_line as the source
-    from ...registry.models import SeriesContext
     macd_ctx = SeriesContext(close=macd_line)
-    signal_line = ema(macd_ctx, signal_period)
-    
+    signal_line = rolling_ema(macd_ctx, signal_period)
+
     # Use expressions to calculate histogram (macd_line - signal_line)
-    macd_expr2 = Expression(Literal(macd_line))
-    signal_expr = Expression(Literal(signal_line))
-    histogram_expr = macd_expr2 - signal_expr
-    
+    histogram_expr = Expression(Literal(macd_line)) - Expression(Literal(signal_line))
     histogram = histogram_expr.evaluate(context)
-    
+
     return macd_line, signal_line, histogram

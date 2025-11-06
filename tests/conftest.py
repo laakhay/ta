@@ -1,9 +1,10 @@
 """Shared test fixtures for laakhay.ta tests."""
 
-import pytest
-from datetime import datetime, date, timezone, timedelta
+from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
-from typing import Any, Dict, List, Union, Tuple
+from typing import Any
+
+import pytest
 
 
 @pytest.fixture(autouse=True)
@@ -11,13 +12,14 @@ def ensure_indicators_registered():
     """Ensure indicators are registered before each test."""
     # Force import of indicators to trigger registration
     from laakhay.ta import indicators  # noqa: F401
-    
+
     yield
+
 
 @pytest.fixture
 def sample_datetime_utc() -> datetime:
     """Sample UTC datetime for testing."""
-    return datetime(2024, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
+    return datetime(2024, 1, 1, 12, 0, 0, tzinfo=UTC)
 
 
 @pytest.fixture
@@ -51,7 +53,7 @@ def sample_iso_string() -> str:
 
 
 @pytest.fixture
-def sample_prices() -> Dict[str, Union[int, float, str, Decimal]]:
+def sample_prices() -> dict[str, int | float | str | Decimal]:
     """Sample price values for testing."""
     return {
         "int": 100,
@@ -64,7 +66,7 @@ def sample_prices() -> Dict[str, Union[int, float, str, Decimal]]:
 
 
 @pytest.fixture
-def sample_quantities() -> Dict[str, Union[int, float, str, Decimal]]:
+def sample_quantities() -> dict[str, int | float | str | Decimal]:
     """Sample quantity values for testing."""
     return {
         "int": 1000,
@@ -77,7 +79,7 @@ def sample_quantities() -> Dict[str, Union[int, float, str, Decimal]]:
 
 
 @pytest.fixture
-def sample_rates() -> Dict[str, Union[int, float, str, Decimal]]:
+def sample_rates() -> dict[str, int | float | str | Decimal]:
     """Sample rate values for testing."""
     return {
         "int": 5,
@@ -90,10 +92,10 @@ def sample_rates() -> Dict[str, Union[int, float, str, Decimal]]:
 
 
 @pytest.fixture
-def sample_bar_data() -> Dict[str, Any]:
+def sample_bar_data() -> dict[str, Any]:
     """Sample bar data for testing."""
     return {
-        "ts": datetime(2024, 1, 1, 12, 0, 0, tzinfo=timezone.utc),
+        "ts": datetime(2024, 1, 1, 12, 0, 0, tzinfo=UTC),
         "open": 100,
         "high": 110,
         "low": 95,
@@ -104,10 +106,10 @@ def sample_bar_data() -> Dict[str, Any]:
 
 
 @pytest.fixture
-def sample_bar_dict() -> Dict[str, Any]:
+def sample_bar_dict() -> dict[str, Any]:
     """Sample bar data as dictionary for testing."""
     return {
-        "ts": datetime(2024, 1, 1, 12, 0, 0, tzinfo=timezone.utc),
+        "ts": datetime(2024, 1, 1, 12, 0, 0, tzinfo=UTC),
         "open": 100,
         "high": 110,
         "low": 95,
@@ -118,10 +120,10 @@ def sample_bar_dict() -> Dict[str, Any]:
 
 
 @pytest.fixture
-def sample_bar_dict_alternative_keys() -> Dict[str, Any]:
+def sample_bar_dict_alternative_keys() -> dict[str, Any]:
     """Sample bar data with alternative key names for testing."""
     return {
-        "timestamp": datetime(2024, 1, 1, 12, 0, 0, tzinfo=timezone.utc),
+        "timestamp": datetime(2024, 1, 1, 12, 0, 0, tzinfo=UTC),
         "open_price": 100,
         "high_price": 110,
         "low_price": 95,
@@ -132,10 +134,10 @@ def sample_bar_dict_alternative_keys() -> Dict[str, Any]:
 
 
 @pytest.fixture
-def sample_bar_dict_short_keys() -> Dict[str, Any]:
+def sample_bar_dict_short_keys() -> dict[str, Any]:
     """Sample bar data with short key names for testing."""
     return {
-        "ts": datetime(2024, 1, 1, 12, 0, 0, tzinfo=timezone.utc),
+        "ts": datetime(2024, 1, 1, 12, 0, 0, tzinfo=UTC),
         "o": 100,
         "h": 110,
         "l": 95,
@@ -146,7 +148,7 @@ def sample_bar_dict_short_keys() -> Dict[str, Any]:
 
 
 @pytest.fixture
-def invalid_timestamp_strings() -> List[str]:
+def invalid_timestamp_strings() -> list[str]:
     """Invalid timestamp strings for testing error cases."""
     return [
         "",
@@ -160,7 +162,7 @@ def invalid_timestamp_strings() -> List[str]:
 
 
 @pytest.fixture
-def invalid_numeric_values() -> List[Any]:
+def invalid_numeric_values() -> list[Any]:
     """Invalid numeric values for testing error cases."""
     return [
         None,
@@ -172,7 +174,7 @@ def invalid_numeric_values() -> List[Any]:
 
 
 @pytest.fixture
-def valid_timestamp_strings() -> List[str]:
+def valid_timestamp_strings() -> list[str]:
     """Valid timestamp strings for testing."""
     return [
         "2024-01-01T12:00:00+00:00",
@@ -185,7 +187,7 @@ def valid_timestamp_strings() -> List[str]:
 
 
 @pytest.fixture
-def valid_numeric_strings() -> List[str]:
+def valid_numeric_strings() -> list[str]:
     """Valid numeric strings for testing."""
     return [
         "100",
@@ -196,11 +198,12 @@ def valid_numeric_strings() -> List[str]:
         "0.0",
     ]
 
+
 # Series and OHLCV test fixtures
 @pytest.fixture
-def sample_timestamps() -> Tuple[datetime, ...]:
+def sample_timestamps() -> tuple[datetime, ...]:
     """Sample timestamps for testing."""
-    base_time = datetime(2024, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
+    base_time = datetime(2024, 1, 1, 12, 0, 0, tzinfo=UTC)
     return (
         base_time,
         base_time + timedelta(hours=1),
@@ -208,8 +211,9 @@ def sample_timestamps() -> Tuple[datetime, ...]:
         base_time + timedelta(hours=3),
     )
 
+
 @pytest.fixture
-def sample_price_values() -> Tuple[Decimal, ...]:
+def sample_price_values() -> tuple[Decimal, ...]:
     """Sample price values for testing."""
     return (
         Decimal("100.00"),
@@ -218,8 +222,9 @@ def sample_price_values() -> Tuple[Decimal, ...]:
         Decimal("102.25"),
     )
 
+
 @pytest.fixture
-def sample_volumes() -> Tuple[Decimal, ...]:
+def sample_volumes() -> tuple[Decimal, ...]:
     """Sample volumes for testing."""
     return (
         Decimal("1000"),
@@ -228,18 +233,26 @@ def sample_volumes() -> Tuple[Decimal, ...]:
         Decimal("1200"),
     )
 
+
 @pytest.fixture
-def sample_series_data(sample_timestamps: Tuple[datetime, ...], sample_price_values: Tuple[Decimal, ...]) -> Dict[str, Any]:
+def sample_series_data(
+    sample_timestamps: tuple[datetime, ...], sample_price_values: tuple[Decimal, ...]
+) -> dict[str, Any]:
     """Sample series data for testing."""
     return {
         "timestamps": sample_timestamps,
         "values": sample_price_values,
         "symbol": "BTCUSDT",
-        "timeframe": "1h"
+        "timeframe": "1h",
     }
 
+
 @pytest.fixture
-def sample_ohlcv_data(sample_timestamps: Tuple[datetime, ...], sample_price_values: Tuple[Decimal, ...], sample_volumes: Tuple[Decimal, ...]) -> Dict[str, Any]:
+def sample_ohlcv_data(
+    sample_timestamps: tuple[datetime, ...],
+    sample_price_values: tuple[Decimal, ...],
+    sample_volumes: tuple[Decimal, ...],
+) -> dict[str, Any]:
     """Sample OHLCV data for testing."""
     return {
         "timestamps": sample_timestamps,
@@ -250,13 +263,19 @@ def sample_ohlcv_data(sample_timestamps: Tuple[datetime, ...], sample_price_valu
         "volumes": sample_volumes,
         "is_closed": (True, True, True, True),
         "symbol": "BTCUSDT",
-        "timeframe": "1h"
+        "timeframe": "1h",
     }
 
+
 @pytest.fixture
-def sample_bars(sample_timestamps: Tuple[datetime, ...], sample_price_values: Tuple[Decimal, ...], sample_volumes: Tuple[Decimal, ...]) -> List[Any]:
+def sample_bars(
+    sample_timestamps: tuple[datetime, ...],
+    sample_price_values: tuple[Decimal, ...],
+    sample_volumes: tuple[Decimal, ...],
+) -> list[Any]:
     """Sample Bar objects for testing."""
     from laakhay.ta.core.bar import Bar
+
     return [
         Bar(
             ts=sample_timestamps[i],
@@ -265,25 +284,22 @@ def sample_bars(sample_timestamps: Tuple[datetime, ...], sample_price_values: Tu
             low=sample_price_values[i],
             close=sample_price_values[i],
             volume=sample_volumes[i],
-            is_closed=True
+            is_closed=True,
         )
         for i in range(len(sample_timestamps))
     ]
 
-@pytest.fixture
-def empty_series_data() -> Dict[str, Any]:
-    """Empty series data for testing."""
-    return {
-        "timestamps": (),
-        "values": (),
-        "symbol": "BTCUSDT",
-        "timeframe": "1h"
-    }
 
 @pytest.fixture
-def unsorted_timestamps() -> Tuple[datetime, ...]:
+def empty_series_data() -> dict[str, Any]:
+    """Empty series data for testing."""
+    return {"timestamps": (), "values": (), "symbol": "BTCUSDT", "timeframe": "1h"}
+
+
+@pytest.fixture
+def unsorted_timestamps() -> tuple[datetime, ...]:
     """Unsorted timestamps for testing validation."""
-    base_time = datetime(2024, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
+    base_time = datetime(2024, 1, 1, 12, 0, 0, tzinfo=UTC)
     return (
         base_time + timedelta(hours=2),
         base_time,

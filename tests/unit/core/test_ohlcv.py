@@ -2,28 +2,31 @@
 
 from __future__ import annotations
 
-import pytest
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
-from datetime import datetime, timezone, timedelta
 from typing import Any
+
+import pytest
 
 from laakhay.ta.core import OHLCV
 from laakhay.ta.core.bar import Bar
 from laakhay.ta.core.types import Timestamp
 
-
-UTC = timezone.utc
+UTC = UTC
 
 
 # ---------------------------------------------------------------------
 # Helpers & fixtures
 # ---------------------------------------------------------------------
 
+
 def iso(ts: datetime) -> str:
     return ts.isoformat()
 
+
 def f(x: Decimal | float) -> float:
     return float(x)
+
 
 @pytest.fixture
 def ohlcv(sample_ohlcv_data: dict[str, Any]) -> OHLCV:
@@ -38,6 +41,7 @@ def ohlcv(sample_ohlcv_data: dict[str, Any]) -> OHLCV:
         symbol=sample_ohlcv_data["symbol"],
         timeframe=sample_ohlcv_data["timeframe"],
     )
+
 
 @pytest.fixture
 def empty_ohlcv() -> OHLCV:
@@ -58,18 +62,23 @@ def empty_ohlcv() -> OHLCV:
 # Core behavior
 # ---------------------------------------------------------------------
 
+
 class TestOHLCVCore:
     def test_creation_and_empty(self, ohlcv: OHLCV, empty_ohlcv: OHLCV) -> None:
         assert len(ohlcv) == 4 and ohlcv.length == 4 and not ohlcv.is_empty
         assert ohlcv.symbol == "BTCUSDT" and ohlcv.timeframe == "1h"
-        assert len(empty_ohlcv) == 0 and empty_ohlcv.length == 0 and empty_ohlcv.is_empty
+        assert (
+            len(empty_ohlcv) == 0 and empty_ohlcv.length == 0 and empty_ohlcv.is_empty
+        )
 
     def test_validation_errors(self, sample_timestamps: tuple[Timestamp, ...]) -> None:
         # length mismatch
-        with pytest.raises(ValueError, match="All OHLCV data columns must have the same length"):
+        with pytest.raises(
+            ValueError, match="All OHLCV data columns must have the same length"
+        ):
             OHLCV(
-                timestamps=sample_timestamps,               # e.g. 4 stamps
-                opens=(Decimal("100"),),                    # 1 value
+                timestamps=sample_timestamps,  # e.g. 4 stamps
+                opens=(Decimal("100"),),  # 1 value
                 highs=(Decimal("101"),),
                 lows=(Decimal("99"),),
                 closes=(Decimal("101"),),
@@ -146,6 +155,7 @@ class TestOHLCVCore:
 # Conversions
 # ---------------------------------------------------------------------
 
+
 class TestOHLCVConversion:
     def test_to_series(self, ohlcv: OHLCV) -> None:
         series = ohlcv.to_series()
@@ -175,11 +185,20 @@ class TestOHLCVConversion:
 # Serialization
 # ---------------------------------------------------------------------
 
+
 class TestOHLCVSerialization:
     def test_to_from_dict_roundtrip(self, ohlcv: OHLCV) -> None:
         data = ohlcv.to_dict()
         assert data["symbol"] == "BTCUSDT" and data["timeframe"] == "1h"
-        for k in ("timestamps", "opens", "highs", "lows", "closes", "volumes", "is_closed"):
+        for k in (
+            "timestamps",
+            "opens",
+            "highs",
+            "lows",
+            "closes",
+            "volumes",
+            "is_closed",
+        ):
             assert len(data[k]) == len(ohlcv)
 
         restored = OHLCV.from_dict(data)
@@ -188,7 +207,9 @@ class TestOHLCVSerialization:
         assert restored.timestamps == ohlcv.timestamps
         assert restored.opens == ohlcv.opens
 
-    def test_from_dict_defaults_is_closed_true(self, sample_ohlcv_data: dict[str, Any]) -> None:
+    def test_from_dict_defaults_is_closed_true(
+        self, sample_ohlcv_data: dict[str, Any]
+    ) -> None:
         data = {
             "timestamps": [iso(ts) for ts in sample_ohlcv_data["timestamps"]],
             "opens": [f(x) for x in sample_ohlcv_data["opens"]],

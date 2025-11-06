@@ -2,25 +2,33 @@
 
 from __future__ import annotations
 
-import pytest
+from datetime import UTC, datetime
 from decimal import Decimal
-from datetime import datetime, timezone
-from typing import Dict, Any
+from typing import Any
+
+import pytest
 
 from laakhay.ta.core.bar import Bar
 
-UTC = timezone.utc
+UTC = UTC
 
 
 # ---------------------------------------------------------------------
 # Core model
 # ---------------------------------------------------------------------
 
+
 class TestBar:
     def test_creation_and_validation(self, sample_datetime_utc: datetime) -> None:
         # happy path (coercion via from_raw)
         bar = Bar.from_raw(
-            ts=sample_datetime_utc, open=100, high=110, low=95, close=105, volume=1000, is_closed=True
+            ts=sample_datetime_utc,
+            open=100,
+            high=110,
+            low=95,
+            close=105,
+            volume=1000,
+            is_closed=True,
         )
         assert bar.ts == sample_datetime_utc
         assert bar.open == Decimal("100")
@@ -45,34 +53,54 @@ class TestBar:
     def test_properties(self, sample_datetime_utc: datetime) -> None:
         bar = Bar.from_raw(sample_datetime_utc, 100, 110, 90, 105, 1000, True)
         assert bar.hlc3 == Decimal("101.6666666666666666666666667")  # (110+90+105)/3
-        assert bar.ohlc4 == Decimal("101.25")                         # (100+110+90+105)/4
-        assert bar.hl2 == Decimal("100")                              # (110+90)/2
-        assert bar.body_size == Decimal("5")                          # |105-100|
-        assert bar.upper_wick == Decimal("5")                         # 110-max(100,105)
-        assert bar.lower_wick == Decimal("10")                        # min(100,105)-90
-        assert bar.total_range == Decimal("20")                       # 110-90
+        assert bar.ohlc4 == Decimal("101.25")  # (100+110+90+105)/4
+        assert bar.hl2 == Decimal("100")  # (110+90)/2
+        assert bar.body_size == Decimal("5")  # |105-100|
+        assert bar.upper_wick == Decimal("5")  # 110-max(100,105)
+        assert bar.lower_wick == Decimal("10")  # min(100,105)-90
+        assert bar.total_range == Decimal("20")  # 110-90
 
     @pytest.mark.parametrize(
-        "o,h,l,c,v,closed,exp_o,exp_v,exp_closed",
+        "o,h,low,c,v,closed,exp_o,exp_v,exp_closed",
         [
-            (100,   110, 95, 105, 1000, True,  "100",   "1000",   True),
-            ("100.5","110.5","95.5","105.5","1000.5", True, "100.5","1000.5", True),
-            (100.5, 110.5, 95.5, 105.5, 1000.5, False, "100.5","1000.5", False),
+            (100, 110, 95, 105, 1000, True, "100", "1000", True),
+            (
+                "100.5",
+                "110.5",
+                "95.5",
+                "105.5",
+                "1000.5",
+                True,
+                "100.5",
+                "1000.5",
+                True,
+            ),
+            (100.5, 110.5, 95.5, 105.5, 1000.5, False, "100.5", "1000.5", False),
         ],
     )
     def test_from_raw_coercion(
-        self, sample_datetime_utc: datetime, o, h, l, c, v, closed, exp_o, exp_v, exp_closed
+        self,
+        sample_datetime_utc: datetime,
+        o,
+        h,
+        low,
+        c,
+        v,
+        closed,
+        exp_o,
+        exp_v,
+        exp_closed,
     ) -> None:
-        bar = Bar.from_raw(sample_datetime_utc, o, h, l, c, v, closed)
+        bar = Bar.from_raw(sample_datetime_utc, o, h, low, c, v, closed)
         assert bar.open == Decimal(exp_o)
         assert bar.volume == Decimal(exp_v)
         assert bar.is_closed is exp_closed
 
     def test_from_dict_key_variants(
         self,
-        sample_bar_dict: Dict[str, Any],
-        sample_bar_dict_alternative_keys: Dict[str, Any],
-        sample_bar_dict_short_keys: Dict[str, Any],
+        sample_bar_dict: dict[str, Any],
+        sample_bar_dict_alternative_keys: dict[str, Any],
+        sample_bar_dict_short_keys: dict[str, Any],
     ) -> None:
         assert Bar.from_dict(sample_bar_dict).open == Decimal("100")
         assert Bar.from_dict(sample_bar_dict_alternative_keys).open == Decimal("100")
@@ -81,7 +109,15 @@ class TestBar:
     def test_repr(self, sample_datetime_utc: datetime) -> None:
         bar = Bar.from_raw(sample_datetime_utc, 100, 110, 95, 105, 1000, True)
         s = repr(bar)
-        for token in ("Bar(", "o=100", "h=110", "l=95", "c=105", "vol=1000", "closed=True"):
+        for token in (
+            "Bar(",
+            "o=100",
+            "h=110",
+            "l=95",
+            "c=105",
+            "vol=1000",
+            "closed=True",
+        ):
             assert token in s
 
     def test_edge_cases(self, sample_datetime_utc: datetime) -> None:
@@ -103,6 +139,7 @@ class TestBar:
 # Critical From-Dict behaviors (audit)
 # ---------------------------------------------------------------------
 
+
 class TestBarFromDictCriticalIssues:
     def test_preserves_falsy_values(self) -> None:
         data = {
@@ -111,7 +148,7 @@ class TestBarFromDictCriticalIssues:
             "high": 1.0,
             "low": 0.0,
             "close": 0.0,
-            "volume": 0.0,    # zero
+            "volume": 0.0,  # zero
             "is_closed": False,  # false
         }
         bar = Bar.from_dict(data)
@@ -153,7 +190,9 @@ class TestBarFromDictCriticalIssues:
             "close": 100.5,
             "volume": 1000.0,
         }
-        with pytest.raises(ValueError, match=r"Field 'low' \(alias 'low'\) cannot be None"):
+        with pytest.raises(
+            ValueError, match=r"Field 'low' \(alias 'low'\) cannot be None"
+        ):
             Bar.from_dict(data)
 
     @pytest.mark.parametrize(

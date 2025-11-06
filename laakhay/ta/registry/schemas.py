@@ -3,20 +3,22 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, Optional
+from typing import Any
+
+from ..core import Series
 
 
 @dataclass(frozen=True)
 class ParamSchema:
     """Schema definition for an indicator parameter."""
-    
+
     name: str
     type: type
-    default: Optional[Any] = None
+    default: Any | None = None
     required: bool = True
     description: str = ""
-    valid_values: Optional[list[Any]] = None
-    
+    valid_values: list[Any] | None = None
+
     def __post_init__(self) -> None:
         """Validate parameter schema."""
         if not self.name:
@@ -35,11 +37,11 @@ class ParamSchema:
 @dataclass(frozen=True)
 class OutputSchema:
     """Schema definition for an indicator output."""
-    
+
     name: str
     type: type
     description: str = ""
-    
+
     def __post_init__(self) -> None:
         """Validate output schema."""
         if not self.name:
@@ -49,13 +51,15 @@ class OutputSchema:
 @dataclass(frozen=True)
 class IndicatorSchema:
     """Complete schema for an indicator."""
-    
+
     name: str
     description: str = ""
     parameters: dict[str, ParamSchema] = field(default_factory=lambda: dict[str, ParamSchema]())
     outputs: dict[str, OutputSchema] = field(default_factory=lambda: dict[str, OutputSchema]())
     aliases: list[str] = field(default_factory=lambda: list[str]())
-    
+    metadata: IndicatorMetadata = field(default_factory=lambda: IndicatorMetadata())
+    output_metadata: dict[str, dict[str, Any]] = field(default_factory=dict)
+
     def to_dict(self) -> dict[str, Any]:
         """Convert schema to dictionary representation."""
         return {
@@ -79,8 +83,10 @@ class IndicatorSchema:
                 for name, output in self.outputs.items()
             },
             "aliases": self.aliases,
+            "metadata": self.metadata.to_dict(),
+            "output_metadata": self.output_metadata,
         }
-    
+
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> IndicatorSchema:
         """Create schema from dictionary representation."""
@@ -92,8 +98,9 @@ class IndicatorSchema:
             "bool": bool,
             "list": list,
             "dict": dict,
+            "Series": Series,
         }
-        
+
         parameters: dict[str, ParamSchema] = {}
         for name, param_data in data.get("parameters", {}).items():
             param_type_name: str = param_data["type"]
@@ -108,7 +115,7 @@ class IndicatorSchema:
                 description=param_data.get("description", ""),
                 valid_values=param_data.get("valid_values"),
             )
-        
+
         outputs: dict[str, OutputSchema] = {}
         for name, output_data in data.get("outputs", {}).items():
             output_type_name: str = output_data["type"]
@@ -120,11 +127,42 @@ class IndicatorSchema:
                 type=output_type,
                 description=output_data.get("description", ""),
             )
-        
+
         return cls(
             name=data["name"],
             description=data.get("description", ""),
             parameters=parameters,
             outputs=outputs,
             aliases=data.get("aliases", []),
+            metadata=IndicatorMetadata.from_dict(data.get("metadata", {})),
+            output_metadata=data.get("output_metadata", {}),
+        )
+
+
+@dataclass(frozen=True)
+class IndicatorMetadata:
+    """Additional metadata used by planners/requirements."""
+
+    required_fields: tuple[str, ...] = ()
+    optional_fields: tuple[str, ...] = ()
+    lookback_params: tuple[str, ...] = ()
+    default_lookback: int | None = None
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "required_fields": list(self.required_fields),
+            "optional_fields": list(self.optional_fields),
+            "lookback_params": list(self.lookback_params),
+            "default_lookback": self.default_lookback,
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> IndicatorMetadata:
+        if not data:
+            return cls()
+        return cls(
+            required_fields=tuple(data.get("required_fields", ())),
+            optional_fields=tuple(data.get("optional_fields", ())),
+            lookback_params=tuple(data.get("lookback_params", ())),
+            default_lookback=data.get("default_lookback"),
         )

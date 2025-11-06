@@ -2,31 +2,38 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterator
 from dataclasses import dataclass
-from typing import Any, Iterator, Union
+from typing import Any
 
 from .bar import Bar
-from .types import Timestamp, Symbol, Price, Qty
+from .types import Price, Qty, Symbol, Timestamp
+
 
 @dataclass(slots=True, frozen=True)
 class OHLCV:
     """Immutable OHLCV container with columnar storage."""
+
     timestamps: tuple[Timestamp, ...]  # Shared timestamps
-    opens: tuple[Price, ...]          # Open prices
-    highs: tuple[Price, ...]          # High prices
-    lows: tuple[Price, ...]           # Low prices
-    closes: tuple[Price, ...]         # Close prices
-    volumes: tuple[Qty, ...]          # Volumes
-    is_closed: tuple[bool, ...]       # Closed flags
+    opens: tuple[Price, ...]  # Open prices
+    highs: tuple[Price, ...]  # High prices
+    lows: tuple[Price, ...]  # Low prices
+    closes: tuple[Price, ...]  # Close prices
+    volumes: tuple[Qty, ...]  # Volumes
+    is_closed: tuple[bool, ...]  # Closed flags
     symbol: Symbol
     timeframe: str
 
     def __post_init__(self) -> None:
         """Validate OHLCV data integrity after initialization."""
         lengths = {
-            len(self.timestamps), len(self.opens), len(self.highs),
-            len(self.lows), len(self.closes), len(self.volumes),
-            len(self.is_closed)
+            len(self.timestamps),
+            len(self.opens),
+            len(self.highs),
+            len(self.lows),
+            len(self.closes),
+            len(self.volumes),
+            len(self.is_closed),
         }
         if len(lengths) > 1:
             raise ValueError("All OHLCV data columns must have the same length")
@@ -48,7 +55,7 @@ class OHLCV:
     def __len__(self) -> int:
         return self.length
 
-    def __getitem__(self, index: Union[int, slice]) -> Union[Bar, OHLCV]:
+    def __getitem__(self, index: int | slice) -> Bar | OHLCV:
         """Access single bar or slice the OHLCV series."""
         try:
             if isinstance(index, int):
@@ -59,7 +66,7 @@ class OHLCV:
                     low=self.lows[index],
                     close=self.closes[index],
                     volume=self.volumes[index],
-                    is_closed=self.is_closed[index]
+                    is_closed=self.is_closed[index],
                 )
             else:
                 # Handle slice case
@@ -72,7 +79,7 @@ class OHLCV:
                     volumes=self.volumes[index],
                     is_closed=self.is_closed[index],
                     symbol=self.symbol,
-                    timeframe=self.timeframe
+                    timeframe=self.timeframe,
                 )
         except (TypeError, KeyError) as e:
             if "indices must be integers or slices" in str(e):
@@ -89,14 +96,14 @@ class OHLCV:
                 low=self.lows[i],
                 close=self.closes[i],
                 volume=self.volumes[i],
-                is_closed=self.is_closed[i]
+                is_closed=self.is_closed[i],
             )
 
     def slice_by_time(self, start: Timestamp, end: Timestamp) -> OHLCV:
         """Slice OHLCV by time range using binary search for efficiency."""
         if start > end:
             raise ValueError("Start time must be <= end time")
-        
+
         # Binary search for start index
         left, right = 0, len(self.timestamps)
         while left < right:
@@ -106,7 +113,7 @@ class OHLCV:
             else:
                 right = mid
         start_idx = left
-        
+
         # Binary search for end index
         left, right = start_idx, len(self.timestamps)
         while left < right:
@@ -116,7 +123,7 @@ class OHLCV:
             else:
                 right = mid
         end_idx = left
-        
+
         return OHLCV(
             timestamps=self.timestamps[start_idx:end_idx],
             opens=self.opens[start_idx:end_idx],
@@ -126,7 +133,7 @@ class OHLCV:
             volumes=self.volumes[start_idx:end_idx],
             is_closed=self.is_closed[start_idx:end_idx],
             symbol=self.symbol,
-            timeframe=self.timeframe
+            timeframe=self.timeframe,
         )
 
     def to_series(self, field: str | None = None) -> Any:
@@ -136,40 +143,44 @@ class OHLCV:
         - If field is provided (one of: open, high, low, close, volume), return a single Series for that field
         """
         # Import here to avoid circular imports
-        from .series import PriceSeries, QtySeries, Series  # type: ignore[import-untyped]
+        from .series import (  # type: ignore[import-untyped]
+            PriceSeries,
+            QtySeries,
+            Series,
+        )
 
         if field is None:
             return {
-                'opens': PriceSeries(
+                "opens": PriceSeries(
                     timestamps=self.timestamps,
                     values=self.opens,
                     symbol=self.symbol,
-                    timeframe=self.timeframe
+                    timeframe=self.timeframe,
                 ),
-                'highs': PriceSeries(
+                "highs": PriceSeries(
                     timestamps=self.timestamps,
                     values=self.highs,
                     symbol=self.symbol,
-                    timeframe=self.timeframe
+                    timeframe=self.timeframe,
                 ),
-                'lows': PriceSeries(
+                "lows": PriceSeries(
                     timestamps=self.timestamps,
                     values=self.lows,
                     symbol=self.symbol,
-                    timeframe=self.timeframe
+                    timeframe=self.timeframe,
                 ),
-                'closes': PriceSeries(
+                "closes": PriceSeries(
                     timestamps=self.timestamps,
                     values=self.closes,
                     symbol=self.symbol,
-                    timeframe=self.timeframe
+                    timeframe=self.timeframe,
                 ),
-                'volumes': QtySeries(
+                "volumes": QtySeries(
                     timestamps=self.timestamps,
                     values=self.volumes,
                     symbol=self.symbol,
-                    timeframe=self.timeframe
-                )
+                    timeframe=self.timeframe,
+                ),
             }
 
         # Single-field mode
@@ -190,7 +201,7 @@ class OHLCV:
             timestamps=self.timestamps,
             values=values,
             symbol=self.symbol,
-            timeframe=self.timeframe
+            timeframe=self.timeframe,
         )
 
     @classmethod
@@ -198,7 +209,7 @@ class OHLCV:
         """Create OHLCV from a list of Bar objects."""
         if not bars:
             raise ValueError("Cannot create OHLCV from empty bar list")
-        
+
         timestamps = tuple(bar.ts for bar in bars)
         opens = tuple(bar.open for bar in bars)
         highs = tuple(bar.high for bar in bars)
@@ -206,7 +217,7 @@ class OHLCV:
         closes = tuple(bar.close for bar in bars)
         volumes = tuple(bar.volume for bar in bars)
         is_closed = tuple(bar.is_closed for bar in bars)
-        
+
         return cls(
             timestamps=timestamps,
             opens=opens,
@@ -216,23 +227,23 @@ class OHLCV:
             volumes=volumes,
             is_closed=is_closed,
             symbol=symbol,
-            timeframe=timeframe
+            timeframe=timeframe,
         )
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> OHLCV:
         """Create OHLCV from dictionary format."""
-        from .timestamps import coerce_timestamp
         from .coercers import coerce_price, coerce_qty
-        
-        timestamps = tuple(coerce_timestamp(ts) for ts in data['timestamps'])
-        opens = tuple(coerce_price(price) for price in data['opens'])
-        highs = tuple(coerce_price(price) for price in data['highs'])
-        lows = tuple(coerce_price(price) for price in data['lows'])
-        closes = tuple(coerce_price(price) for price in data['closes'])
-        volumes = tuple(coerce_qty(vol) for vol in data['volumes'])
-        is_closed = tuple(data.get('is_closed', [True] * len(timestamps)))
-        
+        from .timestamps import coerce_timestamp
+
+        timestamps = tuple(coerce_timestamp(ts) for ts in data["timestamps"])
+        opens = tuple(coerce_price(price) for price in data["opens"])
+        highs = tuple(coerce_price(price) for price in data["highs"])
+        lows = tuple(coerce_price(price) for price in data["lows"])
+        closes = tuple(coerce_price(price) for price in data["closes"])
+        volumes = tuple(coerce_qty(vol) for vol in data["volumes"])
+        is_closed = tuple(data.get("is_closed", [True] * len(timestamps)))
+
         return cls(
             timestamps=timestamps,
             opens=opens,
@@ -241,8 +252,8 @@ class OHLCV:
             closes=closes,
             volumes=volumes,
             is_closed=is_closed,
-            symbol=data['symbol'],
-            timeframe=data['timeframe']
+            symbol=data["symbol"],
+            timeframe=data["timeframe"],
         )
 
     # Backwards-compatible alias for single-field access
@@ -252,13 +263,13 @@ class OHLCV:
     def to_dict(self) -> dict[str, Any]:
         """Convert OHLCV to dictionary format."""
         return {
-            'timestamps': [ts.isoformat() for ts in self.timestamps],
-            'opens': [float(price) for price in self.opens],
-            'highs': [float(price) for price in self.highs],
-            'lows': [float(price) for price in self.lows],
-            'closes': [float(price) for price in self.closes],
-            'volumes': [float(vol) for vol in self.volumes],
-            'is_closed': list(self.is_closed),
-            'symbol': self.symbol,
-            'timeframe': self.timeframe
+            "timestamps": [ts.isoformat() for ts in self.timestamps],
+            "opens": [float(price) for price in self.opens],
+            "highs": [float(price) for price in self.highs],
+            "lows": [float(price) for price in self.lows],
+            "closes": [float(price) for price in self.closes],
+            "volumes": [float(vol) for vol in self.volumes],
+            "is_closed": list(self.is_closed),
+            "symbol": self.symbol,
+            "timeframe": self.timeframe,
         }

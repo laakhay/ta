@@ -1,11 +1,11 @@
 """Expression system for technical analysis computations."""
 
-from .models import ExpressionNode, BinaryOp, UnaryOp, Literal, OperatorType
+from .models import BinaryOp, ExpressionNode, Literal, OperatorType, UnaryOp
 from .operators import Expression, as_expression
 
 __all__ = [
     "ExpressionNode",
-    "BinaryOp", 
+    "BinaryOp",
     "UnaryOp",
     "Literal",
     "OperatorType",

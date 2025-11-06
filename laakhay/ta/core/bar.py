@@ -1,11 +1,12 @@
 """Bar (OHLCV) data model"""
 
 from dataclasses import dataclass
-from typing import override, Any
+from typing import Any, override
 
-from .types import Price, Qty, Timestamp, PriceLike, QtyLike, TimestampLike
 from .coercers import coerce_price, coerce_qty
 from .timestamps import coerce_timestamp
+from .types import Price, PriceLike, Qty, QtyLike, Timestamp, TimestampLike
+
 
 @dataclass(slots=True, frozen=True)
 class Bar:
@@ -43,42 +44,42 @@ class Bar:
             raise ValueError("Low must be <= open and close")
         if self.volume < 0:
             raise ValueError("Volume must be >= 0")
-    
+
     @property
     def hlc3(self) -> Price:
         """High + Low + Close / 3 (typical price)."""
         return (self.high + self.low + self.close) / 3
-    
+
     @property
     def ohlc4(self) -> Price:
         """Open + High + Low + Close / 4 (average price)."""
         return (self.open + self.high + self.low + self.close) / 4
-    
+
     @property
     def hl2(self) -> Price:
         """High + Low / 2 (mid price)."""
         return (self.high + self.low) / 2
-    
+
     @property
     def body_size(self) -> Qty:
         """|Close - Open| (absolute body size)."""
         return abs(self.close - self.open)
-    
+
     @property
     def upper_wick(self) -> Qty:
         """High - max(Open, Close) (upper wick)."""
         return self.high - max(self.open, self.close)
-    
+
     @property
     def lower_wick(self) -> Qty:
         """min(Open, Close) - Low (lower wick)."""
         return min(self.open, self.close) - self.low
-    
+
     @property
     def total_range(self) -> Qty:
         """High - Low (total range)."""
         return self.high - self.low
-    
+
     @override
     def __repr__(self) -> str:
         """Concise string representation for debugging."""
@@ -88,9 +89,17 @@ class Bar:
             f"vol={self.volume}, closed={self.is_closed})"
         )
 
-
     @classmethod
-    def from_raw(cls, ts: TimestampLike, open: PriceLike, high: PriceLike, low: PriceLike, close: PriceLike, volume: QtyLike, is_closed: bool = True) -> "Bar":
+    def from_raw(
+        cls,
+        ts: TimestampLike,
+        open: PriceLike,
+        high: PriceLike,
+        low: PriceLike,
+        close: PriceLike,
+        volume: QtyLike,
+        is_closed: bool = True,
+    ) -> "Bar":
         """Create a Bar from raw data."""
         return cls(
             ts=coerce_timestamp(ts),
@@ -111,14 +120,10 @@ class Bar:
                 if alias in data:
                     value = data[alias]
                     if value is None:
-                        raise ValueError(
-                            f"Field '{field}' (alias '{alias}') cannot be None"
-                        )
+                        raise ValueError(f"Field '{field}' (alias '{alias}') cannot be None")
                     return value
             alias_list = ", ".join(aliases)
-            raise ValueError(
-                f"Missing required field '{field}' (aliases: {alias_list})"
-            )
+            raise ValueError(f"Missing required field '{field}' (aliases: {alias_list})")
 
         def optional(aliases: list[str], default: Any) -> Any:
             for alias in aliases:
@@ -142,15 +147,11 @@ class Bar:
                 elif normalized in {"false", "0", "no", "open"}:
                     is_closed_value = False
                 else:
-                    raise ValueError(
-                        f"Unrecognised boolean value for 'is_closed': {is_closed_value!r}"
-                    )
-            elif isinstance(is_closed_value, (int, float)):
+                    raise ValueError(f"Unrecognised boolean value for 'is_closed': {is_closed_value!r}")
+            elif isinstance(is_closed_value, int | float):
                 is_closed_value = bool(is_closed_value)
             else:
-                raise ValueError(
-                    f"Unrecognised type for 'is_closed': {type(is_closed_value).__name__}"
-                )
+                raise ValueError(f"Unrecognised type for 'is_closed': {type(is_closed_value).__name__}")
 
         return cls(
             ts=coerce_timestamp(ts_value),

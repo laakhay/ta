@@ -2,29 +2,33 @@
 
 from __future__ import annotations
 
-import pytest
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
-from laakhay.ta.core import Dataset, DatasetKey, DatasetMetadata, OHLCV, Series
+import pytest
+
+from laakhay.ta.core import OHLCV, Dataset, DatasetKey, DatasetMetadata, Series
 from laakhay.ta.core.dataset import dataset as make_dataset
 from laakhay.ta.core.types import Price
 
-
-UTC = timezone.utc
+UTC = UTC
 
 
 # ---------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------
 
-def mk_series_from_fixture(sample_series_data: dict[str, Any], symbol="BTCUSDT", tf="1h"):
+
+def mk_series_from_fixture(
+    sample_series_data: dict[str, Any], symbol="BTCUSDT", tf="1h"
+):
     return Series[Price](
         timestamps=sample_series_data["timestamps"],
         values=sample_series_data["values"],
         symbol=symbol,
         timeframe=tf,
     )
+
 
 def mk_ohlcv_from_fixture(sample_ohlcv_data: dict[str, Any], symbol="BTCUSDT", tf="1h"):
     return OHLCV(
@@ -43,6 +47,7 @@ def mk_ohlcv_from_fixture(sample_ohlcv_data: dict[str, Any], symbol="BTCUSDT", t
 # ---------------------------------------------------------------------
 # DatasetKey
 # ---------------------------------------------------------------------
+
 
 class TestDatasetKey:
     def test_creation_and_defaults(self):
@@ -73,6 +78,7 @@ class TestDatasetKey:
 # ---------------------------------------------------------------------
 # DatasetMetadata
 # ---------------------------------------------------------------------
+
 
 class TestDatasetMetadata:
     def test_creation_and_defaults(self):
@@ -106,10 +112,16 @@ class TestDatasetMetadata:
 # Dataset core
 # ---------------------------------------------------------------------
 
+
 class TestDatasetCore:
     def test_empty_and_metadata(self):
         ds = Dataset()
-        assert len(ds) == 0 and ds.symbols == set() and ds.timeframes == set() and ds.sources == set()
+        assert (
+            len(ds) == 0
+            and ds.symbols == set()
+            and ds.timeframes == set()
+            and ds.sources == set()
+        )
 
         md = DatasetMetadata(description="X")
         ds2 = Dataset(metadata=md)
@@ -171,6 +183,7 @@ class TestDatasetCore:
 # DatasetView
 # ---------------------------------------------------------------------
 
+
 class TestDatasetView:
     def test_view_creation_and_symbol_filter(self, sample_series_data):
         ds = Dataset()
@@ -223,6 +236,7 @@ class TestDatasetView:
 # dataset(...) convenience
 # ---------------------------------------------------------------------
 
+
 class TestDatasetConvenience:
     def test_positional(self, sample_series_data):
         s1 = mk_series_from_fixture(sample_series_data, "BTCUSDT", "1h")
@@ -252,6 +266,7 @@ class TestDatasetConvenience:
 # Serialization
 # ---------------------------------------------------------------------
 
+
 class TestDatasetSerialization:
     def test_to_dict_and_from_dict(self, sample_series_data):
         ds = Dataset()
@@ -276,6 +291,7 @@ class TestDatasetSerialization:
 # ---------------------------------------------------------------------
 # Integration & edge behavior
 # ---------------------------------------------------------------------
+
 
 class TestDatasetIntegration:
     def test_multi_symbol_timeframe(self, sample_series_data):
@@ -312,6 +328,7 @@ class TestDatasetIntegration:
 # Critical serialization edge cases from audit
 # ---------------------------------------------------------------------
 
+
 class TestDatasetSerializationCriticalIssues:
     def test_symbol_with_underscores_roundtrips(self):
         key = DatasetKey(symbol="BTC_PERP", timeframe="1h", source="binance")
@@ -329,7 +346,12 @@ class TestDatasetSerializationCriticalIssues:
 
         # Ensure symbol preserved and retrievable
         found = None
-        for k, v in ds2._series.items():  # using internal mapping intentionally for strict check
+        for (
+            k,
+            v,
+        ) in (
+            ds2._series.items()
+        ):  # using internal mapping intentionally for strict check
             if k.symbol == "BTC_PERP":
                 found = v
                 break
@@ -337,7 +359,11 @@ class TestDatasetSerializationCriticalIssues:
 
     def test_from_dict_invalid_key_format_is_ignored(self):
         data = {
-            "metadata": {"created_at": "2024-01-01T00:00:00Z", "description": "", "tags": []},
+            "metadata": {
+                "created_at": "2024-01-01T00:00:00Z",
+                "description": "",
+                "tags": [],
+            },
             "series": {
                 "invalid_key": {  # no separators
                     "timestamps": ["2024-01-01T00:00:00+00:00"],
@@ -352,7 +378,11 @@ class TestDatasetSerializationCriticalIssues:
 
     def test_from_dict_short_key_format_is_ignored(self):
         data = {
-            "metadata": {"created_at": "2024-01-01T00:00:00Z", "description": "", "tags": []},
+            "metadata": {
+                "created_at": "2024-01-01T00:00:00Z",
+                "description": "",
+                "tags": [],
+            },
             "series": {
                 "BTC": {  # only symbol
                     "timestamps": ["2024-01-01T00:00:00+00:00"],

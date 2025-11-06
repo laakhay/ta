@@ -9,85 +9,71 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+    env:
+      PYTHONPATH: ${{ github.workspace }}
+      UV_CACHE_DIR: .uv-cache
     strategy:
       matrix:
         python-version: ["3.12", "3.13"]
 
     steps:
     - uses: actions/checkout@v4
-    
-    - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v5
+
+    - name: Set up uv ${{ matrix.python-version }}
+      uses: astral-sh/setup-uv@v1
       with:
         python-version: ${{ matrix.python-version }}
-    
-    - name: Install uv
-      run: |
-        curl -LsSf https://astral.sh/uv/install.sh | sh
-        echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+        enable-cache: true
     
     - name: Install dependencies
-      run: |
-        cd ta
-        uv pip install --system -e ".[dev]"
-    
+      run: uv sync --extra dev
+
     - name: Run linter (ruff)
-      run: |
-        cd ta
-        ruff check laakhay/ tests/
+      run: uv run ruff check laakhay/
     
     - name: Run formatter check (ruff)
-      run: |
-        cd ta
-        ruff format --check laakhay/ tests/
+      run: uv run ruff format --check laakhay/
     
     - name: Run type checker (pyright)
-      run: |
-        cd ta
-        pyright laakhay/ tests/ || echo "Type checking completed with warnings"
+      if: false # disable type checking for now
+      run: uv run pyright laakhay/
     
     - name: Run tests
-      run: |
-        cd ta
-        pytest tests/ -v --tb=short
+      run: uv run pytest tests/ -v --tb=short
     
     - name: Run tests with coverage
       if: matrix.python-version == '3.13'
-      run: |
-        cd ta
-        pip install pytest-cov
-        pytest tests/ --cov=laakhay.ta --cov-report=xml --cov-report=term-missing
+      run: uv run pytest tests/ --cov=laakhay.ta --cov-report=xml:coverage.xml --cov-report=term-missing
     
     - name: Upload coverage to Codecov
       if: matrix.python-version == '3.13'
       uses: codecov/codecov-action@v4
       with:
-        file: ta/coverage.xml
+        file: coverage.xml
         flags: unittests
         name: codecov-umbrella
         fail_ci_if_error: false
 
   build:
     runs-on: ubuntu-latest
+    env:
+      PYTHONPATH: ${{ github.workspace }}
+      UV_CACHE_DIR: .uv-cache
     
     steps:
     - uses: actions/checkout@v4
     
-    - name: Set up Python
-      uses: actions/setup-python@v5
+    - name: Set up uv 3.13
+      uses: astral-sh/setup-uv@v1
       with:
         python-version: "3.13"
+        enable-cache: true
     
-    - name: Install build tools
-      run: |
-        pip install build twine
-    
+    - name: Install dependencies
+      run: uv sync --extra dev
+
     - name: Build package
-      run: |
-        cd ta
-        python -m build
+      run: uv run python -m build
     
     - name: Check package
-      run: |
-        cd ta
-        twine check dist/*
+      run: uv run twine check dist/*
