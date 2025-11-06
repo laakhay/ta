@@ -30,6 +30,10 @@ jobs:
       run: |
         uv sync --extra dev --group dev
     
+    - name: Install project (editable)
+      run: |
+        uv pip install --editable .
+
     - name: Run linter (ruff)
       run: |
         uv run ruff check laakhay/
@@ -81,6 +85,10 @@ jobs:
       run: |
         uv sync --extra dev --group dev
     
+    - name: Install project (editable)
+      run: |
+        uv pip install --editable .
+
     - name: Build package
       run: |
         uv run python -m build
