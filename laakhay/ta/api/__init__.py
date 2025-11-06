@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Iterable
 
 from ..core import Bar, Price, Qty, Rate, Series, Timestamp, dataset
 from ..engine import Engine
@@ -29,78 +29,157 @@ from ..registry import (
     register,
 )
 from .handle import IndicatorHandle
-from .namespace import TASeries, TANamespace, indicator, literal, ta
+from .namespace import TASeries, TANamespace, indicator, literal, ref, resample, source, ta
 
 # Primitive convenience wrappers -----------------------------------------------------------
 
-def rolling_mean(period: int):
-    return indicator("rolling_mean", period=period)
+def _call_indicator(
+    name: str,
+    args: Iterable[Any],
+    kwargs: dict[str, Any],
+    param_order: tuple[str, ...] = (),
+) -> Any:
+    """Shared helper that supports both functional and handle-style calls.
+
+    Examples
+    --------
+    >>> ta.sma(20)                  # returns handle
+    >>> ta.sma(series, period=20)   # evaluates on series
+    >>> ta.sma(series, 20)          # positional period
+    >>> ta.sma(dataset, period=20)  # evaluates on dataset
+    """
+
+    args = list(args)
+    series_or_dataset: Any | None = None
+    if args and isinstance(args[0], Series):
+        series_or_dataset = args.pop(0)
+    elif args and hasattr(args[0], "to_context"):
+        # Dataset-like object (duck typing to avoid circular import)
+        series_or_dataset = args.pop(0)
+
+    if len(args) > len(param_order):
+        raise TypeError(
+            f"Too many positional arguments for indicator '{name}'. Expected at most {len(param_order)}"
+        )
+
+    params: dict[str, Any] = {}
+    for name_key, value in zip(param_order, args):
+        if value is not None:
+            params[name_key] = value
+    params.update(kwargs)
+
+    handle = indicator(name, **params)
+    if series_or_dataset is not None:
+        return handle(series_or_dataset)
+    return handle
 
 
-def rolling_sum(period: int):
-    return indicator("rolling_sum", period=period)
+# Primitive convenience wrappers -----------------------------------------------------------
+
+def rolling_mean(*args: Any, **kwargs: Any):
+    return _call_indicator("rolling_mean", args, kwargs, param_order=("period",))
 
 
-def rolling_max(period: int):
-    return indicator("max", period=period)
+def rolling_sum(*args: Any, **kwargs: Any):
+    return _call_indicator("rolling_sum", args, kwargs, param_order=("period",))
 
 
-def rolling_min(period: int):
-    return indicator("min", period=period)
+def rolling_max(*args: Any, **kwargs: Any):
+    return _call_indicator("max", args, kwargs, param_order=("period",))
 
 
-def rolling_std(period: int):
-    return indicator("rolling_std", period=period)
+def rolling_min(*args: Any, **kwargs: Any):
+    return _call_indicator("min", args, kwargs, param_order=("period",))
 
 
-def diff():
-    return indicator("diff")
+def rolling_std(*args: Any, **kwargs: Any):
+    return _call_indicator("rolling_std", args, kwargs, param_order=("period",))
 
 
-def shift(periods: int):
-    return indicator("shift", periods=periods)
+def diff(*args: Any, **kwargs: Any):
+    return _call_indicator("diff", args, kwargs)
 
 
-def cumulative_sum():
-    return indicator("cumulative_sum")
+def shift(*args: Any, **kwargs: Any):
+    return _call_indicator("shift", args, kwargs, param_order=("periods",))
 
 
-def positive_values():
-    return indicator("positive_values")
+def cumulative_sum(*args: Any, **kwargs: Any):
+    return _call_indicator("cumulative_sum", args, kwargs)
 
 
-def negative_values():
-    return indicator("negative_values")
+def positive_values(*args: Any, **kwargs: Any):
+    return _call_indicator("positive_values", args, kwargs)
 
 
-def rolling_ema(period: int = 20):
-    return indicator("rolling_ema", period=period)
+def negative_values(*args: Any, **kwargs: Any):
+    return _call_indicator("negative_values", args, kwargs)
 
 
-def true_range():
-    return indicator("true_range")
+def rolling_ema(*args: Any, **kwargs: Any):
+    return _call_indicator("rolling_ema", args, kwargs, param_order=("period",))
 
 
-def typical_price():
-    return indicator("typical_price")
+def true_range(*args: Any, **kwargs: Any):
+    return _call_indicator("true_range", args, kwargs)
 
 
-def sign():
-    return indicator("sign")
+def typical_price(*args: Any, **kwargs: Any):
+    return _call_indicator("typical_price", args, kwargs)
 
 
-def downsample(factor: int = 2, agg: str = "last", target: str = "close"):
-    return indicator("downsample", factor=factor, agg=agg, target=target)
+def sign(*args: Any, **kwargs: Any):
+    return _call_indicator("sign", args, kwargs)
 
 
-def upsample(factor: int = 2, method: str = "ffill"):
-    return indicator("upsample", factor=factor, method=method)
+def downsample(*args: Any, **kwargs: Any):
+    return _call_indicator("downsample", args, kwargs, param_order=("factor",))
 
 
-def sync_timeframe(reference: Series[Any] | None = None, fill: str = "ffill"):
-    if reference is None:
-        return indicator("sync_timeframe", fill=fill)
-    return indicator("sync_timeframe", reference=reference, fill=fill)
+def upsample(*args: Any, **kwargs: Any):
+    return _call_indicator("upsample", args, kwargs, param_order=("factor",))
+
+
+def sync_timeframe(*args: Any, **kwargs: Any):
+    return _call_indicator("sync_timeframe", args, kwargs)
+
+
+# High-level indicator shortcuts -----------------------------------------------------------
+
+def sma(*args: Any, **kwargs: Any):
+    return _call_indicator("sma", args, kwargs, param_order=("period",))
+
+
+def ema(*args: Any, **kwargs: Any):
+    return _call_indicator("ema", args, kwargs, param_order=("period",))
+
+
+def macd(*args: Any, **kwargs: Any):
+    return _call_indicator("macd", args, kwargs, param_order=("fast_period", "slow_period", "signal_period"))
+
+
+def bbands(*args: Any, **kwargs: Any):
+    return _call_indicator("bbands", args, kwargs, param_order=("period", "std_dev"))
+
+
+def rsi(*args: Any, **kwargs: Any):
+    return _call_indicator("rsi", args, kwargs, param_order=("period",))
+
+
+def stochastic(*args: Any, **kwargs: Any):
+    return _call_indicator("stochastic", args, kwargs, param_order=("k_period", "d_period"))
+
+
+def atr(*args: Any, **kwargs: Any):
+    return _call_indicator("atr", args, kwargs, param_order=("period",))
+
+
+def obv(*args: Any, **kwargs: Any):
+    return _call_indicator("obv", args, kwargs)
+
+
+def vwap(*args: Any, **kwargs: Any):
+    return _call_indicator("vwap", args, kwargs)
 
 
 # Trigger indicator registrations
@@ -114,6 +193,7 @@ __all__ = [
     "Rate",
     "Timestamp",
     "dataset",
+    "Series",
     "from_csv",
     "to_csv",
     "ParamSchema",
@@ -122,6 +202,9 @@ __all__ = [
     "register",
     "indicator",
     "literal",
+    "ref",
+    "resample",
+    "source",
     "describe_indicator",
     "describe_all",
     "indicator_info",
@@ -156,4 +239,13 @@ __all__ = [
     "downsample",
     "upsample",
     "sync_timeframe",
+    "sma",
+    "ema",
+    "macd",
+    "bbands",
+    "rsi",
+    "stochastic",
+    "atr",
+    "obv",
+    "vwap",
 ]

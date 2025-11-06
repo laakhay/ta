@@ -5,6 +5,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
+from ..core import Series
+
 
 @dataclass(frozen=True)
 class ParamSchema:
@@ -55,6 +57,8 @@ class IndicatorSchema:
     parameters: dict[str, ParamSchema] = field(default_factory=lambda: dict[str, ParamSchema]())
     outputs: dict[str, OutputSchema] = field(default_factory=lambda: dict[str, OutputSchema]())
     aliases: list[str] = field(default_factory=lambda: list[str]())
+    metadata: "IndicatorMetadata" = field(default_factory=lambda: IndicatorMetadata())
+    output_metadata: dict[str, dict[str, Any]] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
         """Convert schema to dictionary representation."""
@@ -79,6 +83,8 @@ class IndicatorSchema:
                 for name, output in self.outputs.items()
             },
             "aliases": self.aliases,
+            "metadata": self.metadata.to_dict(),
+            "output_metadata": self.output_metadata,
         }
 
     @classmethod
@@ -92,6 +98,7 @@ class IndicatorSchema:
             "bool": bool,
             "list": list,
             "dict": dict,
+            "Series": Series,
         }
 
         parameters: dict[str, ParamSchema] = {}
@@ -119,7 +126,7 @@ class IndicatorSchema:
                 name=name,
                 type=output_type,
                 description=output_data.get("description", ""),
-            )
+        )
 
         return cls(
             name=data["name"],
@@ -127,4 +134,35 @@ class IndicatorSchema:
             parameters=parameters,
             outputs=outputs,
             aliases=data.get("aliases", []),
+            metadata=IndicatorMetadata.from_dict(data.get("metadata", {})),
+            output_metadata=data.get("output_metadata", {}),
+        )
+
+
+@dataclass(frozen=True)
+class IndicatorMetadata:
+    """Additional metadata used by planners/requirements."""
+
+    required_fields: tuple[str, ...] = ()
+    optional_fields: tuple[str, ...] = ()
+    lookback_params: tuple[str, ...] = ()
+    default_lookback: int | None = None
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "required_fields": list(self.required_fields),
+            "optional_fields": list(self.optional_fields),
+            "lookback_params": list(self.lookback_params),
+            "default_lookback": self.default_lookback,
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> IndicatorMetadata:
+        if not data:
+            return cls()
+        return cls(
+            required_fields=tuple(data.get("required_fields", ())),
+            optional_fields=tuple(data.get("optional_fields", ())),
+            lookback_params=tuple(data.get("lookback_params", ())),
+            default_lookback=data.get("default_lookback"),
         )

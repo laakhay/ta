@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from decimal import Decimal
-from typing import Iterable, Literal
+from typing import Iterable, Literal, Dict
 
 from ...core import Series
 from ...core.series import Series as CoreSeries
@@ -29,7 +29,16 @@ def _make_price_series(base: Series[Price], values: Iterable[Decimal | Price], m
     )
 
 
-@register("fib_retracement", description="Compute Fibonacci retracement bands from recent swing structure")
+@register(
+    "fib_retracement",
+    description="Compute Fibonacci retracement bands from recent swing structure",
+    output_metadata={
+        "anchor_high": {"type": "price", "role": "anchor_high"},
+        "anchor_low": {"type": "price", "role": "anchor_low"},
+        "down": {"type": "dict", "role": "levels_down"},
+        "up": {"type": "dict", "role": "levels_up"},
+    },
+)
 def fib_retracement(
     ctx: SeriesContext,
     *,
@@ -37,7 +46,7 @@ def fib_retracement(
     right: int = 2,
     levels: tuple[float | Decimal, ...] = (0.382, 0.5, 0.618),
     mode: Literal["both", "down", "up"] = "both",
-) -> dict[str, Series[Price] | dict[str, Series[Price]]]:
+) -> Dict[str, Series[Price] | Dict[str, Series[Price]]]:
     """
     Derive Fibonacci retracement levels from the latest confirmed swing highs and lows.
 
@@ -180,4 +189,3 @@ def fib_retracement(
 
 
 __all__ = ["fib_retracement"]
-

@@ -5,7 +5,7 @@ from __future__ import annotations
 import pytest
 
 from laakhay.ta import Series, SeriesContext, ta  # ensure registrations
-from laakhay.ta.registry import get_global_registry
+from laakhay.ta.registry import describe_indicator, get_global_registry
 
 
 @pytest.mark.parametrize(
@@ -71,3 +71,9 @@ def test_unknown_indicator_metadata_defaults():
 
     registry._indicators.pop("_meta_test_unknown", None)
     registry._aliases.pop("_meta_test_unknown", None)
+
+
+def test_output_metadata_exposed():
+    schema = describe_indicator("swing_points")
+    assert schema.output_metadata["swing_high"]["role"] == "level"
+    assert schema.output_metadata["swing_low"]["polarity"] == "low"

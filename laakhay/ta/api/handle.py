@@ -9,7 +9,7 @@ from ..core import Dataset, Series
 from ..core.types import Price
 from ..expressions import Expression, as_expression
 from ..expressions.models import BinaryOp, ExpressionNode, Literal, OperatorType, UnaryOp
-from ..expressions.requirements import SignalRequirements, compute_requirements
+from ..graph.types import SignalRequirements
 from ..registry.models import SeriesContext
 from ..registry.registry import get_global_registry
 
@@ -62,10 +62,12 @@ class IndicatorHandle:
         self._schema = self._get_schema()
 
     def _get_schema(self) -> dict[str, Any]:
+        registry_schema = self._registry_handle.schema
         return {
             "name": self.name,
             "params": self.params,
             "description": getattr(self._registry_handle.func, "__doc__", "No description available"),
+            "output_metadata": getattr(registry_schema, "output_metadata", {}),
         }
 
     def __call__(self, dataset: Dataset | Series[Price]) -> Series[Price]:
@@ -101,7 +103,7 @@ class IndicatorHandle:
         return f"{self.name}({params_str})"
 
     def requirements(self) -> SignalRequirements:
-        return compute_requirements(self._to_expression()._node)
+        return self._to_expression().requirements()
 
     # Algebraic operators -------------------------------------------------------------------
 

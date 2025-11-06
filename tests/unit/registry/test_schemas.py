@@ -2,7 +2,7 @@
 
 import pytest
 
-from laakhay.ta.registry import IndicatorSchema, OutputSchema, ParamSchema
+from laakhay.ta.registry import IndicatorMetadata, IndicatorSchema, OutputSchema, ParamSchema
 
 
 class TestParamSchema:
@@ -137,6 +137,7 @@ class TestIndicatorSchema:
         assert len(schema.parameters) == 1
         assert len(schema.outputs) == 1
         assert schema.aliases == ["simple_ma", "moving_average"]
+        assert isinstance(schema.metadata, IndicatorMetadata)
 
     def test_indicator_schema_minimal(self) -> None:
         """Test indicator schema with minimal fields."""
@@ -162,7 +163,8 @@ class TestIndicatorSchema:
             name="rsi",
             description="Relative Strength Index",
             parameters={"period": param},
-            outputs={"rsi": output}
+            outputs={"rsi": output},
+            output_metadata={"rsi": {"type": "price", "role": "oscillator"}},
         )
 
         result = schema.to_dict()
@@ -174,6 +176,9 @@ class TestIndicatorSchema:
         assert result["parameters"]["period"]["required"] is True
         assert "rsi" in result["outputs"]
         assert result["outputs"]["rsi"]["type"] == "float"
+        assert "metadata" in result
+        assert result["metadata"]["required_fields"] == []
+        assert result["output_metadata"]["rsi"]["role"] == "oscillator"
 
     def test_indicator_schema_from_dict(self) -> None:
         """Test schema deserialization from dictionary."""
@@ -193,7 +198,9 @@ class TestIndicatorSchema:
                     "description": "SMA values"
                 }
             },
-            "aliases": ["simple_ma"]
+            "aliases": ["simple_ma"],
+            "metadata": {"required_fields": [], "optional_fields": [], "lookback_params": [], "default_lookback": None},
+            "output_metadata": {"sma": {"type": "price", "role": "level"}},
         }
 
         schema = IndicatorSchema.from_dict(data)
@@ -207,6 +214,8 @@ class TestIndicatorSchema:
         assert "sma" in schema.outputs
         assert schema.outputs["sma"].type == float
         assert schema.aliases == ["simple_ma"]
+        assert isinstance(schema.metadata, IndicatorMetadata)
+        assert schema.output_metadata["sma"]["role"] == "level"
 
     def test_indicator_schema_round_trip(self) -> None:
         """Test schema serialization round-trip."""
@@ -225,7 +234,8 @@ class TestIndicatorSchema:
             description="MACD indicator",
             parameters={"fast": param},
             outputs={"macd": output},
-            aliases=["macd_line"]
+            aliases=["macd_line"],
+            output_metadata={"macd": {"type": "float", "role": "line"}},
         )
 
         # Round-trip through dict
@@ -237,6 +247,8 @@ class TestIndicatorSchema:
         assert len(restored.parameters) == len(original.parameters)
         assert len(restored.outputs) == len(original.outputs)
         assert restored.aliases == original.aliases
+        assert isinstance(restored.metadata, IndicatorMetadata)
+        assert restored.output_metadata == {"macd": {"type": "float", "role": "line"}}
 
     def test_indicator_schema_from_dict_validation_errors(self) -> None:
         """Test schema deserialization validation errors."""

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from decimal import Decimal
-from typing import Literal
+from typing import Literal, Dict
 
 from ...core import Series
 from ...core.series import Series as CoreSeries
@@ -110,7 +110,7 @@ def _build_result(
     *,
     return_mode: Literal["flags", "levels"],
     subset: Literal["both", "high", "low"],
-) -> dict[str, Series[Price] | Series[bool]]:
+) -> Dict[str, Series]:
     high, low = _validate_inputs(ctx, left, right)
     result = _compute_swings(high, low, left, right)
 
@@ -122,7 +122,7 @@ def _build_result(
     swing_high = _make_flag_series(high, result.flags_high, result.mask_eval, inherit_prices=inherit_prices)
     swing_low = _make_flag_series(low, result.flags_low, result.mask_eval, inherit_prices=inherit_prices)
 
-    output: dict[str, Series[Price] | Series[bool]] = {}
+    output: Dict[str, Series] = {}
     if subset in {"both", "high"}:
         output["swing_high"] = swing_high
     if subset in {"both", "low"}:
@@ -130,14 +130,21 @@ def _build_result(
     return output
 
 
-@register("swing_points", description="Detect swing highs and lows using fractal-style lookbacks")
+@register(
+    "swing_points",
+    description="Detect swing highs and lows using fractal-style lookbacks",
+    output_metadata={
+        "swing_high": {"type": "price", "role": "level", "polarity": "high"},
+        "swing_low": {"type": "price", "role": "level", "polarity": "low"},
+    },
+)
 def swing_points(
     ctx: SeriesContext,
     *,
     left: int = 2,
     right: int = 2,
     return_mode: Literal["flags", "levels"] = "flags",
-) -> dict[str, Series[Price] | Series[bool]]:
+) -> Dict[str, Series]:
     """
     Identify swing highs and lows using configurable lookback widths.
 
@@ -153,7 +160,11 @@ def swing_points(
     return _build_result(ctx, left, right, return_mode=return_mode, subset="both")
 
 
-@register("swing_highs", description="Detect swing highs using fractal-style lookbacks")
+@register(
+    "swing_highs",
+    description="Detect swing highs using fractal-style lookbacks",
+    output_metadata={"result": {"type": "price", "role": "level", "polarity": "high"}},
+)
 def swing_highs(
     ctx: SeriesContext,
     *,
@@ -165,7 +176,11 @@ def swing_highs(
     return result["swing_high"]
 
 
-@register("swing_lows", description="Detect swing lows using fractal-style lookbacks")
+@register(
+    "swing_lows",
+    description="Detect swing lows using fractal-style lookbacks",
+    output_metadata={"result": {"type": "price", "role": "level", "polarity": "low"}},
+)
 def swing_lows(
     ctx: SeriesContext,
     *,

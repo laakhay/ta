@@ -78,7 +78,8 @@ class Registry:
         func: Callable[..., Any],
         name: str | None = None,
         aliases: list[str] | None = None,
-        description: str | None = None
+        description: str | None = None,
+        output_metadata: dict[str, dict[str, Any]] | None = None,
     ) -> Callable[..., Any]:
         """Register an indicator function."""
         with self._lock:
@@ -90,7 +91,12 @@ class Registry:
             self._validate_function(func)
 
             # Build schema from function signature and docstring
-            schema = self._build_schema(func, name, description or func.__doc__ or "")
+            schema = self._build_schema(
+                func,
+                name,
+                description or func.__doc__ or "",
+                output_metadata=output_metadata or {},
+            )
 
             # Create handle
             handle = IndicatorHandle(
@@ -179,6 +185,12 @@ class Registry:
             elif isinstance(return_annotation, str) and return_annotation.startswith('Tuple['):
                 # String annotation like "Tuple[Series[Price], ...]" - this is good
                 pass
+            elif isinstance(return_annotation, str) and (
+                return_annotation.startswith('Dict[') or
+                return_annotation.startswith('dict[')
+            ):
+                # String annotation like "Dict[str, Series[Price]]" - allow
+                pass
             elif hasattr(return_annotation, '__origin__') and getattr(return_annotation, '__origin__', None) is tuple:
                 # Tuple return type for multi-output indicators - this is good
                 pass
@@ -198,7 +210,9 @@ class Registry:
         self,
         func: Callable[..., Any],
         name: str,
-        description: str
+        description: str,
+        *,
+        output_metadata: dict[str, dict[str, Any]],
     ) -> IndicatorSchema:
         """Build schema from function signature."""
         sig = inspect.signature(func)
@@ -236,7 +250,8 @@ class Registry:
             description=description.strip(),
             parameters=parameters,  # type: ignore[arg-type]
             outputs=outputs,
-            metadata=self._infer_metadata(name)
+            metadata=self._infer_metadata(name),
+            output_metadata=output_metadata,
         )
 
     def _get_param_type(self, annotation: Any) -> type:
@@ -398,11 +413,18 @@ def reset_global_registry() -> None:
 def register(
     name: str | None = None,
     aliases: list[str] | None = None,
-    description: str | None = None
+    description: str | None = None,
+    output_metadata: dict[str, dict[str, Any]] | None = None,
 ) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
     """Decorator to register an indicator function."""
     def decorator(func: Callable[..., Any]) -> Callable[..., Any]:
-        return get_global_registry().register(func, name, aliases, description)
+        return get_global_registry().register(
+            func,
+            name,
+            aliases,
+            description,
+            output_metadata=output_metadata,
+        )
     return decorator
 
 
