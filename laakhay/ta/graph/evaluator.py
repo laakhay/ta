@@ -16,10 +16,7 @@ class Evaluator:
         # Per-node cache: (graph_hash, node_id, alignment, symbol, timeframe) -> output
         self._cache: dict[tuple, Any] = {}
 
-    def evaluate(
-        self, expr, data: Series[Any] | Dataset
-    ) -> Series[Any] | dict[tuple[str, str, str], Series[Any]]:
-
+    def evaluate(self, expr, data: Series[Any] | Dataset) -> Series[Any] | dict[tuple[str, str, str], Series[Any]]:
         plan = expr._ensure_plan()
         if isinstance(data, Series):
             context: dict[str, Series[Any]] = {"close": data}
@@ -29,9 +26,7 @@ class Evaluator:
             return self._evaluate_dataset(expr, plan, data)
         raise TypeError("Evaluator expects Series or Dataset")
 
-    def _evaluate_dataset(
-        self, expr, plan: PlanResult, dataset: Dataset
-    ) -> dict[tuple[str, str, str], Series[Any]]:
+    def _evaluate_dataset(self, expr, plan: PlanResult, dataset: Dataset) -> dict[tuple[str, str, str], Series[Any]]:
         if dataset.is_empty:
             return {}
 
@@ -52,9 +47,7 @@ class Evaluator:
                 results[(symbol, timeframe, "default")] = self._cache[node_cache_key]
                 continue
             context = dataset.build_context(symbol, timeframe, required_fields)
-            context_dict = {
-                name: getattr(context, name) for name in context.available_series
-            }
+            context_dict = {name: getattr(context, name) for name in context.available_series}
             output = self._evaluate_graph(plan, context_dict, symbol, timeframe)
             results[(symbol, timeframe, "default")] = output
         return results

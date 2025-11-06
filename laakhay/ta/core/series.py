@@ -20,9 +20,7 @@ class Series(Generic[T]):
     values: tuple[T, ...]  # Corresponding values
     symbol: Symbol  # Trading symbol
     timeframe: str  # Timeframe (e.g., '1h', '4h')
-    availability_mask: tuple[bool, ...] | None = (
-        None  # True where value is valid/available
-    )
+    availability_mask: tuple[bool, ...] | None = None  # True where value is valid/available
 
     def __post_init__(self) -> None:
         """Validate series data integrity after initialization."""
@@ -30,17 +28,10 @@ class Series(Generic[T]):
             raise ValueError("Timestamps and values must have the same length")
 
         if len(self.timestamps) > 1:
-            if any(
-                later < earlier
-                for earlier, later in zip(
-                    self.timestamps, self.timestamps[1:], strict=False
-                )
-            ):
+            if any(later < earlier for earlier, later in zip(self.timestamps, self.timestamps[1:], strict=False)):
                 raise ValueError("Timestamps must be sorted")
 
-        if self.availability_mask is not None and len(self.availability_mask) != len(
-            self.timestamps
-        ):
+        if self.availability_mask is not None and len(self.availability_mask) != len(self.timestamps):
             raise ValueError("Availability mask must match length of series")
 
     @property
@@ -88,9 +79,7 @@ class Series(Generic[T]):
                     new_values_list.append(v1 + v2)  # type: ignore
                 new_values = tuple(new_values_list)  # type: ignore[misc]
             except TypeError:
-                raise TypeError(
-                    f"Cannot add series values of types {type(self.values[0])} and {type(other.values[0])}"
-                )
+                raise TypeError(f"Cannot add series values of types {type(self.values[0])} and {type(other.values[0])}")
 
             return Series[T](
                 timestamps=self.timestamps,
@@ -137,9 +126,7 @@ class Series(Generic[T]):
                 values=new_values,  # type: ignore[arg-type]
                 symbol=self.symbol,
                 timeframe=self.timeframe,
-                availability_mask=_and_masks(
-                    self.availability_mask, other.availability_mask
-                ),
+                availability_mask=_and_masks(self.availability_mask, other.availability_mask),
             )
         else:
             try:
@@ -178,9 +165,7 @@ class Series(Generic[T]):
                 values=new_values,  # type: ignore[arg-type]
                 symbol=self.symbol,
                 timeframe=self.timeframe,
-                availability_mask=_and_masks(
-                    self.availability_mask, other.availability_mask
-                ),
+                availability_mask=_and_masks(self.availability_mask, other.availability_mask),
             )
         else:
             try:
@@ -221,9 +206,7 @@ class Series(Generic[T]):
                 values=new_values,  # type: ignore[arg-type]
                 symbol=self.symbol,
                 timeframe=self.timeframe,
-                availability_mask=_and_masks(
-                    self.availability_mask, other.availability_mask
-                ),
+                availability_mask=_and_masks(self.availability_mask, other.availability_mask),
             )
         else:
             try:
@@ -250,13 +233,9 @@ class Series(Generic[T]):
         if isinstance(other, Series):
             self._validate_series_alignment(other, operation="modulo")
             try:
-                new_values = tuple(
-                    v1 % v2 for v1, v2 in zip(self.values, other.values, strict=False)
-                )  # type: ignore[misc]
+                new_values = tuple(v1 % v2 for v1, v2 in zip(self.values, other.values, strict=False))  # type: ignore[misc]
             except (ZeroDivisionError, decimal.InvalidOperation):
-                raise ValueError(
-                    "Cannot perform modulo with zero divisor in series"
-                ) from None
+                raise ValueError("Cannot perform modulo with zero divisor in series") from None
             except TypeError:
                 raise TypeError(
                     f"Cannot perform modulo on series values of types {type(self.values[0])} and {type(other.values[0])}"
@@ -267,9 +246,7 @@ class Series(Generic[T]):
                 values=new_values,  # type: ignore[arg-type]
                 symbol=self.symbol,
                 timeframe=self.timeframe,
-                availability_mask=_and_masks(
-                    self.availability_mask, other.availability_mask
-                ),
+                availability_mask=_and_masks(self.availability_mask, other.availability_mask),
             )
         else:
             try:
@@ -295,9 +272,7 @@ class Series(Generic[T]):
         if isinstance(other, Series):
             self._validate_series_alignment(other, operation="power")
             try:
-                new_values = tuple(
-                    v1**v2 for v1, v2 in zip(self.values, other.values, strict=False)
-                )  # type: ignore[misc]
+                new_values = tuple(v1**v2 for v1, v2 in zip(self.values, other.values, strict=False))  # type: ignore[misc]
             except TypeError:
                 raise TypeError(
                     f"Cannot perform power on series values of types {type(self.values[0])} and {type(other.values[0])}"
@@ -333,9 +308,7 @@ class Series(Generic[T]):
                 new_values_list.append(-v)  # type: ignore
             new_values = tuple(new_values_list)  # type: ignore[misc]
         except TypeError:
-            raise TypeError(
-                f"Cannot negate series values of type {type(self.values[0]) if self.values else 'unknown'}"
-            )
+            raise TypeError(f"Cannot negate series values of type {type(self.values[0]) if self.values else 'unknown'}")
         return Series[T](
             timestamps=self.timestamps,
             values=new_values,  # type: ignore[arg-type]
@@ -393,9 +366,7 @@ class Series(Generic[T]):
             "values": list(self.values),
             "symbol": self.symbol,
             "timeframe": self.timeframe,
-            "availability_mask": list(self.availability_mask)
-            if self.availability_mask is not None
-            else None,
+            "availability_mask": list(self.availability_mask) if self.availability_mask is not None else None,
         }
 
     @classmethod
@@ -411,11 +382,7 @@ class Series(Generic[T]):
             values=values,
             symbol=data["symbol"],
             timeframe=data["timeframe"],
-            availability_mask=(
-                tuple(data["availability_mask"])
-                if data.get("availability_mask") is not None
-                else None
-            ),
+            availability_mask=(tuple(data["availability_mask"]) if data.get("availability_mask") is not None else None),
         )
 
     def _validate_series_alignment(self, other: Series[Any], *, operation: str) -> None:
@@ -426,18 +393,12 @@ class Series(Generic[T]):
                 f"({self.symbol},{self.timeframe}) vs ({other.symbol},{other.timeframe})"
             )
         if len(self) != len(other):
-            raise ValueError(
-                f"Cannot {operation} series with different lengths: {len(self)} vs {len(other)}"
-            )
+            raise ValueError(f"Cannot {operation} series with different lengths: {len(self)} vs {len(other)}")
         if self.timestamps != other.timestamps:
-            raise ValueError(
-                f"Cannot {operation} series with different timestamp alignment"
-            )
+            raise ValueError(f"Cannot {operation} series with different timestamp alignment")
 
 
-def _and_masks(
-    a: tuple[bool, ...] | None, b: tuple[bool, ...] | None
-) -> tuple[bool, ...] | None:
+def _and_masks(a: tuple[bool, ...] | None, b: tuple[bool, ...] | None) -> tuple[bool, ...] | None:
     if a is None and b is None:
         return None
     if a is None:
@@ -488,24 +449,18 @@ def align_series(
 
     supported_how = {"inner", "outer", "left", "right"}
     if how not in supported_how:
-        raise ValueError(
-            f"Unsupported alignment strategy '{how}'. Expected one of {supported_how}."
-        )
+        raise ValueError(f"Unsupported alignment strategy '{how}'. Expected one of {supported_how}.")
 
     if symbol is None:
         if left.symbol != right.symbol:
-            raise ValueError(
-                "Series have different symbols; provide 'symbol' to align under a common identifier."
-            )
+            raise ValueError("Series have different symbols; provide 'symbol' to align under a common identifier.")
         target_symbol = left.symbol
     else:
         target_symbol = symbol
 
     if timeframe is None:
         if left.timeframe != right.timeframe:
-            raise ValueError(
-                "Series have different timeframes; provide 'timeframe' to align under a common timeframe."
-            )
+            raise ValueError("Series have different timeframes; provide 'timeframe' to align under a common timeframe.")
         target_timeframe = left.timeframe
     else:
         target_timeframe = timeframe
@@ -525,9 +480,7 @@ def align_series(
     if not target_ts:
         raise ValueError("Alignment resulted in an empty timestamp set.")
 
-    def build_values(
-        series: Series[Any], timestamps: list[Timestamp], fill_value: Any | None
-    ) -> tuple[Any, ...]:
+    def build_values(series: Series[Any], timestamps: list[Timestamp], fill_value: Any | None) -> tuple[Any, ...]:
         values_map = dict(zip(series.timestamps, series.values, strict=False))
         new_values: list[Any] = []
         last_value: Any | None = None
@@ -559,9 +512,7 @@ def align_series(
     aligned_left_values = build_values(left, target_ts, left_fill_value)
     aligned_right_values = build_values(right, target_ts, right_fill_value)
 
-    def build_mask(
-        series: Series[Any], timestamps: list[Timestamp]
-    ) -> tuple[bool, ...] | None:
+    def build_mask(series: Series[Any], timestamps: list[Timestamp]) -> tuple[bool, ...] | None:
         if series.availability_mask is None:
             return None
         index_map = {ts: i for i, ts in enumerate(series.timestamps)}

@@ -112,9 +112,7 @@ class Stream:
         existing = self._dataset.series(symbol, timeframe, source="ohlcv")
 
         if existing is not None and not isinstance(existing, OHLCV):
-            raise TypeError(
-                f"Existing series for {symbol} {timeframe} is not OHLCV; got {type(existing).__name__}"
-            )
+            raise TypeError(f"Existing series for {symbol} {timeframe} is not OHLCV; got {type(existing).__name__}")
 
         updated = _append_bar(existing, bar_obj, symbol=symbol, timeframe=timeframe)
         self._dataset.add_series(symbol, timeframe, updated, source="ohlcv")
@@ -153,9 +151,7 @@ class Stream:
     # Internal helpers
     # ------------------------------------------------------------------
 
-    def _collect_transitions(
-        self, name: str, result: Any
-    ) -> list[AvailabilityTransition]:
+    def _collect_transitions(self, name: str, result: Any) -> list[AvailabilityTransition]:
         transitions: list[AvailabilityTransition] = []
         last_masks = self._last_masks.setdefault(name, {})
         last_lengths = self._last_lengths.setdefault(name, {})

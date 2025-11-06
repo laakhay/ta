@@ -66,9 +66,7 @@ def _call_indicator(
         series_or_dataset = args.pop(0)
 
     if len(args) > len(param_order):
-        raise TypeError(
-            f"Too many positional arguments for indicator '{name}'. Expected at most {len(param_order)}"
-        )
+        raise TypeError(f"Too many positional arguments for indicator '{name}'. Expected at most {len(param_order)}")
 
     params: dict[str, Any] = {}
     for name_key, value in zip(param_order, args, strict=False):
@@ -182,9 +180,7 @@ def rsi(*args: Any, **kwargs: Any):
 
 
 def stochastic(*args: Any, **kwargs: Any):
-    return _call_indicator(
-        "stochastic", args, kwargs, param_order=("k_period", "d_period")
-    )
+    return _call_indicator("stochastic", args, kwargs, param_order=("k_period", "d_period"))
 
 
 def atr(*args: Any, **kwargs: Any):

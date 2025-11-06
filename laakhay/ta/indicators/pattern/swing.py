@@ -13,15 +13,11 @@ from ...registry.models import SeriesContext
 from ...registry.registry import register
 
 
-def _validate_inputs(
-    ctx: SeriesContext, left: int, right: int
-) -> tuple[Series[Price], Series[Price]]:
+def _validate_inputs(ctx: SeriesContext, left: int, right: int) -> tuple[Series[Price], Series[Price]]:
     if left < 1 or right < 1:
         raise ValueError("left and right must be positive integers")
     if not hasattr(ctx, "high") or not hasattr(ctx, "low"):
-        raise ValueError(
-            "swing_points indicator requires 'high' and 'low' series in context"
-        )
+        raise ValueError("swing_points indicator requires 'high' and 'low' series in context")
 
     high = ctx.high
     low = ctx.low
@@ -41,9 +37,7 @@ class _SwingSeries:
     mask_eval: tuple[bool, ...]
 
 
-def _compute_swings(
-    high: Series[Price], low: Series[Price], left: int, right: int
-) -> _SwingSeries:
+def _compute_swings(high: Series[Price], low: Series[Price], left: int, right: int) -> _SwingSeries:
     n = len(high)
     if n == 0:
         empty_flags: tuple[bool, ...] = tuple()
@@ -78,11 +72,7 @@ def _compute_swings(
             flags_high[idx] = True
             have_confirmed_high = True
 
-        if (
-            have_confirmed_high
-            and cur_low == min(lo_window)
-            and lo_window.count(cur_low) == 1
-        ):
+        if have_confirmed_high and cur_low == min(lo_window) and lo_window.count(cur_low) == 1:
             flags_low[idx] = True
 
     return _SwingSeries(tuple(flags_high), tuple(flags_low), tuple(mask_eval))
@@ -97,9 +87,7 @@ def _make_flag_series(
 ) -> Series[Price] | Series[bool]:
     if inherit_prices:
         values = base.values
-        mask = tuple(
-            flag and avail for flag, avail in zip(flags, availability, strict=False)
-        )
+        mask = tuple(flag and avail for flag, avail in zip(flags, availability, strict=False))
         return CoreSeries[Price](
             timestamps=base.timestamps,
             values=values,  # type: ignore[arg-type]
@@ -133,12 +121,8 @@ def _build_result(
 
     inherit_prices = return_mode == "levels"
 
-    swing_high = _make_flag_series(
-        high, result.flags_high, result.mask_eval, inherit_prices=inherit_prices
-    )
-    swing_low = _make_flag_series(
-        low, result.flags_low, result.mask_eval, inherit_prices=inherit_prices
-    )
+    swing_high = _make_flag_series(high, result.flags_high, result.mask_eval, inherit_prices=inherit_prices)
+    swing_low = _make_flag_series(low, result.flags_low, result.mask_eval, inherit_prices=inherit_prices)
 
     output: Dict[str, Series] = {}
     if subset in {"both", "high"}:

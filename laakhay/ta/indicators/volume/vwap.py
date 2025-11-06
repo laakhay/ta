@@ -35,13 +35,9 @@ def vwap(ctx: SeriesContext) -> Series[Price]:
 
     # Calculate VWAP: (Price * Volume) / Volume
     typical = typical_price(ctx)
-    pv_series = (
-        Expression(Literal(typical)) * Expression(Literal(ctx.volume))
-    ).evaluate({})
+    pv_series = (Expression(Literal(typical)) * Expression(Literal(ctx.volume))).evaluate({})
 
     cumulative_pv = cumulative_sum(SeriesContext(close=pv_series))
     cumulative_vol = cumulative_sum(SeriesContext(close=ctx.volume))
 
-    return (
-        Expression(Literal(cumulative_pv)) / Expression(Literal(cumulative_vol))
-    ).evaluate({})
+    return (Expression(Literal(cumulative_pv)) / Expression(Literal(cumulative_vol))).evaluate({})

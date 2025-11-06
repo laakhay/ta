@@ -29,9 +29,7 @@ def macd(
 
     close = ctx.close
     if close is None or len(close) == 0:
-        empty = close.__class__(
-            timestamps=(), values=(), symbol=close.symbol, timeframe=close.timeframe
-        )
+        empty = close.__class__(timestamps=(), values=(), symbol=close.symbol, timeframe=close.timeframe)
         return empty, empty, empty
 
     # Calculate EMAs using rolling_ema primitive

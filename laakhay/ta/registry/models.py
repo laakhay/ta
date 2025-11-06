@@ -22,9 +22,7 @@ class SeriesContext:
     def __getattr__(self, name: str) -> Series[Any]:
         """Get a series by name."""
         if name.startswith("_"):
-            raise AttributeError(
-                f"'{self.__class__.__name__}' object has no attribute '{name}'"
-            )
+            raise AttributeError(f"'{self.__class__.__name__}' object has no attribute '{name}'")
         series_dict = self._series
         if name not in series_dict:
             raise AttributeError(f"Series '{name}' not found in context")
@@ -56,9 +54,7 @@ class IndicatorHandle:
         # Validate overrides against schema
         for param_name, value in overrides.items():
             if param_name not in self.schema.parameters:
-                raise ValueError(
-                    f"Unknown parameter '{param_name}' for indicator '{self.name}'"
-                )
+                raise ValueError(f"Unknown parameter '{param_name}' for indicator '{self.name}'")
 
             param_schema = self.schema.parameters[param_name]
 

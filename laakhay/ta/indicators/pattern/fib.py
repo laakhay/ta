@@ -20,9 +20,7 @@ def _as_decimal(level: float | Decimal) -> Decimal:
     return Decimal(str(level))
 
 
-def _make_price_series(
-    base: Series[Price], values: Iterable[Decimal | Price], mask: Iterable[bool]
-) -> Series[Price]:
+def _make_price_series(base: Series[Price], values: Iterable[Decimal | Price], mask: Iterable[bool]) -> Series[Price]:
     return CoreSeries[Price](
         timestamps=base.timestamps,
         values=tuple(Decimal(v) for v in values),
@@ -104,9 +102,7 @@ def fib_retracement(
             current_low = lo_vals[idx]
             current_low_idx = idx
 
-        anchor_high_vals.append(
-            current_high if current_high is not None else hi_vals[idx]
-        )
+        anchor_high_vals.append(current_high if current_high is not None else hi_vals[idx])
         anchor_low_vals.append(current_low if current_low is not None else lo_vals[idx])
 
         prev_high_mask = anchor_high_mask[-1] if anchor_high_mask else False
@@ -150,27 +146,17 @@ def fib_retracement(
                 up_ready = anchor_high_mask[idx] and anchor_low_mask[idx]
 
                 # Downward retracement: recent move up (high after low)
-                can_down = (
-                    valid_range
-                    and current_high_idx >= current_low_idx >= 0
-                    and current_high > current_low
-                )
+                can_down = valid_range and current_high_idx >= current_low_idx >= 0 and current_high > current_low
                 if can_down and down_ready:
                     down_price = current_high - (current_high - current_low) * lvl
                     down_values[lvl_key].append(down_price)
                     down_mask[lvl_key].append(True)
                 else:
-                    down_values[lvl_key].append(
-                        current_high if has_high else hi_vals[idx]
-                    )
+                    down_values[lvl_key].append(current_high if has_high else hi_vals[idx])
                     down_mask[lvl_key].append(False)
 
                 # Upward retracement: recent move down (low after high)
-                can_up = (
-                    valid_range
-                    and current_low_idx >= current_high_idx >= 0
-                    and current_high > current_low
-                )
+                can_up = valid_range and current_low_idx >= current_high_idx >= 0 and current_high > current_low
                 if can_up and up_ready:
                     up_price = current_low + (current_high - current_low) * lvl
                     up_values[lvl_key].append(up_price)
@@ -199,9 +185,7 @@ def fib_retracement(
     if mode in ("both", "down"):
         for lvl in level_decimals:
             key = str(lvl)
-            result["down"][key] = _make_price_series(
-                high, down_values[key], down_mask[key]
-            )
+            result["down"][key] = _make_price_series(high, down_values[key], down_mask[key])
     if mode in ("both", "up"):
         for lvl in level_decimals:
             key = str(lvl)

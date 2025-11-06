@@ -141,18 +141,12 @@ class Expression:
             lines.append("fields:")
             for field in req.fields:
                 timeframe = field.timeframe or "-"
-                lines.append(
-                    f"  - {field.name} (timeframe={timeframe}, lookback={field.min_lookback})"
-                )
+                lines.append(f"  - {field.name} (timeframe={timeframe}, lookback={field.min_lookback})")
 
         if req.derived:
             lines.append("derived:")
             for derived in req.derived:
-                params = (
-                    ", ".join(f"{key}={value}" for key, value in derived.params)
-                    if derived.params
-                    else ""
-                )
+                params = ", ".join(f"{key}={value}" for key, value in derived.params) if derived.params else ""
                 suffix = f"({params})" if params else ""
                 lines.append(f"  - {derived.name}{suffix}")
 

@@ -30,14 +30,10 @@ def _dec(x: Any) -> Decimal:
 
 
 def _empty_like(src: Series[Price]) -> Series[Price]:
-    return Series[Price](
-        timestamps=(), values=(), symbol=src.symbol, timeframe=src.timeframe
-    )
+    return Series[Price](timestamps=(), values=(), symbol=src.symbol, timeframe=src.timeframe)
 
 
-def _build_like(
-    src: Series[Price], stamps: Iterable[Any], vals: Iterable[Decimal]
-) -> Series[Price]:
+def _build_like(src: Series[Price], stamps: Iterable[Any], vals: Iterable[Decimal]) -> Series[Price]:
     return Series[Price](
         timestamps=tuple(stamps),
         values=tuple(Price(v) for v in vals),

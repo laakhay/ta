@@ -22,19 +22,13 @@ _TIMEFRAME_MULTIPLIERS: dict[str, int] = {
 }
 
 _SELECT_DESCRIPTION = "Select a field from the evaluation context"
-_SELECT_OUTPUT_METADATA = {
-    "result": {"type": "price", "role": "selector", "polarity": "neutral"}
-}
+_SELECT_OUTPUT_METADATA = {"result": {"type": "price", "role": "selector", "polarity": "neutral"}}
 
 
-@register(
-    "select", description=_SELECT_DESCRIPTION, output_metadata=_SELECT_OUTPUT_METADATA
-)
+@register("select", description=_SELECT_DESCRIPTION, output_metadata=_SELECT_OUTPUT_METADATA)
 def _select_indicator(ctx: SeriesContext, field: str) -> Series[Any]:
     if field not in ctx.available_series:
-        raise ValueError(
-            f"Field '{field}' not found in SeriesContext; available: {ctx.available_series}"
-        )
+        raise ValueError(f"Field '{field}' not found in SeriesContext; available: {ctx.available_series}")
     return getattr(ctx, field)
 
 
@@ -101,10 +95,7 @@ def ref(
     ctx = view.to_context()
 
     if field not in ctx.available_series:
-        raise ValueError(
-            f"Field '{field}' not found for timeframe '{timeframe}'. "
-            f"Available: {ctx.available_series}"
-        )
+        raise ValueError(f"Field '{field}' not found for timeframe '{timeframe}'. Available: {ctx.available_series}")
 
     series = getattr(ctx, field)
 
@@ -124,9 +115,7 @@ def ref(
     elif isinstance(reference, Series):
         reference_series = reference
     else:
-        raise TypeError(
-            "reference must be either a Series or a (symbol, timeframe, field) tuple"
-        )
+        raise TypeError("reference must be either a Series or a (symbol, timeframe, field) tuple")
 
     sync_handle = indicator("sync_timeframe", fill=fill, reference=reference_series)
     return sync_handle(series)
@@ -167,9 +156,7 @@ def resample(
         )
     factor = target_minutes // source_minutes
     if factor < 1:
-        raise ValueError(
-            "Target timeframe must be greater than or equal to source timeframe"
-        )
+        raise ValueError("Target timeframe must be greater than or equal to source timeframe")
 
     target_param = "ohlcv" if field.lower() == "ohlcv" else field
     handle = indicator(
@@ -192,9 +179,7 @@ class TANamespace:
         self.ref = ref
         self.resample = resample
 
-    def __call__(
-        self, series: Series[Price], **additional_series: Series[Any]
-    ) -> TASeries:
+    def __call__(self, series: Series[Price], **additional_series: Series[Any]) -> TASeries:
         return TASeries(series, **additional_series)
 
     def __getattr__(self, name: str) -> Any:
@@ -214,10 +199,7 @@ class TANamespace:
             except Exception:
                 pass
             for module_name in list(sys.modules.keys()):
-                if (
-                    module_name.startswith("laakhay.ta.indicators.")
-                    and module_name != "laakhay.ta.indicators.__init__"
-                ):
+                if module_name.startswith("laakhay.ta.indicators.") and module_name != "laakhay.ta.indicators.__init__":
                     importlib.reload(sys.modules[module_name])
             handle = registry.get(name) if hasattr(registry, "get") else None
 
@@ -246,10 +228,7 @@ class TASeries:
             import sys
 
             for module_name in list(sys.modules.keys()):
-                if (
-                    module_name.startswith("laakhay.ta.indicators.")
-                    and module_name != "laakhay.ta.indicators.__init__"
-                ):
+                if module_name.startswith("laakhay.ta.indicators.") and module_name != "laakhay.ta.indicators.__init__":
                     importlib.reload(sys.modules[module_name])
 
         if name in self._registry._indicators:

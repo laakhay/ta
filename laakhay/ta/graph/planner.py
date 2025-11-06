@@ -48,11 +48,7 @@ def get_alignment_policy() -> AlignmentPolicy:
 
 
 def _is_indicator_node(node: ExpressionNode) -> bool:
-    return (
-        node.__class__.__name__ == "IndicatorNode"
-        and hasattr(node, "name")
-        and hasattr(node, "params")
-    )
+    return node.__class__.__name__ == "IndicatorNode" and hasattr(node, "name") and hasattr(node, "params")
 
 
 def plan_expression(root: ExpressionNode) -> PlanResult:
@@ -104,22 +100,14 @@ def _collect_requirements(graph: Graph) -> SignalRequirements:
         if _is_indicator_node(expr_node):
             name = expr_node.name
             handle = registry.get(name)
-            metadata: IndicatorMetadata | None = (
-                handle.schema.metadata if handle else None
-            )
+            metadata: IndicatorMetadata | None = handle.schema.metadata if handle else None
 
-            params = (
-                expr_node.params if hasattr(expr_node, "params") else {}
-            )
+            params = expr_node.params if hasattr(expr_node, "params") else {}
 
             if name == "select" and "field" in params:
                 required_fields = (params["field"],)
             else:
-                required_fields = (
-                    metadata.required_fields
-                    if metadata and metadata.required_fields
-                    else ("close",)
-                )
+                required_fields = metadata.required_fields if metadata and metadata.required_fields else ("close",)
 
             lookback = metadata.default_lookback or 1
 
@@ -145,9 +133,7 @@ def _collect_requirements(graph: Graph) -> SignalRequirements:
 
     field_requirements = tuple(
         FieldRequirement(name=name, timeframe=timeframe, min_lookback=lookback)
-        for (name, timeframe), lookback in sorted(
-            fields.items(), key=lambda item: (item[0][0], item[0][1] or "")
-        )
+        for (name, timeframe), lookback in sorted(fields.items(), key=lambda item: (item[0][0], item[0][1] or ""))
     )
     return SignalRequirements(fields=field_requirements, derived=tuple(derived))
 

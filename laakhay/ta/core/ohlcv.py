@@ -39,12 +39,7 @@ class OHLCV:
             raise ValueError("All OHLCV data columns must have the same length")
 
         if len(self.timestamps) > 1:
-            if any(
-                later < earlier
-                for earlier, later in zip(
-                    self.timestamps, self.timestamps[1:], strict=False
-                )
-            ):
+            if any(later < earlier for earlier, later in zip(self.timestamps, self.timestamps[1:], strict=False)):
                 raise ValueError("Timestamps must be sorted")
 
     @property
@@ -200,9 +195,7 @@ class OHLCV:
         elif field == "volume":
             values = self.volumes
         else:
-            raise ValueError(
-                f"Unknown field: {field}. Must be one of: open, high, low, close, volume"
-            )
+            raise ValueError(f"Unknown field: {field}. Must be one of: open, high, low, close, volume")
 
         return Series(
             timestamps=self.timestamps,
@@ -212,9 +205,7 @@ class OHLCV:
         )
 
     @classmethod
-    def from_bars(
-        cls, bars: list[Bar], symbol: str = "UNKNOWN", timeframe: str = "1h"
-    ) -> OHLCV:
+    def from_bars(cls, bars: list[Bar], symbol: str = "UNKNOWN", timeframe: str = "1h") -> OHLCV:
         """Create OHLCV from a list of Bar objects."""
         if not bars:
             raise ValueError("Cannot create OHLCV from empty bar list")

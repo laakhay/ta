@@ -24,9 +24,7 @@ def bbands(
 
     close = ctx.close
     if close is None or len(close) < period:
-        empty = close.__class__(
-            timestamps=(), values=(), symbol=close.symbol, timeframe=close.timeframe
-        )
+        empty = close.__class__(timestamps=(), values=(), symbol=close.symbol, timeframe=close.timeframe)
         return empty, empty, empty
 
     # Calculate middle band and standard deviation

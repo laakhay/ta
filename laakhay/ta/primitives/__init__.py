@@ -39,28 +39,18 @@ UpdateFn = Callable[[Any, Decimal, Decimal], Tuple[Any, Decimal]]
 
 # Explicit type annotations for kernel functions to help linter
 _empty_like: Callable[[Series[Price]], Series[Price]] = _empty_like  # type: ignore
-_build_like: Callable[
-    [Series[Price], Iterable[Any], Iterable[Decimal]], Series[Price]
-] = _build_like  # type: ignore
+_build_like: Callable[[Series[Price], Iterable[Any], Iterable[Decimal]], Series[Price]] = _build_like  # type: ignore
 _dec: Callable[[Any], Decimal] = _dec  # type: ignore
-ew_unary: Callable[[Series[Price], Callable[[Decimal], Decimal]], Series[Price]] = (
-    ew_unary  # type: ignore
-)
-ew_binary: Callable[
-    [Series[Price], Series[Price], Callable[[Decimal, Decimal], Decimal]], Series[Price]
-] = ew_binary  # type: ignore
+ew_unary: Callable[[Series[Price], Callable[[Decimal], Decimal]], Series[Price]] = ew_unary  # type: ignore
+ew_binary: Callable[[Series[Price], Series[Price], Callable[[Decimal, Decimal], Decimal]], Series[Price]] = ew_binary  # type: ignore
 rolling_kernel: Callable[..., Series[Price]] = rolling_kernel  # type: ignore
 rolling_sum_recipe: Callable[[int], Tuple[InitFn, UpdateFn]] = rolling_sum_recipe  # type: ignore
 rolling_mean_recipe: Callable[[int], Tuple[InitFn, UpdateFn]] = rolling_mean_recipe  # type: ignore
 rolling_std_recipe: Callable[[int], Tuple[InitFn, UpdateFn]] = rolling_std_recipe  # type: ignore
 rolling_max_deque: Callable[[Series[Price], int], Series[Price]] = rolling_max_deque  # type: ignore
 rolling_min_deque: Callable[[Series[Price], int], Series[Price]] = rolling_min_deque  # type: ignore
-rolling_argmax_deque: Callable[[Series[Price], int], Series[Price]] = (
-    rolling_argmax_deque  # type: ignore
-)
-rolling_argmin_deque: Callable[[Series[Price], int], Series[Price]] = (
-    rolling_argmin_deque  # type: ignore
-)
+rolling_argmax_deque: Callable[[Series[Price], int], Series[Price]] = rolling_argmax_deque  # type: ignore
+rolling_argmin_deque: Callable[[Series[Price], int], Series[Price]] = rolling_argmin_deque  # type: ignore
 
 
 def _select(ctx: SeriesContext) -> Series[Price]:
@@ -148,9 +138,7 @@ def rolling_std(ctx: SeriesContext, period: int = 20) -> Series[Price]:
 
 
 @register("max", description="Maximum value in a rolling window")
-def rolling_max(
-    ctx: SeriesContext, period: int = 20, field: str | None = None
-) -> Series[Price]:
+def rolling_max(ctx: SeriesContext, period: int = 20, field: str | None = None) -> Series[Price]:
     source = _select_field(ctx, field) if field else _select(ctx)
     res = rolling_max_deque(source, period)  # type: ignore
     if len(res) == 0:
@@ -166,9 +154,7 @@ def rolling_max(
 
 
 @register("min", description="Minimum value in a rolling window")
-def rolling_min(
-    ctx: SeriesContext, period: int = 20, field: str | None = None
-) -> Series[Price]:
+def rolling_min(ctx: SeriesContext, period: int = 20, field: str | None = None) -> Series[Price]:
     source = _select_field(ctx, field) if field else _select(ctx)
     res = rolling_min_deque(source, period)  # type: ignore
     if len(res) == 0:
@@ -183,12 +169,8 @@ def rolling_min(
     )
 
 
-@register(
-    "rolling_argmax", description="Offset of maximum value inside a rolling window"
-)
-def rolling_argmax(
-    ctx: SeriesContext, period: int = 20, field: str | None = None
-) -> Series[Price]:
+@register("rolling_argmax", description="Offset of maximum value inside a rolling window")
+def rolling_argmax(ctx: SeriesContext, period: int = 20, field: str | None = None) -> Series[Price]:
     source = _select_field(ctx, field) if field else _select(ctx)
     res = rolling_argmax_deque(source, period)  # type: ignore
     if len(res) == 0:
@@ -203,12 +185,8 @@ def rolling_argmax(
     )
 
 
-@register(
-    "rolling_argmin", description="Offset of minimum value inside a rolling window"
-)
-def rolling_argmin(
-    ctx: SeriesContext, period: int = 20, field: str | None = None
-) -> Series[Price]:
+@register("rolling_argmin", description="Offset of minimum value inside a rolling window")
+def rolling_argmin(ctx: SeriesContext, period: int = 20, field: str | None = None) -> Series[Price]:
     source = _select_field(ctx, field) if field else _select(ctx)
     res = rolling_argmin_deque(source, period)  # type: ignore
     if len(res) == 0:
@@ -388,8 +366,7 @@ def typical_price(ctx: SeriesContext) -> Series[Price]:
     if len(c) == 0:
         return _empty_like(c)  # type: ignore
     out = [
-        (_dec(hv) + _dec(lv) + _dec(cv)) / Decimal(3)
-        for hv, lv, cv in zip(h.values, l.values, c.values, strict=False)
+        (_dec(hv) + _dec(lv) + _dec(cv)) / Decimal(3) for hv, lv, cv in zip(h.values, l.values, c.values, strict=False)
     ]  # type: ignore
     res = _build_like(c, c.timestamps, out)  # type: ignore
     return CoreSeries[Price](
@@ -529,9 +506,7 @@ def downsample(
     if n == 0:
         return _empty_like(src)  # type: ignore
     buckets = [src.values[i : i + factor] for i in range(0, n, factor)]
-    ts_buckets = [
-        src.timestamps[min(i + factor - 1, n - 1)] for i in range(0, n, factor)
-    ]
+    ts_buckets = [src.timestamps[min(i + factor - 1, n - 1)] for i in range(0, n, factor)]
     out_vals: list[Decimal] = []  # type: ignore[type-arg]
     for b in buckets:
         if agg == "last":
@@ -554,12 +529,8 @@ def downsample(
     )
 
 
-@register(
-    "upsample", description="Upsample a series by integer factor with forward-fill"
-)
-def upsample(
-    ctx: SeriesContext, *, factor: int = 2, method: str = "ffill"
-) -> Series[Price]:
+@register("upsample", description="Upsample a series by integer factor with forward-fill")
+def upsample(ctx: SeriesContext, *, factor: int = 2, method: str = "ffill") -> Series[Price]:
     src = _select(ctx)
     if factor <= 1:
         return src
@@ -591,9 +562,7 @@ def upsample(
     "sync_timeframe",
     description="Align a series to a reference's timestamps with ffill or linear interpolation",
 )
-def sync_timeframe(
-    ctx: SeriesContext, reference: Series[Price], *, fill: str = "ffill"
-) -> Series[Price]:
+def sync_timeframe(ctx: SeriesContext, reference: Series[Price], *, fill: str = "ffill") -> Series[Price]:
     src = _select(ctx)
     # Build values for reference timestamps using chosen method
     ref_ts = list(reference.timestamps)

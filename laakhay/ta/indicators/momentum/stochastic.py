@@ -12,9 +12,7 @@ from ...registry.registry import register
 
 
 @register("stochastic", description="Stochastic Oscillator (%K and %D)")
-def stochastic(
-    ctx: SeriesContext, k_period: int = 14, d_period: int = 3
-) -> tuple[Series[Price], Series[Price]]:
+def stochastic(ctx: SeriesContext, k_period: int = 14, d_period: int = 3) -> tuple[Series[Price], Series[Price]]:
     """
     Stochastic Oscillator indicator using primitives.
 
@@ -29,9 +27,7 @@ def stochastic(
     required_series = ["high", "low", "close"]
     missing = [s for s in required_series if not hasattr(ctx, s)]
     if missing:
-        raise ValueError(
-            f"Stochastic requires series: {required_series}, missing: {missing}"
-        )
+        raise ValueError(f"Stochastic requires series: {required_series}, missing: {missing}")
 
     # Validate series lengths
     series_lengths = [len(getattr(ctx, s)) for s in required_series]

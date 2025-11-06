@@ -120,14 +120,10 @@ class Bar:
                 if alias in data:
                     value = data[alias]
                     if value is None:
-                        raise ValueError(
-                            f"Field '{field}' (alias '{alias}') cannot be None"
-                        )
+                        raise ValueError(f"Field '{field}' (alias '{alias}') cannot be None")
                     return value
             alias_list = ", ".join(aliases)
-            raise ValueError(
-                f"Missing required field '{field}' (aliases: {alias_list})"
-            )
+            raise ValueError(f"Missing required field '{field}' (aliases: {alias_list})")
 
         def optional(aliases: list[str], default: Any) -> Any:
             for alias in aliases:
@@ -151,15 +147,11 @@ class Bar:
                 elif normalized in {"false", "0", "no", "open"}:
                     is_closed_value = False
                 else:
-                    raise ValueError(
-                        f"Unrecognised boolean value for 'is_closed': {is_closed_value!r}"
-                    )
+                    raise ValueError(f"Unrecognised boolean value for 'is_closed': {is_closed_value!r}")
             elif isinstance(is_closed_value, int | float):
                 is_closed_value = bool(is_closed_value)
             else:
-                raise ValueError(
-                    f"Unrecognised type for 'is_closed': {type(is_closed_value).__name__}"
-                )
+                raise ValueError(f"Unrecognised type for 'is_closed': {type(is_closed_value).__name__}")
 
         return cls(
             ts=coerce_timestamp(ts_value),

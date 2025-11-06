@@ -28,9 +28,7 @@ def obv(ctx: SeriesContext) -> Series[Qty]:
     if len(close) != len(volume):
         raise ValueError("Close and volume series must have the same length")
     if len(close) == 0:
-        return close.__class__(
-            timestamps=(), values=(), symbol=close.symbol, timeframe=close.timeframe
-        )
+        return close.__class__(timestamps=(), values=(), symbol=close.symbol, timeframe=close.timeframe)
     if len(close) == 1:
         # For a single value, output series should also be length 1 and return input's meta
         return close.__class__(
@@ -50,9 +48,7 @@ def obv(ctx: SeriesContext) -> Series[Qty]:
     )
 
     # Calculate directed volume: volume * sign(price_change)
-    directed_volume = (
-        Expression(Literal(aligned_volume)) * Expression(Literal(price_signs))
-    ).evaluate({})
+    directed_volume = (Expression(Literal(aligned_volume)) * Expression(Literal(price_signs))).evaluate({})
 
     # Calculate OBV as cumulative sum + first volume
     obv_series = cumulative_sum(SeriesContext(close=directed_volume))
@@ -60,8 +56,7 @@ def obv(ctx: SeriesContext) -> Series[Qty]:
 
     return Series[Qty](
         timestamps=(ctx.volume.timestamps[0],) + obv_series.timestamps,
-        values=(first_volume,)
-        + tuple(Qty(str(val + first_volume)) for val in obv_series.values),
+        values=(first_volume,) + tuple(Qty(str(val + first_volume)) for val in obv_series.values),
         symbol=obv_series.symbol,
         timeframe=obv_series.timeframe,
     )
