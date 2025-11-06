@@ -73,6 +73,7 @@ class Stream:
         self._callbacks: dict[str, list[Callable[[AvailabilityTransition], None]]] = {}
         self._evaluator = Evaluator()
         self._last_masks: dict[str, dict[Tuple[str, ...], bool]] = {}
+        self._last_lengths: dict[str, dict[Tuple[str, ...], int]] = {}
 
     @property
     def dataset(self) -> Dataset:
@@ -107,7 +108,7 @@ class Stream:
     ) -> StreamUpdate:
         """Append a bar to an OHLCV series and re-evaluate registered expressions."""
         bar_obj = _ensure_bar(bar)
-        existing = self._dataset.series(symbol, timeframe)
+        existing = self._dataset.series(symbol, timeframe, source="ohlcv")
 
         if existing is not None and not isinstance(existing, OHLCV):
             raise TypeError(
@@ -131,6 +132,8 @@ class Stream:
 
     def evaluate(self) -> StreamUpdate:
         """Evaluate all registered expressions and return outputs + transitions."""
+        # Reset evaluator cache so streaming updates reflect latest dataset state.
+        self._evaluator = Evaluator()
         outputs: dict[str, Any] = {}
         transitions: list[AvailabilityTransition] = []
 
@@ -152,21 +155,25 @@ class Stream:
     def _collect_transitions(self, name: str, result: Any) -> list[AvailabilityTransition]:
         transitions: list[AvailabilityTransition] = []
         last_masks = self._last_masks.setdefault(name, {})
+        last_lengths = self._last_lengths.setdefault(name, {})
 
         for key, series in self._iter_series(result):
             if len(series.timestamps) == 0:
                 continue
 
-            mask = (
-                series.availability_mask[-1]
-                if getattr(series, "availability_mask", None)
-                else True
-            )
+            availability = getattr(series, "availability_mask", None)
+            current_len = len(series.timestamps)
+            ready = bool(availability[-1]) if availability else current_len > 0
+
+            prev_len = last_lengths.get(key, 0)
+            if not ready and current_len > prev_len:
+                ready = True
 
             prev_mask = last_masks.get(key)
-            last_masks[key] = bool(mask)
+            last_masks[key] = ready
+            last_lengths[key] = current_len
 
-            if not mask or prev_mask:
+            if not ready or prev_mask:
                 continue
 
             value = series.values[-1]
