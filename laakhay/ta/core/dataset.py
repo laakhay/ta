@@ -253,6 +253,16 @@ class Dataset:
                 break
 
         ctx: dict[str, Series[Any]] = {}
+        if ohlcv is not None:
+            ctx.setdefault("open", ohlcv.to_series("open"))  # type: ignore[arg-type]
+            ctx.setdefault("high", ohlcv.to_series("high"))  # type: ignore[arg-type]
+            ctx.setdefault("low", ohlcv.to_series("low"))  # type: ignore[arg-type]
+            ctx.setdefault("close", ohlcv.to_series("close"))  # type: ignore[arg-type]
+            ctx.setdefault("price", ohlcv.to_series("close"))  # type: ignore[arg-type]
+            try:
+                ctx.setdefault("volume", ohlcv.to_series("volume"))  # type: ignore[arg-type]
+            except (KeyError, AttributeError, ValueError):
+                pass
         for field in required_fields:
             if ohlcv is not None and field in {"open", "high", "low", "close", "volume", "price"}:
                 src_name = "close" if field == "price" else field

@@ -28,6 +28,8 @@ from ._kernels import (  # type: ignore
     rolling_std_recipe,  # type: ignore
     rolling_max_deque,  # type: ignore
     rolling_min_deque,  # type: ignore
+    rolling_argmax_deque,  # type: ignore
+    rolling_argmin_deque,  # type: ignore
 )
 
 # Type aliases for better linter support
@@ -46,6 +48,8 @@ rolling_mean_recipe: Callable[[int], Tuple[InitFn, UpdateFn]] = rolling_mean_rec
 rolling_std_recipe: Callable[[int], Tuple[InitFn, UpdateFn]] = rolling_std_recipe  # type: ignore
 rolling_max_deque: Callable[[Series[Price], int], Series[Price]] = rolling_max_deque  # type: ignore
 rolling_min_deque: Callable[[Series[Price], int], Series[Price]] = rolling_min_deque  # type: ignore
+rolling_argmax_deque: Callable[[Series[Price], int], Series[Price]] = rolling_argmax_deque  # type: ignore
+rolling_argmin_deque: Callable[[Series[Price], int], Series[Price]] = rolling_argmin_deque  # type: ignore
 
 
 def _select(ctx: SeriesContext) -> Series[Price]:
@@ -56,6 +60,19 @@ def _select(ctx: SeriesContext) -> Series[Price]:
     if not ctx.available_series:
         raise ValueError("SeriesContext has no series to operate on")
     return getattr(ctx, ctx.available_series[0])
+
+
+def _select_field(ctx: SeriesContext, field: str) -> Series[Price]:
+    """Return a specific field from the context, raising if unavailable."""
+    if field in ctx.available_series:
+        return getattr(ctx, field)
+    raise ValueError(f"SeriesContext missing required field '{field}'")
+
+
+@register("select", description="Select a named series from the context")
+def select(ctx: SeriesContext, field: str = "close") -> Series[Price]:
+    """Expose a specific field as an indicator for downstream composition."""
+    return _select_field(ctx, field)
 
 
 # ---------- rolling ----------
@@ -101,8 +118,9 @@ def rolling_std(ctx: SeriesContext, period: int = 20) -> Series[Price]:
 
 
 @register("max", description="Maximum value in a rolling window")
-def rolling_max(ctx: SeriesContext, period: int = 20) -> Series[Price]:
-    res = rolling_max_deque(_select(ctx), period)  # type: ignore
+def rolling_max(ctx: SeriesContext, period: int = 20, field: str | None = None) -> Series[Price]:
+    source = _select_field(ctx, field) if field else _select(ctx)
+    res = rolling_max_deque(source, period)  # type: ignore
     if len(res) == 0:
         return res
     mask = tuple((i >= period - 1) for i in range(len(res)))
@@ -110,8 +128,29 @@ def rolling_max(ctx: SeriesContext, period: int = 20) -> Series[Price]:
 
 
 @register("min", description="Minimum value in a rolling window")
-def rolling_min(ctx: SeriesContext, period: int = 20) -> Series[Price]:
-    res = rolling_min_deque(_select(ctx), period)  # type: ignore
+def rolling_min(ctx: SeriesContext, period: int = 20, field: str | None = None) -> Series[Price]:
+    source = _select_field(ctx, field) if field else _select(ctx)
+    res = rolling_min_deque(source, period)  # type: ignore
+    if len(res) == 0:
+        return res
+    mask = tuple((i >= period - 1) for i in range(len(res)))
+    return CoreSeries[Price](timestamps=res.timestamps, values=res.values, symbol=res.symbol, timeframe=res.timeframe, availability_mask=mask)
+
+
+@register("rolling_argmax", description="Offset of maximum value inside a rolling window")
+def rolling_argmax(ctx: SeriesContext, period: int = 20, field: str | None = None) -> Series[Price]:
+    source = _select_field(ctx, field) if field else _select(ctx)
+    res = rolling_argmax_deque(source, period)  # type: ignore
+    if len(res) == 0:
+        return res
+    mask = tuple((i >= period - 1) for i in range(len(res)))
+    return CoreSeries[Price](timestamps=res.timestamps, values=res.values, symbol=res.symbol, timeframe=res.timeframe, availability_mask=mask)
+
+
+@register("rolling_argmin", description="Offset of minimum value inside a rolling window")
+def rolling_argmin(ctx: SeriesContext, period: int = 20, field: str | None = None) -> Series[Price]:
+    source = _select_field(ctx, field) if field else _select(ctx)
+    res = rolling_argmin_deque(source, period)  # type: ignore
     if len(res) == 0:
         return res
     mask = tuple((i >= period - 1) for i in range(len(res)))
@@ -275,7 +314,14 @@ def sign(ctx: SeriesContext) -> Series[Price]:
 # ---------- resample/sync primitives (multi-timeframe helpers) ----------
 
 @register("downsample", description="Downsample by factor with aggregation. For OHLCV, uses O/H/L/C/V rules.")
-def downsample(ctx: SeriesContext, *, factor: int = 2, agg: str = "last", target: str = "close") -> Series[Price] | dict[str, Series[Price]]:
+def downsample(
+    ctx: SeriesContext,
+    *,
+    factor: int = 2,
+    agg: str = "last",
+    target: str = "close",
+    target_timeframe: str | None = None,
+) -> Series[Price] | dict[str, Series[Price]]:
     # If OHLCV present and target=='ohlcv', aggregate each field appropriately
     has_ohlc = all(hasattr(ctx, k) for k in ("open", "high", "low", "close"))
     if target == "ohlcv" and has_ohlc:
@@ -287,6 +333,7 @@ def downsample(ctx: SeriesContext, *, factor: int = 2, agg: str = "last", target
             if v is not None:
                 result["volume"] = v
             return result
+        result_tf = target_timeframe or c.timeframe
         new_ts = [c.timestamps[min(i+factor-1, n-1)] for i in range(0, n, factor)]
         def _bucket(seq):
             return [seq[i:i+factor] for i in range(0, n, factor)]
@@ -302,14 +349,14 @@ def downsample(ctx: SeriesContext, *, factor: int = 2, agg: str = "last", target
         l_ser = _build_like(l, new_ts, l_vals)  # type: ignore
         c_ser = _build_like(c, new_ts, c_vals)  # type: ignore
         res: dict[str, Series[Price]] = {
-            "open": CoreSeries[Price](timestamps=o_ser.timestamps, values=o_ser.values, symbol=o.symbol, timeframe=o.timeframe, availability_mask=tuple(True for _ in o_ser.values)),
-            "high": CoreSeries[Price](timestamps=h_ser.timestamps, values=h_ser.values, symbol=h.symbol, timeframe=h.timeframe, availability_mask=tuple(True for _ in h_ser.values)),
-            "low": CoreSeries[Price](timestamps=l_ser.timestamps, values=l_ser.values, symbol=l.symbol, timeframe=l.timeframe, availability_mask=tuple(True for _ in l_ser.values)),
-            "close": CoreSeries[Price](timestamps=c_ser.timestamps, values=c_ser.values, symbol=c.symbol, timeframe=c.timeframe, availability_mask=tuple(True for _ in c_ser.values)),
+            "open": CoreSeries[Price](timestamps=o_ser.timestamps, values=o_ser.values, symbol=o.symbol, timeframe=result_tf, availability_mask=tuple(True for _ in o_ser.values)),
+            "high": CoreSeries[Price](timestamps=h_ser.timestamps, values=h_ser.values, symbol=h.symbol, timeframe=result_tf, availability_mask=tuple(True for _ in h_ser.values)),
+            "low": CoreSeries[Price](timestamps=l_ser.timestamps, values=l_ser.values, symbol=l.symbol, timeframe=result_tf, availability_mask=tuple(True for _ in l_ser.values)),
+            "close": CoreSeries[Price](timestamps=c_ser.timestamps, values=c_ser.values, symbol=c.symbol, timeframe=result_tf, availability_mask=tuple(True for _ in c_ser.values)),
         }
         if v is not None and v_vals is not None:
             v_ser = _build_like(v, new_ts, v_vals)  # type: ignore
-            res["volume"] = CoreSeries[Price](timestamps=v_ser.timestamps, values=v_ser.values, symbol=v.symbol, timeframe=v.timeframe, availability_mask=tuple(True for _ in v_ser.values))
+            res["volume"] = CoreSeries[Price](timestamps=v_ser.timestamps, values=v_ser.values, symbol=v.symbol, timeframe=result_tf, availability_mask=tuple(True for _ in v_ser.values))
         return res
 
     # Default: operate on selected series (price/close)
@@ -333,7 +380,8 @@ def downsample(ctx: SeriesContext, *, factor: int = 2, agg: str = "last", target
         else:
             raise ValueError("Unsupported agg for downsample: {agg}")
     res = _build_like(src, ts_buckets, out_vals)  # type: ignore
-    return CoreSeries[Price](timestamps=res.timestamps, values=res.values, symbol=src.symbol, timeframe=src.timeframe, availability_mask=tuple(True for _ in res.values))
+    result_tf = target_timeframe or src.timeframe
+    return CoreSeries[Price](timestamps=res.timestamps, values=res.values, symbol=src.symbol, timeframe=result_tf, availability_mask=tuple(True for _ in res.values))
 
 
 @register("upsample", description="Upsample a series by integer factor with forward-fill")

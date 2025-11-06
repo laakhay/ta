@@ -9,7 +9,54 @@ from typing import Any, Union
 
 from ..core import Series
 from .models import IndicatorHandle, SeriesContext
-from .schemas import IndicatorSchema, OutputSchema, ParamSchema
+from .schemas import IndicatorMetadata, IndicatorSchema, OutputSchema, ParamSchema
+
+
+# Metadata hints for built-in indicators/primitives. These entries drive the
+# planner so we can infer required fields and lookback windows without relying
+# on string heuristics.
+_METADATA_HINTS: dict[str, IndicatorMetadata] = {
+    # Rolling primitives
+    "rolling_mean": IndicatorMetadata(required_fields=("close",), lookback_params=("period",)),
+    "rolling_sum": IndicatorMetadata(required_fields=("close",), lookback_params=("period",)),
+    "rolling_std": IndicatorMetadata(required_fields=("close",), lookback_params=("period",)),
+    "rolling_median": IndicatorMetadata(required_fields=("close",), lookback_params=("period",)),
+    "rolling_ema": IndicatorMetadata(required_fields=("close",), lookback_params=("period",)),
+    "max": IndicatorMetadata(required_fields=("close",), lookback_params=("period",)),
+    "min": IndicatorMetadata(required_fields=("close",), lookback_params=("period",)),
+    "rolling_argmax": IndicatorMetadata(required_fields=("close",), lookback_params=("period",)),
+    "rolling_argmin": IndicatorMetadata(required_fields=("close",), lookback_params=("period",)),
+    # Element-wise primitives
+    "elementwise_max": IndicatorMetadata(required_fields=("close",), optional_fields=("other_series",), default_lookback=1),
+    "elementwise_min": IndicatorMetadata(required_fields=("close",), optional_fields=("other_series",), default_lookback=1),
+    # Transform primitives
+    "cumulative_sum": IndicatorMetadata(required_fields=("close",), default_lookback=1),
+    "diff": IndicatorMetadata(required_fields=("close",), default_lookback=2),
+    "shift": IndicatorMetadata(required_fields=("close",), lookback_params=("periods",), default_lookback=1),
+    "positive_values": IndicatorMetadata(required_fields=("close",), default_lookback=1),
+    "negative_values": IndicatorMetadata(required_fields=("close",), default_lookback=1),
+    "sign": IndicatorMetadata(required_fields=("close",), default_lookback=2),
+    "true_range": IndicatorMetadata(required_fields=("high", "low", "close"), default_lookback=2),
+    "typical_price": IndicatorMetadata(required_fields=("high", "low", "close"), default_lookback=1),
+    # Resample helpers
+    "downsample": IndicatorMetadata(required_fields=("close",), lookback_params=("factor",), default_lookback=1),
+    "upsample": IndicatorMetadata(required_fields=("close",), lookback_params=("factor",), default_lookback=1),
+    "sync_timeframe": IndicatorMetadata(required_fields=("close",), optional_fields=("reference",), default_lookback=1),
+    "select": IndicatorMetadata(required_fields=("close",), optional_fields=("field",), default_lookback=1),
+    # Trend indicators
+    "sma": IndicatorMetadata(required_fields=("close",), lookback_params=("period",)),
+    "ema": IndicatorMetadata(required_fields=("close",), lookback_params=("period",)),
+    "macd": IndicatorMetadata(required_fields=("close",), lookback_params=("fast_period", "slow_period", "signal_period"), default_lookback=1),
+    "bbands": IndicatorMetadata(required_fields=("close",), lookback_params=("period",)),
+    # Momentum
+    "rsi": IndicatorMetadata(required_fields=("close",), lookback_params=("period",)),
+    "stochastic": IndicatorMetadata(required_fields=("high", "low", "close"), lookback_params=("k_period", "d_period")),
+    # Volatility
+    "atr": IndicatorMetadata(required_fields=("high", "low", "close"), lookback_params=("period",)),
+    # Volume / price-volume indicators
+    "obv": IndicatorMetadata(required_fields=("close", "volume"), default_lookback=2),
+    "vwap": IndicatorMetadata(required_fields=("high", "low", "close", "volume"), default_lookback=1),
+}
 
 
 class Registry:
@@ -183,7 +230,8 @@ class Registry:
             name=name,
             description=description.strip(),
             parameters=parameters,  # type: ignore[arg-type]
-            outputs=outputs
+            outputs=outputs,
+            metadata=self._infer_metadata(name)
         )
 
     def _get_param_type(self, annotation: Any) -> type:
@@ -235,6 +283,19 @@ class Registry:
                 return base_type  # type: ignore[return-value]
 
         return Any  # type: ignore[return-value]
+
+    def _infer_metadata(self, name: str) -> IndicatorMetadata:
+        key = name.lower()
+        meta = _METADATA_HINTS.get(key)
+        if meta is not None:
+            return meta
+
+        return IndicatorMetadata(
+            required_fields=("close",),
+            optional_fields=(),
+            lookback_params=(),
+            default_lookback=1,
+        )
 
     def _build_output_schema(self, func: Callable[..., Any]) -> dict[str, OutputSchema]:
         """Build output schema based on function return type annotation."""

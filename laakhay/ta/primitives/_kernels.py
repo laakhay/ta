@@ -184,3 +184,45 @@ def rolling_min_deque(src: Series[Price], period: int) -> Series[Price]:
         if dq[0] <= i - period: dq.popleft()
         if i >= period - 1: out.append(xs[dq[0]])
     return _build_like(src, src.timestamps[period - 1 :], out)
+
+
+def rolling_argmax_deque(src: Series[Price], period: int) -> Series[Price]:
+    if period <= 0:
+        raise ValueError("Period must be positive")
+    n = len(src)
+    if n == 0 or n < period:
+        return _empty_like(src)
+    xs = [_dec(v) for v in src.values]
+    dq: deque[int] = deque()
+    out: list[Decimal] = []
+    for i, v in enumerate(xs):
+        while dq and xs[dq[-1]] <= v:
+            dq.pop()
+        dq.append(i)
+        if dq[0] <= i - period:
+            dq.popleft()
+        if i >= period - 1:
+            offset = i - dq[0]
+            out.append(Decimal(offset))
+    return _build_like(src, src.timestamps[period - 1 :], out)
+
+
+def rolling_argmin_deque(src: Series[Price], period: int) -> Series[Price]:
+    if period <= 0:
+        raise ValueError("Period must be positive")
+    n = len(src)
+    if n == 0 or n < period:
+        return _empty_like(src)
+    xs = [_dec(v) for v in src.values]
+    dq: deque[int] = deque()
+    out: list[Decimal] = []
+    for i, v in enumerate(xs):
+        while dq and xs[dq[-1]] >= v:
+            dq.pop()
+        dq.append(i)
+        if dq[0] <= i - period:
+            dq.popleft()
+        if i >= period - 1:
+            offset = i - dq[0]
+            out.append(Decimal(offset))
+    return _build_like(src, src.timestamps[period - 1 :], out)
