@@ -40,6 +40,8 @@ from laakhay.ta.registry import get_global_registry
         ("select", ("close",), (), 1),
         ("swing_points", ("high", "low"), ("left", "right"), None),
         ("fib_retracement", ("high", "low"), ("left", "right"), None),
+        ("swing_highs", ("high", "low"), ("left", "right"), None),
+        ("swing_lows", ("high", "low"), ("left", "right"), None),
     ],
 )
 def test_indicator_metadata(name, required_fields, lookback_params, default_lookback):

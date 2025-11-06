@@ -7,7 +7,7 @@ import pytest
 
 from laakhay.ta.core.series import Series
 from laakhay.ta.core.types import Price
-from laakhay.ta.indicators.pattern import swing_points
+from laakhay.ta.indicators.pattern import swing_points, swing_highs, swing_lows
 from laakhay.ta.registry.models import SeriesContext
 
 
@@ -79,6 +79,42 @@ def test_swing_points_equal_highs_not_flagged():
     assert all(not flag for flag in result["swing_high"].values)
     # lows still have no unique minima: both -1 duplicates
     assert all(not flag for flag in result["swing_low"].values)
+
+
+def test_swing_highs_direct_api_levels():
+    high = _make_price_series([1, 2, 3, 2, 1, 2, 4, 2, 1])
+    low = _make_price_series([1, 0, 1, 0, -1, 0, 1, 0, -1])
+    ctx = SeriesContext(high=high, low=low)
+
+    levels = swing_highs(ctx, left=1, right=1, return_mode="levels")
+    flags = swing_highs(ctx, left=1, right=1, return_mode="flags")
+
+    # Levels inherit prices but only mark confirmed swing highs in availability mask.
+    assert levels.values == high.values
+    assert levels.availability_mask == (
+        False, False, True, False, False, False, True, False, False
+    )
+    # Flags represent the same pattern as swing_points overall result.
+    assert flags.values == (
+        False, False, True, False, False, False, True, False, False
+    )
+
+
+def test_swing_lows_direct_api_levels():
+    high = _make_price_series([1, 2, 3, 2, 1, 2, 4, 2, 1])
+    low = _make_price_series([1, 0, 1, 0, -1, 0, 1, 0, -1])
+    ctx = SeriesContext(high=high, low=low)
+
+    levels = swing_lows(ctx, left=1, right=1, return_mode="levels")
+    flags = swing_lows(ctx, left=1, right=1, return_mode="flags")
+
+    assert levels.values == low.values
+    assert levels.availability_mask == (
+        False, False, False, False, True, False, False, False, False
+    )
+    assert flags.values == (
+        False, False, False, False, True, False, False, False, False
+    )
 
 
 def test_swing_points_insufficient_history():

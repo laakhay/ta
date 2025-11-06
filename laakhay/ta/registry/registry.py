@@ -59,6 +59,8 @@ _METADATA_HINTS: dict[str, IndicatorMetadata] = {
     # Pattern indicators
     "swing_points": IndicatorMetadata(required_fields=("high", "low"), lookback_params=("left", "right")),
     "fib_retracement": IndicatorMetadata(required_fields=("high", "low"), lookback_params=("left", "right")),
+    "swing_highs": IndicatorMetadata(required_fields=("high", "low"), lookback_params=("left", "right")),
+    "swing_lows": IndicatorMetadata(required_fields=("high", "low"), lookback_params=("left", "right")),
 }
 
 

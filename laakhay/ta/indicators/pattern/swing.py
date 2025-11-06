@@ -103,6 +103,33 @@ def _make_flag_series(
     )
 
 
+def _build_result(
+    ctx: SeriesContext,
+    left: int,
+    right: int,
+    *,
+    return_mode: Literal["flags", "levels"],
+    subset: Literal["both", "high", "low"],
+) -> dict[str, Series[Price] | Series[bool]]:
+    high, low = _validate_inputs(ctx, left, right)
+    result = _compute_swings(high, low, left, right)
+
+    if return_mode not in {"flags", "levels"}:
+        raise ValueError("return_mode must be 'flags' or 'levels'")
+
+    inherit_prices = return_mode == "levels"
+
+    swing_high = _make_flag_series(high, result.flags_high, result.mask_eval, inherit_prices=inherit_prices)
+    swing_low = _make_flag_series(low, result.flags_low, result.mask_eval, inherit_prices=inherit_prices)
+
+    output: dict[str, Series[Price] | Series[bool]] = {}
+    if subset in {"both", "high"}:
+        output["swing_high"] = swing_high
+    if subset in {"both", "low"}:
+        output["swing_low"] = swing_low
+    return output
+
+
 @register("swing_points", description="Detect swing highs and lows using fractal-style lookbacks")
 def swing_points(
     ctx: SeriesContext,
@@ -123,19 +150,31 @@ def swing_points(
     Returns:
         Dictionary containing `swing_high` and `swing_low` series.
     """
-    high, low = _validate_inputs(ctx, left, right)
-    result = _compute_swings(high, low, left, right)
-
-    if return_mode not in {"flags", "levels"}:
-        raise ValueError("return_mode must be 'flags' or 'levels'")
-
-    inherit_prices = return_mode == "levels"
-
-    swing_high = _make_flag_series(high, result.flags_high, result.mask_eval, inherit_prices=inherit_prices)
-    swing_low = _make_flag_series(low, result.flags_low, result.mask_eval, inherit_prices=inherit_prices)
-
-    return {"swing_high": swing_high, "swing_low": swing_low}
+    return _build_result(ctx, left, right, return_mode=return_mode, subset="both")
 
 
-__all__ = ["swing_points"]
+@register("swing_highs", description="Detect swing highs using fractal-style lookbacks")
+def swing_highs(
+    ctx: SeriesContext,
+    *,
+    left: int = 2,
+    right: int = 2,
+    return_mode: Literal["flags", "levels"] = "flags",
+) -> Series[Price] | Series[bool]:
+    result = _build_result(ctx, left, right, return_mode=return_mode, subset="high")
+    return result["swing_high"]
 
+
+@register("swing_lows", description="Detect swing lows using fractal-style lookbacks")
+def swing_lows(
+    ctx: SeriesContext,
+    *,
+    left: int = 2,
+    right: int = 2,
+    return_mode: Literal["flags", "levels"] = "flags",
+) -> Series[Price] | Series[bool]:
+    result = _build_result(ctx, left, right, return_mode=return_mode, subset="low")
+    return result["swing_low"]
+
+
+__all__ = ["swing_points", "swing_highs", "swing_lows"]
