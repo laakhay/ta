@@ -48,25 +48,32 @@ swing_4h = ta.indicator(
 
 fib_levels = ta.indicator(
     "fib_retracement",
-    anchor="recent",       # use the most recent confirmed swing pair
     levels=(0.382, 0.5, 0.618, 0.75),
 )
 
 rsi = ta.indicator("rsi", period=14)
 ```
 
-Assume `swing_points` emits a dict with the latest confirmed swing price and
-`fib_retracement` re-samples those levels onto the 1h execution grid using the
-new `downsample(..., target_timeframe="1h")` pathways under the hood.
+Assume both indicators run on the 4h context while execution happens on 1h.
 
 ```python
-levels = fib_levels(swing_4h(dataset_4h)["swing_high"], swing_4h(dataset_4h)["swing_low"])  # hypothetical API
+swing_state = swing_4h(dataset.select(timeframe="4h"))
+fib_state = fib_levels(dataset.select(timeframe="4h"))
+
+down_levels = fib_state["down"]
+level_618 = down_levels["0.618"]          # Series[Price] on 4h grid
+level_50 = down_levels["0.5"]
+
+# Align 4h anchors to 1h execution timeframe using the sync_timeframe primitive
+reference_1h = dataset.select(timeframe="1h")["close"]
+level_618_1h = ta.sync_timeframe(level_618, reference=reference_1h, fill="ffill")
+level_50_1h = ta.sync_timeframe(level_50, reference=reference_1h, fill="ffill")
 
 # Lay out retracement zone signals
 close_price = ta.select(field="close")  # uses the new primitive helper
 
-golden_entry = close_price.between(levels["0.618"], levels["0.5"])
-invalidated = close_price > levels["0.75"]
+golden_entry = close_price.between(level_618_1h, level_50_1h)
+invalidated = close_price > ta.sync_timeframe(down_levels["0.75"], reference=reference_1h, fill="ffill")
 
 # Add a momentum filter to reinforce reversion context
 oversold = rsi(dataset) < 35
@@ -128,7 +135,7 @@ def on_bar(bar_1h):
     if bar_1h.timestamp aligns with 4h close:
         dataset.update_series("BTCUSDT", "4h", aggregate_last_4h())
 
-    fib_state = fib_levels(swing_4h(dataset))
+    fib_state = fib_levels(dataset.select(timeframe="4h"))
     signal = long_signal.run(dataset)["BTCUSDT", "1h", "default"][-1]
     if signal:
         submit_order(...)

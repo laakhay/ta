@@ -32,6 +32,7 @@ from .volatility.atr import atr
 from .volume.obv import obv
 from .volume.vwap import vwap
 from .pattern.swing import swing_points
+from .pattern.fib import fib_retracement
 
 __all__ = [
     # Core types
@@ -42,5 +43,5 @@ __all__ = [
     "cumulative_sum", "positive_values", "negative_values",
     "rolling_ema", "true_range", "typical_price", "sign",
     # Indicators
-    "sma", "ema", "macd", "bbands", "rsi", "stochastic", "atr", "obv", "vwap", "swing_points"
+    "sma", "ema", "macd", "bbands", "rsi", "stochastic", "atr", "obv", "vwap", "swing_points", "fib_retracement"
 ]

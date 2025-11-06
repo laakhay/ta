@@ -58,6 +58,7 @@ _METADATA_HINTS: dict[str, IndicatorMetadata] = {
     "vwap": IndicatorMetadata(required_fields=("high", "low", "close", "volume"), default_lookback=1),
     # Pattern indicators
     "swing_points": IndicatorMetadata(required_fields=("high", "low"), lookback_params=("left", "right")),
+    "fib_retracement": IndicatorMetadata(required_fields=("high", "low"), lookback_params=("left", "right")),
 }
 
 
