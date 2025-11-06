@@ -17,6 +17,7 @@ def coerce_qty(value: QtyLike | Any) -> Qty:
         raise TypeError(f"Invalid quantity value: {value}")
     return Decimal(str(value))
 
+
 def coerce_rate(value: RateLike | Any) -> Rate:
     if not isinstance(value, (RateLike)):
         raise TypeError(f"Invalid rate value: {value}")

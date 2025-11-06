@@ -34,11 +34,7 @@ _FALLBACK_STRPTIME_PATTERNS: tuple[str, ...] = (
 
 def _to_utc(dt: datetime) -> datetime:
     """Return a UTC-aware datetime. Naive → assume UTC; aware → convert to UTC."""
-    return (
-        dt.replace(tzinfo=UTC)
-        if dt.tzinfo is None
-        else dt.astimezone(UTC)
-    )
+    return dt.replace(tzinfo=UTC) if dt.tzinfo is None else dt.astimezone(UTC)
 
 
 def _is_integerish(s: str) -> bool:

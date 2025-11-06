@@ -20,9 +20,8 @@ UTC = UTC
 # Helpers
 # ---------------------------------------------------------------------
 
-def mk_series(
-    vals, stamps=None, symbol="BTC", tf="1h"
-) -> Series[Price]:
+
+def mk_series(vals, stamps=None, symbol="BTC", tf="1h") -> Series[Price]:
     if stamps is None:
         stamps = (datetime(2024, 1, 1, tzinfo=UTC),)
     return Series[Price](
@@ -37,6 +36,7 @@ def mk_series(
 # Expression wrapper
 # ---------------------------------------------------------------------
 
+
 class TestExpression:
     def test_creation_from_literal_series_scalar(self, literal_10, test_series):
         # literal
@@ -45,8 +45,11 @@ class TestExpression:
 
         # series
         from laakhay.ta.expressions.operators import _to_node
+
         expr_ser = Expression(_to_node(test_series))
-        assert isinstance(expr_ser._node, Literal) and expr_ser._node.value == test_series
+        assert (
+            isinstance(expr_ser._node, Literal) and expr_ser._node.value == test_series
+        )
 
         # scalar
         expr_s = Expression(_to_node(42))
@@ -66,7 +69,14 @@ class TestExpression:
 
     @pytest.mark.parametrize(
         "op_type",
-        [OperatorType.ADD, OperatorType.SUB, OperatorType.MUL, OperatorType.DIV, OperatorType.MOD, OperatorType.POW],
+        [
+            OperatorType.ADD,
+            OperatorType.SUB,
+            OperatorType.MUL,
+            OperatorType.DIV,
+            OperatorType.MOD,
+            OperatorType.POW,
+        ],
     )
     def test_arithmetic_overloading(self, literal_10, literal_20, op_type):
         a, b = Expression(literal_10), Expression(literal_20)
@@ -76,13 +86,20 @@ class TestExpression:
             OperatorType.MUL: (a * b),
             OperatorType.DIV: (a / b),
             OperatorType.MOD: (a % b),
-            OperatorType.POW: (a ** b),
+            OperatorType.POW: (a**b),
         }[op_type]._node
         assert isinstance(node, BinaryOp) and node.operator == op_type
 
     @pytest.mark.parametrize(
         "op_type",
-        [OperatorType.EQ, OperatorType.NE, OperatorType.LT, OperatorType.LE, OperatorType.GT, OperatorType.GE],
+        [
+            OperatorType.EQ,
+            OperatorType.NE,
+            OperatorType.LT,
+            OperatorType.LE,
+            OperatorType.GT,
+            OperatorType.GE,
+        ],
     )
     def test_comparison_overloading(self, literal_10, literal_20, op_type):
         a, b = Expression(literal_10), Expression(literal_20)
@@ -105,7 +122,14 @@ class TestExpression:
 
     @pytest.mark.parametrize(
         "op_type",
-        [OperatorType.ADD, OperatorType.SUB, OperatorType.MUL, OperatorType.DIV, OperatorType.MOD, OperatorType.POW],
+        [
+            OperatorType.ADD,
+            OperatorType.SUB,
+            OperatorType.MUL,
+            OperatorType.DIV,
+            OperatorType.MOD,
+            OperatorType.POW,
+        ],
     )
     def test_scalar_ops_wrap_to_binary(self, literal_10, op_type):
         expr = Expression(literal_10)
@@ -115,13 +139,15 @@ class TestExpression:
             OperatorType.MUL: (expr * 5),
             OperatorType.DIV: (expr / 5),
             OperatorType.MOD: (expr % 5),
-            OperatorType.POW: (expr ** 2),
+            OperatorType.POW: (expr**2),
         }[op_type]._node
         assert isinstance(node, BinaryOp) and node.operator == op_type
 
     def test_chaining_and_eval(self, literal_10, literal_20):
         # (10 + 20) * 10 = 300
-        res = ((Expression(literal_10) + Expression(literal_20)) * Expression(literal_10)).evaluate({})
+        res = (
+            (Expression(literal_10) + Expression(literal_20)) * Expression(literal_10)
+        ).evaluate({})
         assert isinstance(res, Series) and len(res) == 1 and res.values[0] == Price(300)
 
     def test_series_scalar_broadcast(self, multi_point_series):
@@ -130,7 +156,10 @@ class TestExpression:
         # add
         res = (expr + 10).evaluate({})
         assert len(res) == len(multi_point_series)
-        assert res.symbol == multi_point_series.symbol and res.timeframe == multi_point_series.timeframe
+        assert (
+            res.symbol == multi_point_series.symbol
+            and res.timeframe == multi_point_series.timeframe
+        )
         expected = tuple(v + Price(Decimal("10")) for v in multi_point_series.values)
         assert res.values == expected
 
@@ -140,15 +169,21 @@ class TestExpression:
 
         # mod
         mod_res = (expr % 3).evaluate({})
-        assert len(mod_res) == len(multi_point_series) and mod_res.symbol == multi_point_series.symbol
+        assert (
+            len(mod_res) == len(multi_point_series)
+            and mod_res.symbol == multi_point_series.symbol
+        )
 
         # pow
-        pow_res = (expr ** 2).evaluate({})
-        assert pow_res.values == tuple(v ** 2 for v in multi_point_series.values)
+        pow_res = (expr**2).evaluate({})
+        assert pow_res.values == tuple(v**2 for v in multi_point_series.values)
 
     def test_series_comparison_returns_bool_series(self, multi_point_series):
         gt = (as_expression(multi_point_series) > 150).evaluate({})
-        assert len(gt) == len(multi_point_series) and gt.symbol == multi_point_series.symbol
+        assert (
+            len(gt) == len(multi_point_series)
+            and gt.symbol == multi_point_series.symbol
+        )
         assert gt.values == (False, True)
 
     def test_mismatched_series_metadata_raises(self, multi_point_series):
@@ -163,7 +198,10 @@ class TestExpression:
 
     def test_misaligned_timestamps_raises(self, multi_point_series):
         shifted = Series(
-            timestamps=(multi_point_series.timestamps[0], multi_point_series.timestamps[1] + timedelta(seconds=1)),
+            timestamps=(
+                multi_point_series.timestamps[0],
+                multi_point_series.timestamps[1] + timedelta(seconds=1),
+            ),
             values=(Price(Decimal("1")), Price(Decimal("2"))),
             symbol=multi_point_series.symbol,
             timeframe=multi_point_series.timeframe,
@@ -176,13 +214,22 @@ class TestExpression:
 # as_expression
 # ---------------------------------------------------------------------
 
+
 class TestAsExpression:
     def test_wrap_scalar_series_literal_and_idempotent(self, literal_10, test_series):
         e_s = as_expression(42)
-        assert isinstance(e_s, Expression) and isinstance(e_s._node, Literal) and e_s._node.value == 42
+        assert (
+            isinstance(e_s, Expression)
+            and isinstance(e_s._node, Literal)
+            and e_s._node.value == 42
+        )
 
         e_ser = as_expression(test_series)
-        assert isinstance(e_ser, Expression) and isinstance(e_ser._node, Literal) and e_ser._node.value == test_series
+        assert (
+            isinstance(e_ser, Expression)
+            and isinstance(e_ser._node, Literal)
+            and e_ser._node.value == test_series
+        )
 
         e_lit = as_expression(literal_10)
         assert isinstance(e_lit, Expression) and e_lit._node == literal_10
@@ -193,7 +240,9 @@ class TestAsExpression:
     def test_operator_chaining(self, literal_10, literal_20):
         res = as_expression(literal_10) + as_expression(literal_20)
         assert isinstance(res, Expression)
-        assert isinstance(res._node, BinaryOp) and res._node.operator == OperatorType.ADD
+        assert (
+            isinstance(res._node, BinaryOp) and res._node.operator == OperatorType.ADD
+        )
         assert res._node.left == literal_10 and res._node.right == literal_20
 
 
@@ -201,22 +250,28 @@ class TestAsExpression:
 # Evaluation edge cases
 # ---------------------------------------------------------------------
 
+
 class TestExpressionEvaluationEdgeCases:
     def test_empty_and_none_context(self, literal_10):
         for ctx in ({}, None):
             out = Expression(literal_10).evaluate(ctx)
-            assert isinstance(out, Series) and len(out) == 1 and out.values[0] == Price(10)
+            assert (
+                isinstance(out, Series) and len(out) == 1 and out.values[0] == Price(10)
+            )
 
     def test_complex_nested_evaluation(self, literal_10, literal_20):
         # ((10 + 20) * 10) - (20 / 10) = 300 - 2 = 298
-        expr = ((Expression(literal_10) + Expression(literal_20)) * Expression(literal_10)) - (
-            Expression(literal_20) / Expression(literal_10)
-        )
+        expr = (
+            (Expression(literal_10) + Expression(literal_20)) * Expression(literal_10)
+        ) - (Expression(literal_20) / Expression(literal_10))
         out = expr.evaluate({})
         assert isinstance(out, Series) and len(out) == 1 and out.values[0] == Price(298)
 
     def test_dependency_tracking_complex(self, literal_10, literal_20):
-        deps = ((Expression(literal_10) + Expression(literal_20)) * (Expression(literal_10) - Expression(literal_20))).dependencies()
+        deps = (
+            (Expression(literal_10) + Expression(literal_20))
+            * (Expression(literal_10) - Expression(literal_20))
+        ).dependencies()
         assert isinstance(deps, list)
 
 

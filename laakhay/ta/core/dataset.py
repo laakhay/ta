@@ -11,12 +11,13 @@ from .ohlcv import OHLCV
 from .series import Series
 from .types import Symbol, Timestamp
 
-T = TypeVar('T')
+T = TypeVar("T")
 
 
 @dataclass(frozen=True)
 class DatasetKey:
     """Immutable key for dataset series identification."""
+
     symbol: Symbol
     timeframe: str
     source: str = "default"
@@ -32,7 +33,7 @@ class DatasetKey:
         return {
             "symbol": self.symbol,
             "timeframe": self.timeframe,
-            "source": self.source
+            "source": self.source,
         }
 
     @classmethod
@@ -41,13 +42,14 @@ class DatasetKey:
         return cls(
             symbol=data["symbol"],
             timeframe=data["timeframe"],
-            source=data.get("source", "default")
+            source=data.get("source", "default"),
         )
 
 
 @dataclass(frozen=True)
 class DatasetMetadata:
     """Metadata for the dataset."""
+
     created_at: Timestamp = field(default_factory=lambda: datetime.now(UTC))
     description: str = ""
     tags: set[str] = field(default_factory=lambda: set())
@@ -57,7 +59,7 @@ class DatasetMetadata:
         return {
             "created_at": self.created_at.isoformat(),
             "description": self.description,
-            "tags": list(self.tags)
+            "tags": list(self.tags),
         }
 
     @classmethod
@@ -68,14 +70,14 @@ class DatasetMetadata:
         return cls(
             created_at=coerce_timestamp(data.get("created_at", datetime.now(UTC))),
             description=data.get("description", ""),
-            tags=set(data.get("tags", []))
+            tags=set(data.get("tags", [])),
         )
 
 
 class Dataset:
     """
     Multi-symbol/timeframe collection for technical analysis.
-    
+
     Provides efficient storage and retrieval of OHLCV series data across
     multiple symbols, timeframes, and data sources.
     """
@@ -85,28 +87,32 @@ class Dataset:
         self._series: dict[DatasetKey, OHLCV | Series[Any]] = {}
         self.metadata = metadata or DatasetMetadata()
 
-    def add_series(self,
-                  symbol: Symbol,
-                  timeframe: str,
-                  series: OHLCV | Series[Any],
-                  source: str = "default") -> None:
+    def add_series(
+        self,
+        symbol: Symbol,
+        timeframe: str,
+        series: OHLCV | Series[Any],
+        source: str = "default",
+    ) -> None:
         """Add a series to the dataset."""
         key = DatasetKey(symbol=symbol, timeframe=timeframe, source=source)
         self._series[key] = series
 
-    def add(self, symbol: Symbol, timeframe: str, source: str, series: OHLCV | Series[Any]) -> None:
+    def add(
+        self, symbol: Symbol, timeframe: str, source: str, series: OHLCV | Series[Any]
+    ) -> None:
         """Add a series to the dataset (alias for add_series with different parameter order)."""
         self.add_series(symbol, timeframe, series, source)
 
     def to_context(self) -> SeriesContext:
         """Convert dataset to SeriesContext for indicator evaluation.
-        
+
         This method extracts series from the dataset and creates a SeriesContext
         that can be used with indicator functions.
-        
+
         Returns:
             SeriesContext with available series
-            
+
         Raises:
             ValueError: If no suitable series are found in the dataset
         """
@@ -117,13 +123,15 @@ class Dataset:
 
         for key, series in self._series.items():
             # Handle OHLCV data
-            if hasattr(series, 'to_series'):  # It's an OHLCV
+            if hasattr(series, "to_series"):  # It's an OHLCV
                 context_dict["close"] = series.to_series("close")
                 context_dict["open"] = series.to_series("open")
                 context_dict["high"] = series.to_series("high")
                 context_dict["low"] = series.to_series("low")
                 context_dict["volume"] = series.to_series("volume")
-                context_dict["price"] = series.to_series("close")  # Use close as default price
+                context_dict["price"] = series.to_series(
+                    "close"
+                )  # Use close as default price
             else:
                 # Handle regular Series
                 if key.source == "close":
@@ -145,7 +153,7 @@ class Dataset:
         # If no close series found but we have series with values, use the first one as close
         if "close" not in context_dict and self._series:
             first_series = next(iter(self._series.values()))
-            if hasattr(first_series, 'values') and len(first_series.values) > 0:
+            if hasattr(first_series, "values") and len(first_series.values) > 0:
                 context_dict["close"] = first_series
 
         if not context_dict:
@@ -154,18 +162,19 @@ class Dataset:
 
         return SeriesContext(**context_dict)
 
-    def series(self,
-               symbol: Symbol,
-               timeframe: str,
-               source: str = "default") -> OHLCV | Series[Any] | None:
+    def series(
+        self, symbol: Symbol, timeframe: str, source: str = "default"
+    ) -> OHLCV | Series[Any] | None:
         """Retrieve a series from the dataset."""
         key = DatasetKey(symbol=symbol, timeframe=timeframe, source=source)
         return self._series.get(key)
 
-    def select(self,
-               symbol: Symbol | None = None,
-               timeframe: str | None = None,
-               source: str | None = None) -> DatasetView:
+    def select(
+        self,
+        symbol: Symbol | None = None,
+        timeframe: str | None = None,
+        source: str | None = None,
+    ) -> DatasetView:
         """Create a filtered view of the dataset."""
         return DatasetView(self, symbol=symbol, timeframe=timeframe, source=source)
 
@@ -218,7 +227,7 @@ class Dataset:
                 # Find the first OHLCV series
                 ohlcv_series = None
                 for series in self._series.values():
-                    if hasattr(series, 'to_series'):  # It's an OHLCV
+                    if hasattr(series, "to_series"):  # It's an OHLCV
                         ohlcv_series = series
                         break
 
@@ -238,7 +247,9 @@ class Dataset:
             raise KeyError(f"No series found for key: {key}")
         return self._series[key]
 
-    def build_context(self, symbol: Symbol, timeframe: str, required_fields: list[str]) -> "SeriesContext":
+    def build_context(
+        self, symbol: Symbol, timeframe: str, required_fields: list[str]
+    ) -> "SeriesContext":
         """Build a SeriesContext for a specific symbol/timeframe using only required fields.
 
         Prefers OHLCV series when present; falls back to individual source series.
@@ -248,7 +259,11 @@ class Dataset:
         # Try to find an OHLCV for this symbol/timeframe
         ohlcv: OHLCV | None = None
         for key, series in self._series.items():
-            if key.symbol == symbol and key.timeframe == timeframe and hasattr(series, 'to_series'):
+            if (
+                key.symbol == symbol
+                and key.timeframe == timeframe
+                and hasattr(series, "to_series")
+            ):
                 ohlcv = series  # type: ignore[assignment]
                 break
 
@@ -264,7 +279,14 @@ class Dataset:
             except (KeyError, AttributeError, ValueError):
                 pass
         for field in required_fields:
-            if ohlcv is not None and field in {"open", "high", "low", "close", "volume", "price"}:
+            if ohlcv is not None and field in {
+                "open",
+                "high",
+                "low",
+                "close",
+                "volume",
+                "price",
+            }:
                 src_name = "close" if field == "price" else field
                 ctx[field if field != "price" else "price"] = ohlcv.to_series(src_name)  # type: ignore[arg-type]
                 continue
@@ -280,7 +302,11 @@ class Dataset:
             if not found and field == "price":
                 # try close as default
                 for key, series in self._series.items():
-                    if key.symbol == symbol and key.timeframe == timeframe and key.source == "close":
+                    if (
+                        key.symbol == symbol
+                        and key.timeframe == timeframe
+                        and key.source == "close"
+                    ):
                         ctx["price"] = series  # type: ignore[assignment]
                         found = True
                         break
@@ -292,10 +318,7 @@ class Dataset:
         for key, series in self._series.items():
             series_dict[str(key)] = series.to_dict()
 
-        return {
-            "metadata": self.metadata.to_dict(),
-            "series": series_dict
-        }
+        return {"metadata": self.metadata.to_dict(), "series": series_dict}
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> Dataset:
@@ -333,16 +356,18 @@ class Dataset:
 class DatasetView:
     """
     Filtered view of a dataset.
-    
+
     Provides a read-only view of a dataset with optional filtering
     by symbol, timeframe, and source.
     """
 
-    def __init__(self,
-                 dataset: Dataset,
-                 symbol: Symbol | None = None,
-                 timeframe: str | None = None,
-                 source: str | None = None):
+    def __init__(
+        self,
+        dataset: Dataset,
+        symbol: Symbol | None = None,
+        timeframe: str | None = None,
+        source: str | None = None,
+    ):
         """Initialize dataset view with filters."""
         self._dataset = dataset
         self._symbol_filter = symbol
@@ -359,7 +384,9 @@ class DatasetView:
             return False
         return True
 
-    def series(self, symbol: Symbol, timeframe: str, source: str = "default") -> OHLCV | Series[Any] | None:
+    def series(
+        self, symbol: Symbol, timeframe: str, source: str = "default"
+    ) -> OHLCV | Series[Any] | None:
         """Retrieve a series from the view."""
         key = DatasetKey(symbol=symbol, timeframe=timeframe, source=source)
         if not self._matches_filter(key):
@@ -408,13 +435,13 @@ class DatasetView:
 
     def to_context(self) -> SeriesContext:
         """Convert dataset to SeriesContext for indicator evaluation.
-        
+
         This method extracts series from the dataset and creates a SeriesContext
         that can be used with indicator functions.
-        
+
         Returns:
             SeriesContext with available series
-            
+
         Raises:
             ValueError: If no suitable series are found in the dataset
         """
@@ -455,17 +482,19 @@ class DatasetView:
         return SeriesContext(**context_dict)
 
 
-def dataset(*series: OHLCV | Series[Any],
-           metadata: DatasetMetadata | None = None,
-           **kwargs: OHLCV | Series[Any]) -> Dataset:
+def dataset(
+    *series: OHLCV | Series[Any],
+    metadata: DatasetMetadata | None = None,
+    **kwargs: OHLCV | Series[Any],
+) -> Dataset:
     """
     Convenience function to create a dataset from multiple series.
-    
+
     Args:
         *series: Variable number of series to add to dataset
         metadata: Optional dataset metadata
         **kwargs: Additional series with keys as 'symbol_timeframe_source'
-    
+
     Returns:
         Dataset containing the provided series
     """
@@ -474,20 +503,20 @@ def dataset(*series: OHLCV | Series[Any],
     # Add series passed as positional arguments
     for i, series_obj in enumerate(series):
         # Extract symbol and timeframe from series metadata or use defaults
-        symbol = getattr(series_obj, 'symbol', f'SYMBOL_{i}')
-        timeframe = getattr(series_obj, 'timeframe', '1h')
-        source = getattr(series_obj, 'source', 'default')
+        symbol = getattr(series_obj, "symbol", f"SYMBOL_{i}")
+        timeframe = getattr(series_obj, "timeframe", "1h")
+        source = getattr(series_obj, "source", "default")
 
         ds.add_series(symbol, timeframe, series_obj, source)
 
     # Add series passed as keyword arguments
     for key_str, series_obj in kwargs.items():
         # Parse key format: 'symbol|timeframe|source'
-        parts = key_str.split('|')
+        parts = key_str.split("|")
         if len(parts) >= 2:
             symbol = parts[0]
             timeframe = parts[1]
-            source = parts[2] if len(parts) > 2 else 'default'
+            source = parts[2] if len(parts) > 2 else "default"
             ds.add_series(symbol, timeframe, series_obj, source)
 
     return ds

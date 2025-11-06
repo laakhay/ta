@@ -18,28 +18,30 @@ class TestStochasticIndicator:
         """Test basic Stochastic calculation with valid data."""
         timestamps = [datetime(2024, 1, i, tzinfo=UTC) for i in range(1, 17)]  # 16 days
         high_values = [Decimal(str(100 + i)) for i in range(16)]  # 100, 101, ..., 115
-        low_values = [Decimal(str(99 + i)) for i in range(16)]   # 99, 100, ..., 114
-        close_values = [Decimal(str(99.5 + i)) for i in range(16)]  # 99.5, 100.5, ..., 114.5
+        low_values = [Decimal(str(99 + i)) for i in range(16)]  # 99, 100, ..., 114
+        close_values = [
+            Decimal(str(99.5 + i)) for i in range(16)
+        ]  # 99.5, 100.5, ..., 114.5
 
         high_series = Series[Price](
             timestamps=tuple(timestamps),
             values=tuple(high_values),
             symbol="BTCUSDT",
-            timeframe="1h"
+            timeframe="1h",
         )
 
         low_series = Series[Price](
             timestamps=tuple(timestamps),
             values=tuple(low_values),
             symbol="BTCUSDT",
-            timeframe="1h"
+            timeframe="1h",
         )
 
         close_series = Series[Price](
             timestamps=tuple(timestamps),
             values=tuple(close_values),
             symbol="BTCUSDT",
-            timeframe="1h"
+            timeframe="1h",
         )
 
         ctx = SeriesContext(high=high_series, low=low_series, close=close_series)
@@ -61,10 +63,7 @@ class TestStochasticIndicator:
     def test_stochastic_empty_series(self):
         """Test Stochastic with empty input series."""
         empty_series = Series[Price](
-            timestamps=(),
-            values=(),
-            symbol="BTCUSDT",
-            timeframe="1h"
+            timestamps=(), values=(), symbol="BTCUSDT", timeframe="1h"
         )
 
         ctx = SeriesContext(high=empty_series, low=empty_series, close=empty_series)
@@ -84,21 +83,21 @@ class TestStochasticIndicator:
             timestamps=tuple(timestamps),
             values=tuple(values),
             symbol="BTCUSDT",
-            timeframe="1h"
+            timeframe="1h",
         )
 
         low_series = Series[Price](
             timestamps=tuple(timestamps),
             values=tuple(values),
             symbol="BTCUSDT",
-            timeframe="1h"
+            timeframe="1h",
         )
 
         close_series = Series[Price](
             timestamps=tuple(timestamps),
             values=tuple(values),
             symbol="BTCUSDT",
-            timeframe="1h"
+            timeframe="1h",
         )
 
         ctx = SeriesContext(high=high_series, low=low_series, close=close_series)
@@ -111,28 +110,34 @@ class TestStochasticIndicator:
     def test_stochastic_missing_series(self):
         """Test Stochastic with missing required series."""
         timestamps = [datetime(2024, 1, 1, tzinfo=UTC)]
-        values = [Decimal('100')]
+        values = [Decimal("100")]
 
         close_series = Series[Price](
             timestamps=tuple(timestamps),
             values=tuple(values),
             symbol="BTCUSDT",
-            timeframe="1h"
+            timeframe="1h",
         )
 
         # Test missing high
         ctx = SeriesContext(low=close_series, close=close_series)
-        with pytest.raises(ValueError, match="Stochastic requires series: .* missing: .*high.*"):
+        with pytest.raises(
+            ValueError, match="Stochastic requires series: .* missing: .*high.*"
+        ):
             stochastic(ctx)
 
         # Test missing low
         ctx = SeriesContext(high=close_series, close=close_series)
-        with pytest.raises(ValueError, match="Stochastic requires series: .* missing: .*low.*"):
+        with pytest.raises(
+            ValueError, match="Stochastic requires series: .* missing: .*low.*"
+        ):
             stochastic(ctx)
 
         # Test missing close
         ctx = SeriesContext(high=close_series, low=close_series)
-        with pytest.raises(ValueError, match="Stochastic requires series: .* missing: .*close.*"):
+        with pytest.raises(
+            ValueError, match="Stochastic requires series: .* missing: .*close.*"
+        ):
             stochastic(ctx)
 
     def test_stochastic_different_lengths(self):
@@ -145,21 +150,21 @@ class TestStochasticIndicator:
             timestamps=tuple(timestamps),
             values=tuple(values),
             symbol="BTCUSDT",
-            timeframe="1h"
+            timeframe="1h",
         )
 
         low_series = Series[Price](
             timestamps=tuple(timestamps),
             values=tuple(values),
             symbol="BTCUSDT",
-            timeframe="1h"
+            timeframe="1h",
         )
 
         close_series = Series[Price](
             timestamps=tuple(timestamps[:10]),
             values=tuple(short_values),
             symbol="BTCUSDT",
-            timeframe="1h"
+            timeframe="1h",
         )
 
         ctx = SeriesContext(high=high_series, low=low_series, close=close_series)
@@ -175,21 +180,21 @@ class TestStochasticIndicator:
             timestamps=tuple(timestamps),
             values=tuple(values),
             symbol="BTCUSDT",
-            timeframe="1h"
+            timeframe="1h",
         )
 
         low_series = Series[Price](
             timestamps=tuple(timestamps),
             values=tuple(values),
             symbol="BTCUSDT",
-            timeframe="1h"
+            timeframe="1h",
         )
 
         close_series = Series[Price](
             timestamps=tuple(timestamps),
             values=tuple(values),
             symbol="BTCUSDT",
-            timeframe="1h"
+            timeframe="1h",
         )
 
         ctx = SeriesContext(high=high_series, low=low_series, close=close_series)
@@ -214,21 +219,21 @@ class TestStochasticIndicator:
             timestamps=tuple(timestamps),
             values=tuple(high_values),
             symbol="BTCUSDT",
-            timeframe="1h"
+            timeframe="1h",
         )
 
         low_series = Series[Price](
             timestamps=tuple(timestamps),
             values=tuple(low_values),
             symbol="BTCUSDT",
-            timeframe="1h"
+            timeframe="1h",
         )
 
         close_series = Series[Price](
             timestamps=tuple(timestamps),
             values=tuple(close_values),
             symbol="BTCUSDT",
-            timeframe="1h"
+            timeframe="1h",
         )
 
         ctx = SeriesContext(high=high_series, low=low_series, close=close_series)
@@ -250,21 +255,21 @@ class TestStochasticIndicator:
             timestamps=tuple(timestamps),
             values=tuple(high_values),
             symbol="BTCUSDT",
-            timeframe="1h"
+            timeframe="1h",
         )
 
         low_series = Series[Price](
             timestamps=tuple(timestamps),
             values=tuple(low_values),
             symbol="BTCUSDT",
-            timeframe="1h"
+            timeframe="1h",
         )
 
         close_series = Series[Price](
             timestamps=tuple(timestamps),
             values=tuple(close_values),
             symbol="BTCUSDT",
-            timeframe="1h"
+            timeframe="1h",
         )
 
         ctx = SeriesContext(high=high_series, low=low_series, close=close_series)
@@ -289,21 +294,21 @@ class TestStochasticIndicator:
             timestamps=tuple(timestamps),
             values=tuple(high_values),
             symbol="ETHUSDT",
-            timeframe="4h"
+            timeframe="4h",
         )
 
         low_series = Series[Price](
             timestamps=tuple(timestamps),
             values=tuple(low_values),
             symbol="ETHUSDT",
-            timeframe="4h"
+            timeframe="4h",
         )
 
         close_series = Series[Price](
             timestamps=tuple(timestamps),
             values=tuple(close_values),
             symbol="ETHUSDT",
-            timeframe="4h"
+            timeframe="4h",
         )
 
         ctx = SeriesContext(high=high_series, low=low_series, close=close_series)
@@ -317,27 +322,27 @@ class TestStochasticIndicator:
     def test_stochastic_identical_high_low(self):
         """Test Stochastic when high equals low (should result in %K = 50)."""
         timestamps = [datetime(2024, 1, i, tzinfo=UTC) for i in range(1, 17)]  # 16 days
-        values = [Decimal('100')] * 16  # All same values
+        values = [Decimal("100")] * 16  # All same values
 
         high_series = Series[Price](
             timestamps=tuple(timestamps),
             values=tuple(values),
             symbol="BTCUSDT",
-            timeframe="1h"
+            timeframe="1h",
         )
 
         low_series = Series[Price](
             timestamps=tuple(timestamps),
             values=tuple(values),
             symbol="BTCUSDT",
-            timeframe="1h"
+            timeframe="1h",
         )
 
         close_series = Series[Price](
             timestamps=tuple(timestamps),
             values=tuple(values),
             symbol="BTCUSDT",
-            timeframe="1h"
+            timeframe="1h",
         )
 
         ctx = SeriesContext(high=high_series, low=low_series, close=close_series)

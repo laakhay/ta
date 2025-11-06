@@ -15,16 +15,16 @@ from ...primitives import typical_price, cumulative_sum
 def vwap(ctx: SeriesContext) -> Series[Price]:
     """
     Volume Weighted Average Price indicator using primitives.
-    
+
     VWAP = Sum(Price * Volume) / Sum(Volume)
     where Price = (High + Low + Close) / 3
     """
     # Validate required series
-    required_series = ['high', 'low', 'close', 'volume']
+    required_series = ["high", "low", "close", "volume"]
     missing = [s for s in required_series if not hasattr(ctx, s)]
     if missing:
         raise ValueError(f"VWAP requires series: {required_series}, missing: {missing}")
-    
+
     series_lengths = [len(getattr(ctx, s)) for s in required_series]
     if len(set(series_lengths)) > 1:
         raise ValueError("All series must have the same length")
@@ -35,9 +35,13 @@ def vwap(ctx: SeriesContext) -> Series[Price]:
 
     # Calculate VWAP: (Price * Volume) / Volume
     typical = typical_price(ctx)
-    pv_series = (Expression(Literal(typical)) * Expression(Literal(ctx.volume))).evaluate({})
-    
+    pv_series = (
+        Expression(Literal(typical)) * Expression(Literal(ctx.volume))
+    ).evaluate({})
+
     cumulative_pv = cumulative_sum(SeriesContext(close=pv_series))
     cumulative_vol = cumulative_sum(SeriesContext(close=ctx.volume))
-    
-    return (Expression(Literal(cumulative_pv)) / Expression(Literal(cumulative_vol))).evaluate({})
+
+    return (
+        Expression(Literal(cumulative_pv)) / Expression(Literal(cumulative_vol))
+    ).evaluate({})

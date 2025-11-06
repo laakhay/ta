@@ -4,7 +4,14 @@ from typing import Any, Iterable
 
 from ..core import Bar, Price, Qty, Rate, Series, Timestamp, dataset
 from ..engine import Engine
-from ..expressions import BinaryOp, Expression, ExpressionNode, Literal, UnaryOp, as_expression
+from ..expressions import (
+    BinaryOp,
+    Expression,
+    ExpressionNode,
+    Literal,
+    UnaryOp,
+    as_expression,
+)
 from ..io.csv import from_csv, to_csv
 from ..primitives import cumulative_sum as _cumulative_sum
 from ..primitives import diff as _diff
@@ -29,9 +36,19 @@ from ..registry import (
     register,
 )
 from .handle import IndicatorHandle
-from .namespace import TASeries, TANamespace, indicator, literal, ref, resample, source, ta
+from .namespace import (
+    TASeries,
+    TANamespace,
+    indicator,
+    literal,
+    ref,
+    resample,
+    source,
+    ta,
+)
 
 # Primitive convenience wrappers -----------------------------------------------------------
+
 
 def _call_indicator(
     name: str,
@@ -75,6 +92,7 @@ def _call_indicator(
 
 
 # Primitive convenience wrappers -----------------------------------------------------------
+
 
 def rolling_mean(*args: Any, **kwargs: Any):
     return _call_indicator("rolling_mean", args, kwargs, param_order=("period",))
@@ -146,6 +164,7 @@ def sync_timeframe(*args: Any, **kwargs: Any):
 
 # High-level indicator shortcuts -----------------------------------------------------------
 
+
 def sma(*args: Any, **kwargs: Any):
     return _call_indicator("sma", args, kwargs, param_order=("period",))
 
@@ -155,7 +174,12 @@ def ema(*args: Any, **kwargs: Any):
 
 
 def macd(*args: Any, **kwargs: Any):
-    return _call_indicator("macd", args, kwargs, param_order=("fast_period", "slow_period", "signal_period"))
+    return _call_indicator(
+        "macd",
+        args,
+        kwargs,
+        param_order=("fast_period", "slow_period", "signal_period"),
+    )
 
 
 def bbands(*args: Any, **kwargs: Any):
@@ -167,7 +191,9 @@ def rsi(*args: Any, **kwargs: Any):
 
 
 def stochastic(*args: Any, **kwargs: Any):
-    return _call_indicator("stochastic", args, kwargs, param_order=("k_period", "d_period"))
+    return _call_indicator(
+        "stochastic", args, kwargs, param_order=("k_period", "d_period")
+    )
 
 
 def atr(*args: Any, **kwargs: Any):

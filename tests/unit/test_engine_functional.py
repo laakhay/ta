@@ -63,7 +63,7 @@ class TestEngineFunctional:
                 low=Price("95"),
                 close=Price("102"),
                 volume=Price("1000"),
-                is_closed=True
+                is_closed=True,
             ),
             Bar(
                 ts=datetime(2024, 1, 2, tzinfo=UTC),
@@ -72,7 +72,7 @@ class TestEngineFunctional:
                 low=Price("98"),
                 close=Price("106"),
                 volume=Price("1200"),
-                is_closed=True
+                is_closed=True,
             ),
         ]
 

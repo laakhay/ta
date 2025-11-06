@@ -12,11 +12,11 @@ def macd(
     ctx: SeriesContext,
     fast_period: int = 12,
     slow_period: int = 26,
-    signal_period: int = 9
+    signal_period: int = 9,
 ) -> tuple[Series[Price], Series[Price], Series[Price]]:
     """
     MACD indicator using primitives.
-    
+
     Returns (macd_line, signal_line, histogram) where:
     - macd_line = EMA(fast) - EMA(slow)
     - signal_line = EMA(macd_line)
@@ -29,7 +29,9 @@ def macd(
 
     close = ctx.close
     if close is None or len(close) == 0:
-        empty = close.__class__(timestamps=(), values=(), symbol=close.symbol, timeframe=close.timeframe)
+        empty = close.__class__(
+            timestamps=(), values=(), symbol=close.symbol, timeframe=close.timeframe
+        )
         return empty, empty, empty
 
     # Calculate EMAs using rolling_ema primitive

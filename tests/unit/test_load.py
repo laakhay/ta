@@ -20,7 +20,7 @@ class TestLoadCSV:
 2024-01-01T00:00:00Z,100.0,101.0,99.0,100.5,1000,true
 2024-01-01T01:00:00Z,100.5,102.0,100.0,101.5,1100,true"""
 
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.csv', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".csv", delete=False) as f:
             f.write(csv_content)
             temp_path = f.name
 
@@ -47,13 +47,15 @@ class TestLoadCSV:
 2024-01-01T01:00:00Z,100.5
 2024-01-01T02:00:00Z,101.0"""
 
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.csv', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".csv", delete=False) as f:
             f.write(csv_content)
             temp_path = f.name
 
         try:
             # Load Series data
-            series = from_csv(temp_path, symbol="BTCUSDT", timeframe="1h", value_col="price")
+            series = from_csv(
+                temp_path, symbol="BTCUSDT", timeframe="1h", value_col="price"
+            )
 
             assert isinstance(series, Series)
             assert len(series) == 3
@@ -71,7 +73,7 @@ class TestLoadCSV:
 2024-01-01T00:00:00Z,100.0,101.0,99.0,100.5,1000,true
 2024-01-01T01:00:00Z,100.5,102.0,100.0,101.5,1100,false"""
 
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.csv', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".csv", delete=False) as f:
             f.write(csv_content)
             temp_path = f.name
 
@@ -87,7 +89,7 @@ class TestLoadCSV:
                 low_col="l",
                 close_col="c",
                 volume_col="v",
-                is_closed_col="closed"
+                is_closed_col="closed",
             )
 
             assert isinstance(ohlcv, OHLCV)
@@ -106,7 +108,7 @@ class TestLoadCSV:
 
     def test_from_csv_empty_file(self) -> None:
         """Test loading empty CSV file."""
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.csv', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".csv", delete=False) as f:
             temp_path = f.name
 
         try:
@@ -120,12 +122,14 @@ class TestLoadCSV:
         csv_content = """open,high,low,close,volume
 100.0,101.0,99.0,100.5,1000"""
 
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.csv', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".csv", delete=False) as f:
             f.write(csv_content)
             temp_path = f.name
 
         try:
-            with pytest.raises(ValueError, match="Timestamp column 'timestamp' not found in CSV"):
+            with pytest.raises(
+                ValueError, match="Timestamp column 'timestamp' not found in CSV"
+            ):
                 from_csv(temp_path, symbol="BTCUSDT", timeframe="1h")
         finally:
             Path(temp_path).unlink()
@@ -135,12 +139,14 @@ class TestLoadCSV:
         csv_content = """timestamp
 2024-01-01T00:00:00Z"""
 
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.csv', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".csv", delete=False) as f:
             f.write(csv_content)
             temp_path = f.name
 
         try:
-            with pytest.raises(ValueError, match="Value column 'value' not found in CSV"):
+            with pytest.raises(
+                ValueError, match="Value column 'value' not found in CSV"
+            ):
                 from_csv(temp_path, symbol="BTCUSDT", timeframe="1h")
         finally:
             Path(temp_path).unlink()
@@ -150,12 +156,14 @@ class TestLoadCSV:
         csv_content = """timestamp,open,high,low,close,volume
 2024-01-01T00:00:00Z,invalid,101.0,99.0,100.5,1000"""
 
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.csv', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".csv", delete=False) as f:
             f.write(csv_content)
             temp_path = f.name
 
         try:
-            with pytest.raises(ValueError, match="Error parsing row 2.*Invalid numeric data"):
+            with pytest.raises(
+                ValueError, match="Error parsing row 2.*Invalid numeric data"
+            ):
                 from_csv(temp_path, symbol="BTCUSDT", timeframe="1h")
         finally:
             Path(temp_path).unlink()
@@ -166,7 +174,7 @@ class TestLoadCSV:
 2024-01-01T00:00:00Z,100.0,101.0,99.0,100.5,1000
 2024-01-01T01:00:00Z,100.5,102.0,100.0,101.5,1100"""
 
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.csv', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".csv", delete=False) as f:
             f.write(csv_content)
             temp_path = f.name
 
@@ -188,7 +196,7 @@ class TestLoadCSV:
 2024-01-01T03:00:00Z,102.5,104.0,102.0,103.5,1300,closed
 2024-01-01T04:00:00Z,103.5,105.0,103.0,104.5,1400,false"""
 
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.csv', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".csv", delete=False) as f:
             f.write(csv_content)
             temp_path = f.name
 

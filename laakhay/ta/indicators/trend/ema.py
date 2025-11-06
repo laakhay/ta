@@ -11,7 +11,7 @@ from ...core import Series
 def ema(ctx: SeriesContext, period: int = 20) -> Series[Price]:
     """
     Exponential Moving Average using rolling_ema primitive.
-    
+
     This implementation uses the rolling_ema primitive for consistency
     and maintainability.
     """

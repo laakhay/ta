@@ -2,7 +2,12 @@
 
 import pytest
 
-from laakhay.ta.registry import IndicatorMetadata, IndicatorSchema, OutputSchema, ParamSchema
+from laakhay.ta.registry import (
+    IndicatorMetadata,
+    IndicatorSchema,
+    OutputSchema,
+    ParamSchema,
+)
 
 
 class TestParamSchema:
@@ -11,10 +16,7 @@ class TestParamSchema:
     def test_required_parameter(self) -> None:
         """Test required parameter creation."""
         param = ParamSchema(
-            name="period",
-            type=int,
-            required=True,
-            description="Period length"
+            name="period", type=int, required=True, description="Period length"
         )
 
         assert param.name == "period"
@@ -30,7 +32,7 @@ class TestParamSchema:
             type=str,
             default="binance",
             required=False,
-            description="Data source"
+            description="Data source",
         )
 
         assert param.name == "source"
@@ -47,7 +49,7 @@ class TestParamSchema:
             default="sma",
             required=False,
             description="Calculation method",
-            valid_values=["sma", "ema", "wma"]
+            valid_values=["sma", "ema", "wma"],
         )
 
         assert param.valid_values == ["sma", "ema", "wma"]
@@ -55,7 +57,9 @@ class TestParamSchema:
     def test_parameter_validation_errors(self) -> None:
         """Test parameter validation rules."""
         # Required parameter with default should fail
-        with pytest.raises(ValueError, match="Required parameters cannot have default values"):
+        with pytest.raises(
+            ValueError, match="Required parameters cannot have default values"
+        ):
             ParamSchema(name="period", type=int, required=True, default=20)
 
         # Optional parameter without default should now be allowed (None is valid default)
@@ -64,11 +68,15 @@ class TestParamSchema:
         assert param.default is None
 
         # Empty name should fail
-        with pytest.raises(ValueError, match="Parameter name must be a non-empty string"):
+        with pytest.raises(
+            ValueError, match="Parameter name must be a non-empty string"
+        ):
             ParamSchema(name="", type=int)
 
         # None name should fail
-        with pytest.raises(ValueError, match="Parameter name must be a non-empty string"):
+        with pytest.raises(
+            ValueError, match="Parameter name must be a non-empty string"
+        ):
             ParamSchema(name=None, type=int)  # type: ignore[arg-type]
 
         # Default value not in valid_values should fail
@@ -78,7 +86,7 @@ class TestParamSchema:
                 type=int,
                 default=99,
                 required=False,
-                valid_values=[5, 10, 20]
+                valid_values=[5, 10, 20],
             )
 
 
@@ -87,11 +95,7 @@ class TestOutputSchema:
 
     def test_output_schema_creation(self) -> None:
         """Test basic output schema creation."""
-        output = OutputSchema(
-            name="macd",
-            type=float,
-            description="MACD line values"
-        )
+        output = OutputSchema(name="macd", type=float, description="MACD line values")
 
         assert output.name == "macd"
         assert output.type == float
@@ -121,7 +125,9 @@ class TestIndicatorSchema:
 
     def test_indicator_schema_creation(self) -> None:
         """Test basic indicator schema creation."""
-        param = ParamSchema(name="period", type=int, required=True, description="Period length")
+        param = ParamSchema(
+            name="period", type=int, required=True, description="Period length"
+        )
         output = OutputSchema(name="sma", type=float, description="SMA values")
 
         schema = IndicatorSchema(
@@ -129,7 +135,7 @@ class TestIndicatorSchema:
             description="Simple Moving Average",
             parameters={"period": param},
             outputs={"sma": output},
-            aliases=["simple_ma", "moving_average"]
+            aliases=["simple_ma", "moving_average"],
         )
 
         assert schema.name == "sma"
@@ -152,10 +158,7 @@ class TestIndicatorSchema:
     def test_indicator_schema_to_dict(self) -> None:
         """Test schema serialization to dictionary."""
         param = ParamSchema(
-            name="period",
-            type=int,
-            required=True,
-            description="Period length"
+            name="period", type=int, required=True, description="Period length"
         )
         output = OutputSchema(name="rsi", type=float, description="RSI values")
 
@@ -189,17 +192,17 @@ class TestIndicatorSchema:
                 "period": {
                     "type": "int",
                     "required": True,
-                    "description": "Period length"
+                    "description": "Period length",
                 }
             },
-            "outputs": {
-                "sma": {
-                    "type": "float",
-                    "description": "SMA values"
-                }
-            },
+            "outputs": {"sma": {"type": "float", "description": "SMA values"}},
             "aliases": ["simple_ma"],
-            "metadata": {"required_fields": [], "optional_fields": [], "lookback_params": [], "default_lookback": None},
+            "metadata": {
+                "required_fields": [],
+                "optional_fields": [],
+                "lookback_params": [],
+                "default_lookback": None,
+            },
             "output_metadata": {"sma": {"type": "price", "role": "level"}},
         }
 
@@ -225,7 +228,7 @@ class TestIndicatorSchema:
             default=12,
             required=False,
             description="Fast period",
-            valid_values=[5, 12, 26]
+            valid_values=[5, 12, 26],
         )
         output = OutputSchema(name="macd", type=float, description="MACD line")
 
@@ -259,22 +262,21 @@ class TestIndicatorSchema:
                 "param": {
                     "type": "unknown_type",
                     "required": True,
-                    "description": "Test param"
+                    "description": "Test param",
                 }
-            }
+            },
         }
-        with pytest.raises(ValueError, match="Unsupported parameter type: unknown_type"):
+        with pytest.raises(
+            ValueError, match="Unsupported parameter type: unknown_type"
+        ):
             IndicatorSchema.from_dict(data_with_unknown_param)
 
         # Unknown output type should fail
         data_with_unknown_output = {
             "name": "test",
             "outputs": {
-                "output": {
-                    "type": "unknown_type",
-                    "description": "Test output"
-                }
-            }
+                "output": {"type": "unknown_type", "description": "Test output"}
+            },
         }
         with pytest.raises(ValueError, match="Unsupported output type: unknown_type"):
             IndicatorSchema.from_dict(data_with_unknown_output)
@@ -305,9 +307,9 @@ class TestRegistryCriticalIssues:
                     name="param",
                     type=Any,  # This causes the isinstance issue
                     required=True,
-                    description="Test param"
+                    description="Test param",
                 )
-            }
+            },
         )
 
         handle = IndicatorHandle(
@@ -315,7 +317,7 @@ class TestRegistryCriticalIssues:
             func=test_indicator,
             signature=signature(test_indicator),
             schema=schema,
-            aliases=[]
+            aliases=[],
         )
 
         # This should not raise TypeError
@@ -337,7 +339,9 @@ class TestRegistryCriticalIssues:
         from laakhay.ta.core.types import Price
         from laakhay.ta.registry.models import IndicatorHandle
 
-        def test_indicator(series: Series[Price], optional_param: int | None = None) -> Series[Price]:
+        def test_indicator(
+            series: Series[Price], optional_param: int | None = None
+        ) -> Series[Price]:
             """Test indicator with optional parameter."""
             return series
 
@@ -351,9 +355,9 @@ class TestRegistryCriticalIssues:
                     type=Optional[int],
                     required=False,  # Should be False for optional params
                     default=None,  # Add default for optional param
-                    description="Optional param"
+                    description="Optional param",
                 )
-            }
+            },
         )
 
         handle = IndicatorHandle(
@@ -361,7 +365,7 @@ class TestRegistryCriticalIssues:
             func=test_indicator,
             signature=signature(test_indicator),
             schema=schema,
-            aliases=[]
+            aliases=[],
         )
 
         # This should work without providing the optional parameter

@@ -17,50 +17,111 @@ from .schemas import IndicatorMetadata, IndicatorSchema, OutputSchema, ParamSche
 # on string heuristics.
 _METADATA_HINTS: dict[str, IndicatorMetadata] = {
     # Rolling primitives
-    "rolling_mean": IndicatorMetadata(required_fields=("close",), lookback_params=("period",)),
-    "rolling_sum": IndicatorMetadata(required_fields=("close",), lookback_params=("period",)),
-    "rolling_std": IndicatorMetadata(required_fields=("close",), lookback_params=("period",)),
-    "rolling_median": IndicatorMetadata(required_fields=("close",), lookback_params=("period",)),
-    "rolling_ema": IndicatorMetadata(required_fields=("close",), lookback_params=("period",)),
+    "rolling_mean": IndicatorMetadata(
+        required_fields=("close",), lookback_params=("period",)
+    ),
+    "rolling_sum": IndicatorMetadata(
+        required_fields=("close",), lookback_params=("period",)
+    ),
+    "rolling_std": IndicatorMetadata(
+        required_fields=("close",), lookback_params=("period",)
+    ),
+    "rolling_median": IndicatorMetadata(
+        required_fields=("close",), lookback_params=("period",)
+    ),
+    "rolling_ema": IndicatorMetadata(
+        required_fields=("close",), lookback_params=("period",)
+    ),
     "max": IndicatorMetadata(required_fields=("close",), lookback_params=("period",)),
     "min": IndicatorMetadata(required_fields=("close",), lookback_params=("period",)),
-    "rolling_argmax": IndicatorMetadata(required_fields=("close",), lookback_params=("period",)),
-    "rolling_argmin": IndicatorMetadata(required_fields=("close",), lookback_params=("period",)),
+    "rolling_argmax": IndicatorMetadata(
+        required_fields=("close",), lookback_params=("period",)
+    ),
+    "rolling_argmin": IndicatorMetadata(
+        required_fields=("close",), lookback_params=("period",)
+    ),
     # Element-wise primitives
-    "elementwise_max": IndicatorMetadata(required_fields=("close",), optional_fields=("other_series",), default_lookback=1),
-    "elementwise_min": IndicatorMetadata(required_fields=("close",), optional_fields=("other_series",), default_lookback=1),
+    "elementwise_max": IndicatorMetadata(
+        required_fields=("close",),
+        optional_fields=("other_series",),
+        default_lookback=1,
+    ),
+    "elementwise_min": IndicatorMetadata(
+        required_fields=("close",),
+        optional_fields=("other_series",),
+        default_lookback=1,
+    ),
     # Transform primitives
     "cumulative_sum": IndicatorMetadata(required_fields=("close",), default_lookback=1),
     "diff": IndicatorMetadata(required_fields=("close",), default_lookback=2),
-    "shift": IndicatorMetadata(required_fields=("close",), lookback_params=("periods",), default_lookback=1),
-    "positive_values": IndicatorMetadata(required_fields=("close",), default_lookback=1),
-    "negative_values": IndicatorMetadata(required_fields=("close",), default_lookback=1),
+    "shift": IndicatorMetadata(
+        required_fields=("close",), lookback_params=("periods",), default_lookback=1
+    ),
+    "positive_values": IndicatorMetadata(
+        required_fields=("close",), default_lookback=1
+    ),
+    "negative_values": IndicatorMetadata(
+        required_fields=("close",), default_lookback=1
+    ),
     "sign": IndicatorMetadata(required_fields=("close",), default_lookback=2),
-    "true_range": IndicatorMetadata(required_fields=("high", "low", "close"), default_lookback=2),
-    "typical_price": IndicatorMetadata(required_fields=("high", "low", "close"), default_lookback=1),
+    "true_range": IndicatorMetadata(
+        required_fields=("high", "low", "close"), default_lookback=2
+    ),
+    "typical_price": IndicatorMetadata(
+        required_fields=("high", "low", "close"), default_lookback=1
+    ),
     # Resample helpers
-    "downsample": IndicatorMetadata(required_fields=("close",), lookback_params=("factor",), default_lookback=1),
-    "upsample": IndicatorMetadata(required_fields=("close",), lookback_params=("factor",), default_lookback=1),
-    "sync_timeframe": IndicatorMetadata(required_fields=("close",), optional_fields=("reference",), default_lookback=1),
-    "select": IndicatorMetadata(required_fields=("close",), optional_fields=("field",), default_lookback=1),
+    "downsample": IndicatorMetadata(
+        required_fields=("close",), lookback_params=("factor",), default_lookback=1
+    ),
+    "upsample": IndicatorMetadata(
+        required_fields=("close",), lookback_params=("factor",), default_lookback=1
+    ),
+    "sync_timeframe": IndicatorMetadata(
+        required_fields=("close",), optional_fields=("reference",), default_lookback=1
+    ),
+    "select": IndicatorMetadata(
+        required_fields=("close",), optional_fields=("field",), default_lookback=1
+    ),
     # Trend indicators
     "sma": IndicatorMetadata(required_fields=("close",), lookback_params=("period",)),
     "ema": IndicatorMetadata(required_fields=("close",), lookback_params=("period",)),
-    "macd": IndicatorMetadata(required_fields=("close",), lookback_params=("fast_period", "slow_period", "signal_period"), default_lookback=1),
-    "bbands": IndicatorMetadata(required_fields=("close",), lookback_params=("period",)),
+    "macd": IndicatorMetadata(
+        required_fields=("close",),
+        lookback_params=("fast_period", "slow_period", "signal_period"),
+        default_lookback=1,
+    ),
+    "bbands": IndicatorMetadata(
+        required_fields=("close",), lookback_params=("period",)
+    ),
     # Momentum
     "rsi": IndicatorMetadata(required_fields=("close",), lookback_params=("period",)),
-    "stochastic": IndicatorMetadata(required_fields=("high", "low", "close"), lookback_params=("k_period", "d_period")),
+    "stochastic": IndicatorMetadata(
+        required_fields=("high", "low", "close"),
+        lookback_params=("k_period", "d_period"),
+    ),
     # Volatility
-    "atr": IndicatorMetadata(required_fields=("high", "low", "close"), lookback_params=("period",)),
+    "atr": IndicatorMetadata(
+        required_fields=("high", "low", "close"), lookback_params=("period",)
+    ),
     # Volume / price-volume indicators
     "obv": IndicatorMetadata(required_fields=("close", "volume"), default_lookback=2),
-    "vwap": IndicatorMetadata(required_fields=("high", "low", "close", "volume"), default_lookback=1),
+    "vwap": IndicatorMetadata(
+        required_fields=("high", "low", "close", "volume"), default_lookback=1
+    ),
     # Pattern indicators
-    "swing_points": IndicatorMetadata(required_fields=("high", "low"), lookback_params=("left", "right")),
-    "fib_retracement": IndicatorMetadata(required_fields=("high", "low"), lookback_params=("left", "right")),
-    "swing_highs": IndicatorMetadata(required_fields=("high", "low"), lookback_params=("left", "right")),
-    "swing_lows": IndicatorMetadata(required_fields=("high", "low"), lookback_params=("left", "right")),
+    "swing_points": IndicatorMetadata(
+        required_fields=("high", "low"), lookback_params=("left", "right")
+    ),
+    "fib_retracement": IndicatorMetadata(
+        required_fields=("high", "low"), lookback_params=("left", "right")
+    ),
+    "swing_highs": IndicatorMetadata(
+        required_fields=("high", "low"), lookback_params=("left", "right")
+    ),
+    "swing_lows": IndicatorMetadata(
+        required_fields=("high", "low"), lookback_params=("left", "right")
+    ),
 }
 
 
@@ -104,7 +165,7 @@ class Registry:
                 func=func,
                 signature=inspect.signature(func),
                 schema=schema,
-                aliases=aliases or []
+                aliases=aliases or [],
             )
 
             # Register main name
@@ -113,7 +174,9 @@ class Registry:
             # Register aliases
             for alias in handle.aliases:
                 if alias in self._indicators:
-                    raise ValueError(f"Alias '{alias}' conflicts with existing indicator '{alias}'")
+                    raise ValueError(
+                        f"Alias '{alias}' conflicts with existing indicator '{alias}'"
+                    )
                 self._aliases[alias] = name
 
             return func
@@ -156,24 +219,35 @@ class Registry:
 
         # Check if function has at least one parameter (SeriesContext)
         if len(sig.parameters) == 0:
-            raise ValueError(f"Indicator function '{func.__name__}' must have at least one parameter (SeriesContext)")
+            raise ValueError(
+                f"Indicator function '{func.__name__}' must have at least one parameter (SeriesContext)"
+            )
 
         # Check first parameter is SeriesContext
         first_param = list(sig.parameters.values())[0]
         if first_param.annotation == inspect.Parameter.empty:
             # If no annotation, we'll allow it but warn
             pass
-        elif first_param.annotation != SeriesContext and not (
-            hasattr(first_param.annotation, '__name__') and
-            first_param.annotation.__name__ == 'SeriesContext'
-        ) and first_param.annotation != 'SeriesContext':
-            raise ValueError(f"Indicator function '{func.__name__}' first parameter must be SeriesContext, got {first_param.annotation}")
+        elif (
+            first_param.annotation != SeriesContext
+            and not (
+                hasattr(first_param.annotation, "__name__")
+                and first_param.annotation.__name__ == "SeriesContext"
+            )
+            and first_param.annotation != "SeriesContext"
+        ):
+            raise ValueError(
+                f"Indicator function '{func.__name__}' first parameter must be SeriesContext, got {first_param.annotation}"
+            )
 
         # Check return type annotation
         return_annotation = sig.return_annotation
         if return_annotation != inspect.Signature.empty:
             # Check if return type is Series, tuple, or dict (for multi-output)
-            if hasattr(return_annotation, '__origin__') and return_annotation.__origin__ is Series:
+            if (
+                hasattr(return_annotation, "__origin__")
+                and return_annotation.__origin__ is Series
+            ):
                 # Series[SomeType] - this is good
                 pass
             elif (
@@ -184,29 +258,41 @@ class Registry:
             ):
                 # Just Series - this is also good
                 pass
-            elif isinstance(return_annotation, str) and return_annotation.startswith('Series['):
+            elif isinstance(return_annotation, str) and return_annotation.startswith(
+                "Series["
+            ):
                 # String annotation like "Series[Price]" - this is good
                 pass
-            elif isinstance(return_annotation, str) and return_annotation.startswith('Tuple['):
+            elif isinstance(return_annotation, str) and return_annotation.startswith(
+                "Tuple["
+            ):
                 # String annotation like "Tuple[Series[Price], ...]" - this is good
                 pass
             elif isinstance(return_annotation, str) and (
-                return_annotation.startswith('Dict[') or
-                return_annotation.startswith('dict[')
+                return_annotation.startswith("Dict[")
+                or return_annotation.startswith("dict[")
             ):
                 # String annotation like "Dict[str, Series[Price]]" - allow
                 pass
-            elif hasattr(return_annotation, '__origin__') and getattr(return_annotation, '__origin__', None) is tuple:
+            elif (
+                hasattr(return_annotation, "__origin__")
+                and getattr(return_annotation, "__origin__", None) is tuple
+            ):
                 # Tuple return type for multi-output indicators - this is good
                 pass
-            elif str(return_annotation).startswith('tuple['):
+            elif str(return_annotation).startswith("tuple["):
                 # Handle tuple[...] syntax from Python 3.9+
                 pass
-            elif hasattr(return_annotation, '__origin__') and getattr(return_annotation, '__origin__', None) is dict:
+            elif (
+                hasattr(return_annotation, "__origin__")
+                and getattr(return_annotation, "__origin__", None) is dict
+            ):
                 # Dict return type for named outputs - this is good
                 pass
             else:
-                raise ValueError(f"Indicator function '{func.__name__}' must return Series[SomeType], Tuple, or Dict, got {return_annotation}")
+                raise ValueError(
+                    f"Indicator function '{func.__name__}' must return Series[SomeType], Tuple, or Dict, got {return_annotation}"
+                )
         else:
             # No return annotation - we'll allow it but it's not ideal
             pass
@@ -227,7 +313,11 @@ class Registry:
         param_items = list(sig.parameters.items())
         if param_items and param_items[0][1].annotation == SeriesContext:
             param_items = param_items[1:]  # Skip the first parameter
-        elif param_items and hasattr(param_items[0][1].annotation, '__name__') and param_items[0][1].annotation.__name__ == 'SeriesContext':
+        elif (
+            param_items
+            and hasattr(param_items[0][1].annotation, "__name__")
+            and param_items[0][1].annotation.__name__ == "SeriesContext"
+        ):
             param_items = param_items[1:]  # Skip the first parameter
 
         # Process remaining parameters
@@ -244,7 +334,7 @@ class Registry:
                 type=param_type,  # type: ignore[arg-type]
                 default=default,
                 required=required,
-                description=f"Parameter {param_name}"
+                description=f"Parameter {param_name}",
             )
 
         # Build output schema based on return type annotation
@@ -267,8 +357,8 @@ class Registry:
             return annotation  # type: ignore[return-value]
 
         # Handle typing annotations
-        origin = getattr(annotation, '__origin__', None)
-        args = getattr(annotation, '__args__', ())
+        origin = getattr(annotation, "__origin__", None)
+        args = getattr(annotation, "__args__", ())
 
         # Handle basic types
         if origin is int:
@@ -295,15 +385,19 @@ class Registry:
             return self._get_param_type(non_none_types[0])
 
         # Handle Optional types (Union[T, None])
-        elif str(annotation).startswith('typing.Union') and len(args) == 2 and type(None) in args:
+        elif (
+            str(annotation).startswith("typing.Union")
+            and len(args) == 2
+            and type(None) in args
+        ):
             non_none_arg = args[0] if args[1] is type(None) else args[1]
             return self._get_param_type(non_none_arg)
 
         # Handle generic types like Series[Price]
-        elif hasattr(annotation, '__origin__') and hasattr(annotation, '__args__'):
+        elif hasattr(annotation, "__origin__") and hasattr(annotation, "__args__"):
             # For complex generics, we'll store the full annotation for future use
             # but return the base type for schema compatibility
-            base_type = getattr(annotation, '__origin__', annotation)
+            base_type = getattr(annotation, "__origin__", annotation)
             if base_type is not None and isinstance(base_type, type):
                 return base_type  # type: ignore[return-value]
 
@@ -333,17 +427,18 @@ class Registry:
                 "result": OutputSchema(
                     name="result",
                     type=Series,  # Assume Series output
-                    description="Indicator output series"
+                    description="Indicator output series",
                 )
             }
 
         # Handle Series[SomeType] - single output
-        if hasattr(return_annotation, '__origin__') and return_annotation.__origin__ is Series:
+        if (
+            hasattr(return_annotation, "__origin__")
+            and return_annotation.__origin__ is Series
+        ):
             return {
                 "result": OutputSchema(
-                    name="result",
-                    type=Series,
-                    description="Indicator output series"
+                    name="result", type=Series, description="Indicator output series"
                 )
             }
 
@@ -351,19 +446,20 @@ class Registry:
         if return_annotation == Series:
             return {
                 "result": OutputSchema(
-                    name="result",
-                    type=Series,
-                    description="Indicator output series"
+                    name="result", type=Series, description="Indicator output series"
                 )
             }
 
         # Handle tuple return types for multi-output indicators
-        if hasattr(return_annotation, '__origin__') and return_annotation.__origin__ is tuple:
-            args = getattr(return_annotation, '__args__', ())
+        if (
+            hasattr(return_annotation, "__origin__")
+            and return_annotation.__origin__ is tuple
+        ):
+            args = getattr(return_annotation, "__args__", ())
             outputs = {}
             for i, arg_type in enumerate(args):
                 output_name = f"output_{i}" if len(args) > 1 else "result"
-                if hasattr(arg_type, '__origin__') and arg_type.__origin__ is Series:
+                if hasattr(arg_type, "__origin__") and arg_type.__origin__ is Series:
                     schema_type = Series
                 else:
                     schema_type = arg_type if isinstance(arg_type, type) else Any  # type: ignore[misc]
@@ -371,19 +467,20 @@ class Registry:
                 outputs[output_name] = OutputSchema(
                     name=output_name,
                     type=schema_type,  # type: ignore[arg-type]
-                    description=f"Indicator output {i + 1}"
+                    description=f"Indicator output {i + 1}",
                 )
             return outputs  # type: ignore[return-value]
 
         # Handle dict return types for named outputs
-        if hasattr(return_annotation, '__origin__') and return_annotation.__origin__ is dict:
+        if (
+            hasattr(return_annotation, "__origin__")
+            and return_annotation.__origin__ is dict
+        ):
             # For Dict[str, Series[SomeType]], we can't extract the key names at runtime
             # So we'll provide a generic output
             return {
                 "result": OutputSchema(
-                    name="result",
-                    type=dict,
-                    description="Indicator output dictionary"
+                    name="result", type=dict, description="Indicator output dictionary"
                 )
             }
 
@@ -392,7 +489,7 @@ class Registry:
             "result": OutputSchema(
                 name="result",
                 type=type(None),  # Unknown type
-                description="Indicator output"
+                description="Indicator output",
             )
         }
 
@@ -422,6 +519,7 @@ def register(
     output_metadata: dict[str, dict[str, Any]] | None = None,
 ) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
     """Decorator to register an indicator function."""
+
     def decorator(func: Callable[..., Any]) -> Callable[..., Any]:
         return get_global_registry().register(
             func,
@@ -430,6 +528,7 @@ def register(
             description,
             output_metadata=output_metadata,
         )
+
     return decorator
 
 

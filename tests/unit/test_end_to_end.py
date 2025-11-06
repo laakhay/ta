@@ -25,7 +25,7 @@ class TestEndToEnd:
                 low=Price("95"),
                 close=Price("102"),
                 volume=Price("1000"),
-                is_closed=True
+                is_closed=True,
             ),
             Bar(
                 ts=datetime(2024, 1, 2, tzinfo=UTC),
@@ -34,7 +34,7 @@ class TestEndToEnd:
                 low=Price("98"),
                 close=Price("106"),
                 volume=Price("1200"),
-                is_closed=True
+                is_closed=True,
             ),
             Bar(
                 ts=datetime(2024, 1, 3, tzinfo=UTC),
@@ -43,7 +43,7 @@ class TestEndToEnd:
                 low=Price("104"),
                 close=Price("110"),
                 volume=Price("1300"),
-                is_closed=True
+                is_closed=True,
             ),
             Bar(
                 ts=datetime(2024, 1, 4, tzinfo=UTC),
@@ -52,7 +52,7 @@ class TestEndToEnd:
                 low=Price("108"),
                 close=Price("114"),
                 volume=Price("1400"),
-                is_closed=True
+                is_closed=True,
             ),
         ]
 
@@ -110,7 +110,7 @@ class TestEndToEnd:
                 low=Price("95"),
                 close=Price("102"),
                 volume=Price("1000"),
-                is_closed=True
+                is_closed=True,
             ),
             Bar(
                 ts=datetime(2024, 1, 2, tzinfo=UTC),
@@ -119,7 +119,7 @@ class TestEndToEnd:
                 low=Price("98"),
                 close=Price("106"),
                 volume=Price("1200"),
-                is_closed=True
+                is_closed=True,
             ),
         ]
 
@@ -151,7 +151,7 @@ class TestEndToEnd:
                 low=Price("95"),
                 close=Price("102"),
                 volume=Price("1000"),
-                is_closed=True
+                is_closed=True,
             ),
             Bar(
                 ts=datetime(2024, 1, 2, tzinfo=UTC),
@@ -160,7 +160,7 @@ class TestEndToEnd:
                 low=Price("98"),
                 close=Price("106"),
                 volume=Price("1200"),
-                is_closed=True
+                is_closed=True,
             ),
             Bar(
                 ts=datetime(2024, 1, 3, tzinfo=UTC),
@@ -169,7 +169,7 @@ class TestEndToEnd:
                 low=Price("104"),
                 close=Price("110"),
                 volume=Price("1300"),
-                is_closed=True
+                is_closed=True,
             ),
         ]
 
@@ -192,7 +192,9 @@ class TestEndToEnd:
         # Should have 2 results (same as SMA(2))
         assert len(result.values) == 2
         # Result should be boolean (True/False)
-        assert all(val in (Price(Decimal("1")), Price(Decimal("0"))) for val in result.values)
+        assert all(
+            val in (Price(Decimal("1")), Price(Decimal("0"))) for val in result.values
+        )
 
         # First value: 104 > 105 = False (0)
         assert result.values[0] == Price(Decimal("0"))
@@ -206,7 +208,9 @@ class TestEndToEnd:
         sma_2 = indicator("sma", period=2)
 
         # Should raise error for empty dataset
-        with pytest.raises(ValueError, match="SeriesContext has no series to operate on"):
+        with pytest.raises(
+            ValueError, match="SeriesContext has no series to operate on"
+        ):
             sma_2(empty_ds)
 
         # Test with insufficient data
@@ -218,7 +222,7 @@ class TestEndToEnd:
                 low=Price("95"),
                 close=Price("102"),
                 volume=Price("1000"),
-                is_closed=True
+                is_closed=True,
             )
         ]
 

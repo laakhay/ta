@@ -17,12 +17,14 @@ class SeriesContext:
 
     def __init__(self, **series: Series[Any]) -> None:
         """Initialize context with named series."""
-        object.__setattr__(self, '_series', series)
+        object.__setattr__(self, "_series", series)
 
     def __getattr__(self, name: str) -> Series[Any]:
         """Get a series by name."""
-        if name.startswith('_'):
-            raise AttributeError(f"'{self.__class__.__name__}' object has no attribute '{name}'")
+        if name.startswith("_"):
+            raise AttributeError(
+                f"'{self.__class__.__name__}' object has no attribute '{name}'"
+            )
         series_dict = self._series
         if name not in series_dict:
             raise AttributeError(f"Series '{name}' not found in context")
@@ -54,7 +56,9 @@ class IndicatorHandle:
         # Validate overrides against schema
         for param_name, value in overrides.items():
             if param_name not in self.schema.parameters:
-                raise ValueError(f"Unknown parameter '{param_name}' for indicator '{self.name}'")
+                raise ValueError(
+                    f"Unknown parameter '{param_name}' for indicator '{self.name}'"
+                )
 
             param_schema = self.schema.parameters[param_name]
 
@@ -74,14 +78,20 @@ class IndicatorHandle:
                     try:
                         overrides[param_name] = int(value)
                     except (ValueError, TypeError):
-                        raise ValueError(f"Parameter '{param_name}' expects {expected_type.__name__}, got {type(value).__name__}")
+                        raise ValueError(
+                            f"Parameter '{param_name}' expects {expected_type.__name__}, got {type(value).__name__}"
+                        )
                 elif expected_type == float and isinstance(value, (int, str)):
                     try:
                         overrides[param_name] = float(value)
                     except (ValueError, TypeError):
-                        raise ValueError(f"Parameter '{param_name}' expects {expected_type.__name__}, got {type(value).__name__}")
+                        raise ValueError(
+                            f"Parameter '{param_name}' expects {expected_type.__name__}, got {type(value).__name__}"
+                        )
                 else:
-                    raise ValueError(f"Parameter '{param_name}' expects {expected_type.__name__}, got {type(value).__name__}")
+                    raise ValueError(
+                        f"Parameter '{param_name}' expects {expected_type.__name__}, got {type(value).__name__}"
+                    )
 
         # Create a partially applied function
         def partial_func(*args: Any, **kwargs: Any) -> Series[Any]:
@@ -95,5 +105,5 @@ class IndicatorHandle:
             func=partial_func,  # type: ignore[arg-type]
             signature=self.signature,
             schema=self.schema,
-            aliases=self.aliases
+            aliases=self.aliases,
         )

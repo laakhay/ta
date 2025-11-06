@@ -89,9 +89,17 @@ class Bar:
             f"vol={self.volume}, closed={self.is_closed})"
         )
 
-
     @classmethod
-    def from_raw(cls, ts: TimestampLike, open: PriceLike, high: PriceLike, low: PriceLike, close: PriceLike, volume: QtyLike, is_closed: bool = True) -> "Bar":
+    def from_raw(
+        cls,
+        ts: TimestampLike,
+        open: PriceLike,
+        high: PriceLike,
+        low: PriceLike,
+        close: PriceLike,
+        volume: QtyLike,
+        is_closed: bool = True,
+    ) -> "Bar":
         """Create a Bar from raw data."""
         return cls(
             ts=coerce_timestamp(ts),

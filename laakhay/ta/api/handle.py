@@ -8,7 +8,13 @@ from typing import Any
 from ..core import Dataset, Series
 from ..core.types import Price
 from ..expressions import Expression, as_expression
-from ..expressions.models import BinaryOp, ExpressionNode, Literal, OperatorType, UnaryOp
+from ..expressions.models import (
+    BinaryOp,
+    ExpressionNode,
+    Literal,
+    OperatorType,
+    UnaryOp,
+)
 from ..graph.types import SignalRequirements
 from ..registry.models import SeriesContext
 from ..registry.registry import get_global_registry
@@ -55,7 +61,10 @@ class IndicatorHandle:
             import sys
 
             for module_name in list(sys.modules.keys()):
-                if module_name.startswith("laakhay.ta.indicators.") and module_name != "laakhay.ta.indicators.__init__":
+                if (
+                    module_name.startswith("laakhay.ta.indicators.")
+                    and module_name != "laakhay.ta.indicators.__init__"
+                ):
                     importlib.reload(sys.modules[module_name])
 
             # Ensure namespace helpers (e.g., select/source) are registered even if the
@@ -79,7 +88,9 @@ class IndicatorHandle:
         return {
             "name": self.name,
             "params": self.params,
-            "description": getattr(self._registry_handle.func, "__doc__", "No description available"),
+            "description": getattr(
+                self._registry_handle.func, "__doc__", "No description available"
+            ),
             "output_metadata": getattr(registry_schema, "output_metadata", {}),
         }
 
@@ -90,7 +101,9 @@ class IndicatorHandle:
             ctx = dataset.to_context()
         return self._registry_handle(ctx, **self.params)
 
-    def run(self, data: Dataset | Series[Price]) -> Series[Price] | dict[tuple[str, str, str], Series[Price]]:
+    def run(
+        self, data: Dataset | Series[Price]
+    ) -> Series[Price] | dict[tuple[str, str, str], Series[Price]]:
         """Evaluate on Series or Dataset via the expression engine."""
         expr = self._to_expression()
         return expr.run(data)
@@ -122,59 +135,87 @@ class IndicatorHandle:
 
     def __add__(self, other: Any) -> Expression:
         other_expr = _to_expression(other)
-        return Expression(BinaryOp(OperatorType.ADD, self._to_expression()._node, other_expr._node))
+        return Expression(
+            BinaryOp(OperatorType.ADD, self._to_expression()._node, other_expr._node)
+        )
 
     def __sub__(self, other: Any) -> Expression:
         other_expr = _to_expression(other)
-        return Expression(BinaryOp(OperatorType.SUB, self._to_expression()._node, other_expr._node))
+        return Expression(
+            BinaryOp(OperatorType.SUB, self._to_expression()._node, other_expr._node)
+        )
 
     def __mul__(self, other: Any) -> Expression:
         other_expr = _to_expression(other)
-        return Expression(BinaryOp(OperatorType.MUL, self._to_expression()._node, other_expr._node))
+        return Expression(
+            BinaryOp(OperatorType.MUL, self._to_expression()._node, other_expr._node)
+        )
 
     def __truediv__(self, other: Any) -> Expression:
         other_expr = _to_expression(other)
-        return Expression(BinaryOp(OperatorType.DIV, self._to_expression()._node, other_expr._node))
+        return Expression(
+            BinaryOp(OperatorType.DIV, self._to_expression()._node, other_expr._node)
+        )
 
     def __mod__(self, other: Any) -> Expression:
         other_expr = _to_expression(other)
-        return Expression(BinaryOp(OperatorType.MOD, self._to_expression()._node, other_expr._node))
+        return Expression(
+            BinaryOp(OperatorType.MOD, self._to_expression()._node, other_expr._node)
+        )
 
     def __pow__(self, other: Any) -> Expression:
         other_expr = _to_expression(other)
-        return Expression(BinaryOp(OperatorType.POW, self._to_expression()._node, other_expr._node))
+        return Expression(
+            BinaryOp(OperatorType.POW, self._to_expression()._node, other_expr._node)
+        )
 
     def __lt__(self, other: Any) -> Expression:
         other_expr = _to_expression(other)
-        return Expression(BinaryOp(OperatorType.LT, self._to_expression()._node, other_expr._node))
+        return Expression(
+            BinaryOp(OperatorType.LT, self._to_expression()._node, other_expr._node)
+        )
 
     def __gt__(self, other: Any) -> Expression:
         other_expr = _to_expression(other)
-        return Expression(BinaryOp(OperatorType.GT, self._to_expression()._node, other_expr._node))
+        return Expression(
+            BinaryOp(OperatorType.GT, self._to_expression()._node, other_expr._node)
+        )
 
     def __le__(self, other: Any) -> Expression:
         other_expr = _to_expression(other)
-        return Expression(BinaryOp(OperatorType.LE, self._to_expression()._node, other_expr._node))
+        return Expression(
+            BinaryOp(OperatorType.LE, self._to_expression()._node, other_expr._node)
+        )
 
     def __ge__(self, other: Any) -> Expression:
         other_expr = _to_expression(other)
-        return Expression(BinaryOp(OperatorType.GE, self._to_expression()._node, other_expr._node))
+        return Expression(
+            BinaryOp(OperatorType.GE, self._to_expression()._node, other_expr._node)
+        )
 
     def __eq__(self, other: Any) -> Expression:  # type: ignore[override]
         other_expr = _to_expression(other)
-        return Expression(BinaryOp(OperatorType.EQ, self._to_expression()._node, other_expr._node))
+        return Expression(
+            BinaryOp(OperatorType.EQ, self._to_expression()._node, other_expr._node)
+        )
 
     def __ne__(self, other: Any) -> Expression:  # type: ignore[override]
         other_expr = _to_expression(other)
-        return Expression(BinaryOp(OperatorType.NE, self._to_expression()._node, other_expr._node))
+        return Expression(
+            BinaryOp(OperatorType.NE, self._to_expression()._node, other_expr._node)
+        )
 
     def __and__(self, other: Any) -> Expression:
         other_expr = _to_expression(other)
-        return Expression(BinaryOp(OperatorType.AND, self._to_expression()._node, other_expr._node))
+        return Expression(
+            BinaryOp(OperatorType.AND, self._to_expression()._node, other_expr._node)
+        )
 
     def __or__(self, other: Any) -> Expression:
         other_expr = _to_expression(other)
-        return Expression(BinaryOp(OperatorType.OR, self._to_expression()._node, other_expr._node))
+        return Expression(
+            BinaryOp(OperatorType.OR, self._to_expression()._node, other_expr._node)
+        )
 
     def __invert__(self) -> Expression:
         return Expression(UnaryOp(OperatorType.NOT, self._to_expression()._node))
@@ -190,7 +231,9 @@ class IndicatorHandle:
         return self._schema
 
 
-def _to_expression(value: Expression | "IndicatorHandle" | Series[Any] | float | int | Decimal) -> Expression:
+def _to_expression(
+    value: Expression | "IndicatorHandle" | Series[Any] | float | int | Decimal,
+) -> Expression:
     """Convert a value to an Expression for algebraic composition."""
     if isinstance(value, Expression):
         return value

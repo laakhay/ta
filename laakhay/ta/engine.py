@@ -22,7 +22,9 @@ class Engine:
     def __init__(self) -> None:
         self._cache: dict[int, Series[Any]] = {}
 
-    def evaluate(self, expression: ExpressionNode, dataset: dict[str, Series[Any]]) -> Series[Any]:
+    def evaluate(
+        self, expression: ExpressionNode, dataset: dict[str, Series[Any]]
+    ) -> Series[Any]:
         """Evaluate an expression node with given dataset mapping.
 
         The dataset should be a mapping from series names used in the
@@ -35,5 +37,3 @@ class Engine:
     def literal(self, value: Any) -> Literal:
         """Create a literal node for convenience."""
         return Literal(value)
-
-

@@ -24,7 +24,7 @@ class TestIndicatorsFunctional:
                 low=Price("95"),
                 close=Price("102"),
                 volume=Price("1000"),
-                is_closed=True
+                is_closed=True,
             ),
             Bar(
                 ts=datetime(2024, 1, 2, tzinfo=UTC),
@@ -33,7 +33,7 @@ class TestIndicatorsFunctional:
                 low=Price("98"),
                 close=Price("106"),
                 volume=Price("1200"),
-                is_closed=True
+                is_closed=True,
             ),
             Bar(
                 ts=datetime(2024, 1, 3, tzinfo=UTC),
@@ -42,7 +42,7 @@ class TestIndicatorsFunctional:
                 low=Price("104"),
                 close=Price("110"),
                 volume=Price("1300"),
-                is_closed=True
+                is_closed=True,
             ),
         ]
 
@@ -83,7 +83,7 @@ class TestIndicatorsFunctional:
                 low=Price("95"),
                 close=Price("102"),
                 volume=Price("1000"),
-                is_closed=True
+                is_closed=True,
             ),
             Bar(
                 ts=datetime(2024, 1, 2, tzinfo=UTC),
@@ -92,7 +92,7 @@ class TestIndicatorsFunctional:
                 low=Price("98"),
                 close=Price("106"),
                 volume=Price("1200"),
-                is_closed=True
+                is_closed=True,
             ),
         ]
 
@@ -133,7 +133,7 @@ class TestIndicatorsFunctional:
                 low=Price("95"),
                 close=Price("102"),
                 volume=Price("1000"),
-                is_closed=True
+                is_closed=True,
             ),
             Bar(
                 ts=datetime(2024, 1, 2, tzinfo=UTC),
@@ -142,7 +142,7 @@ class TestIndicatorsFunctional:
                 low=Price("98"),
                 close=Price("106"),
                 volume=Price("1200"),
-                is_closed=True
+                is_closed=True,
             ),
             Bar(
                 ts=datetime(2024, 1, 3, tzinfo=UTC),
@@ -151,7 +151,7 @@ class TestIndicatorsFunctional:
                 low=Price("104"),
                 close=Price("110"),
                 volume=Price("1300"),
-                is_closed=True
+                is_closed=True,
             ),
         ]
 
@@ -189,5 +189,7 @@ class TestIndicatorsFunctional:
         sma_2 = indicator("sma", period=2)
 
         # Test that indicator raises appropriate error for empty dataset
-        with pytest.raises(ValueError, match="SeriesContext has no series to operate on"):
+        with pytest.raises(
+            ValueError, match="SeriesContext has no series to operate on"
+        ):
             sma_2(ds)

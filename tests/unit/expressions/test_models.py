@@ -32,6 +32,7 @@ UTC = UTC
 # Helpers
 # ---------------------------------------------------------------------
 
+
 def mk_series(vals, stamps=None, symbol="BTC", tf="1h"):
     if stamps is None:
         stamps = (datetime(2024, 1, 1, tzinfo=UTC),)
@@ -42,8 +43,10 @@ def mk_series(vals, stamps=None, symbol="BTC", tf="1h"):
         timeframe=tf,
     )
 
+
 def scal(v) -> Literal:
     return Literal(v)
+
 
 def lit_series(vals, **kw) -> Literal:
     return Literal(mk_series(vals, **kw))
@@ -53,14 +56,25 @@ def lit_series(vals, **kw) -> Literal:
 # OperatorType
 # ---------------------------------------------------------------------
 
+
 class TestOperatorType:
     def test_values_and_membership(self):
         expected = {
-            ("ADD", "+"), ("SUB", "-"), ("MUL", "*"), ("DIV", "/"),
-            ("MOD", "%"), ("POW", "**"),
-            ("EQ", "=="), ("NE", "!="), ("LT", "<"), ("LE", "<="),
-            ("GT", ">"), ("GE", ">="),
-            ("AND", "and"), ("OR", "or"), ("NOT", "not"),
+            ("ADD", "+"),
+            ("SUB", "-"),
+            ("MUL", "*"),
+            ("DIV", "/"),
+            ("MOD", "%"),
+            ("POW", "**"),
+            ("EQ", "=="),
+            ("NE", "!="),
+            ("LT", "<"),
+            ("LE", "<="),
+            ("GT", ">"),
+            ("GE", ">="),
+            ("AND", "and"),
+            ("OR", "or"),
+            ("NOT", "not"),
         }
         got = {(op.name, op.value) for op in OperatorType}
         assert got == expected
@@ -71,18 +85,25 @@ class TestOperatorType:
 # Literal
 # ---------------------------------------------------------------------
 
+
 class TestLiteral:
     def test_creation_and_describe_and_hash(self):
         l = Literal(42)
         assert l.value == 42
         assert l.describe() == "42"
-        assert hash(Literal(10)) == hash(Literal(10))  # same payload, same hash semantics
+        assert hash(Literal(10)) == hash(
+            Literal(10)
+        )  # same payload, same hash semantics
 
     def test_creation_series_and_evaluate(self):
         s = mk_series([Decimal("100")])
         l = Literal(s)
         out = l.evaluate({})
-        assert isinstance(out, Series) and len(out) == 1 and out.values[0] == Price(Decimal("100"))
+        assert (
+            isinstance(out, Series)
+            and len(out) == 1
+            and out.values[0] == Price(Decimal("100"))
+        )
 
     def test_evaluate_scalar(self):
         out = Literal(10).evaluate({})
@@ -95,6 +116,7 @@ class TestLiteral:
 # ---------------------------------------------------------------------
 # BinaryOp
 # ---------------------------------------------------------------------
+
 
 class TestBinaryOp:
     def test_creation_and_describe_and_hash(self):
@@ -147,17 +169,29 @@ class TestBinaryOp:
         assert len(out) == len(ser)
 
     def test_different_lengths_raises(self):
-        s2 = mk_series([100.0, 200.0], stamps=(
-            datetime(2024, 1, 1, 0, 0, 0, tzinfo=UTC),
-            datetime(2024, 1, 1, 0, 0, 1, tzinfo=UTC),
-        ), symbol="TEST", tf="1s")
-        s3 = mk_series([50.0, 150.0, 250.0], stamps=(
-            datetime(2024, 1, 1, 0, 0, 0, tzinfo=UTC),
-            datetime(2024, 1, 1, 0, 0, 2, tzinfo=UTC),
-            datetime(2024, 1, 1, 0, 0, 3, tzinfo=UTC),
-        ), symbol="TEST", tf="1s")
+        s2 = mk_series(
+            [100.0, 200.0],
+            stamps=(
+                datetime(2024, 1, 1, 0, 0, 0, tzinfo=UTC),
+                datetime(2024, 1, 1, 0, 0, 1, tzinfo=UTC),
+            ),
+            symbol="TEST",
+            tf="1s",
+        )
+        s3 = mk_series(
+            [50.0, 150.0, 250.0],
+            stamps=(
+                datetime(2024, 1, 1, 0, 0, 0, tzinfo=UTC),
+                datetime(2024, 1, 1, 0, 0, 2, tzinfo=UTC),
+                datetime(2024, 1, 1, 0, 0, 3, tzinfo=UTC),
+            ),
+            symbol="TEST",
+            tf="1s",
+        )
         op = BinaryOp(OperatorType.ADD, Literal(s2), Literal(s3))
-        with pytest.raises(ValueError, match=r"Cannot perform \+ on series of different lengths"):
+        with pytest.raises(
+            ValueError, match=r"Cannot perform \+ on series of different lengths"
+        ):
             op.evaluate({})
 
     def test_unsupported_operator_raises(self):
@@ -170,6 +204,7 @@ class TestBinaryOp:
 # ---------------------------------------------------------------------
 # UnaryOp
 # ---------------------------------------------------------------------
+
 
 class TestUnaryOp:
     def test_creation_describe_and_eval(self):
@@ -194,6 +229,7 @@ class TestUnaryOp:
 # Operator overloading on ExpressionNode
 # ---------------------------------------------------------------------
 
+
 class TestExpressionNodeOperatorOverloading:
     def test_arithmetic(self):
         a, b = Literal(10), Literal(20)
@@ -202,7 +238,7 @@ class TestExpressionNodeOperatorOverloading:
         assert isinstance(a * b, BinaryOp) and (a * b).operator == OperatorType.MUL
         assert isinstance(a / b, BinaryOp) and (a / b).operator == OperatorType.DIV
         assert isinstance(a % b, BinaryOp) and (a % b).operator == OperatorType.MOD
-        assert isinstance(a ** b, BinaryOp) and (a ** b).operator == OperatorType.POW
+        assert isinstance(a**b, BinaryOp) and (a**b).operator == OperatorType.POW
 
     def test_comparisons(self):
         a, b = Literal(10), Literal(20)
@@ -223,6 +259,7 @@ class TestExpressionNodeOperatorOverloading:
 # Financial-critical scenarios & nested expressions
 # ---------------------------------------------------------------------
 
+
 class TestFinancialCriticalScenarios:
     def test_divide_by_zero_raises(self):
         with pytest.raises(ValueError, match="Cannot divide by zero"):
@@ -234,7 +271,9 @@ class TestFinancialCriticalScenarios:
 
     def test_pow_large_exponent_handles(self):
         out = BinaryOp(OperatorType.POW, Literal(10), Literal(100)).evaluate({})
-        assert isinstance(out, Series) and len(out) == 1  # value existence is enough; huge ints are supported
+        assert (
+            isinstance(out, Series) and len(out) == 1
+        )  # value existence is enough; huge ints are supported
 
     def test_nested(self):
         # (10 + 20) * (10 - 20) = 30 * (-10) = -300
@@ -245,7 +284,11 @@ class TestFinancialCriticalScenarios:
         assert isinstance(out, Series) and out.values[0] == Price(-300)
 
     def test_dependency_tracking(self):
-        expr = BinaryOp(OperatorType.MUL, BinaryOp(OperatorType.ADD, Literal(10), Literal(20)), Literal(10))
+        expr = BinaryOp(
+            OperatorType.MUL,
+            BinaryOp(OperatorType.ADD, Literal(10), Literal(20)),
+            Literal(10),
+        )
         deps = expr.dependencies()
         assert isinstance(deps, list)
 
@@ -253,7 +296,11 @@ class TestFinancialCriticalScenarios:
         p1 = Decimal("100.123456789")
         p2 = Decimal("200.987654321")
         out = BinaryOp(OperatorType.ADD, Literal(p1), Literal(p2)).evaluate({})
-        assert isinstance(out, Series) and len(out) == 1 and out.values[0] == Price(p1 + p2)
+        assert (
+            isinstance(out, Series)
+            and len(out) == 1
+            and out.values[0] == Price(p1 + p2)
+        )
 
     def test_division_by_very_small_number(self):
         big = Decimal("1000000000000")
@@ -266,17 +313,25 @@ class TestFinancialCriticalScenarios:
         n = Decimal("1000000000000")
         m = Decimal("7")
         out = BinaryOp(OperatorType.MOD, Literal(n), Literal(m)).evaluate({})
-        assert isinstance(out, Series) and len(out) == 1 and out.values[0] == Price(n % m)
+        assert (
+            isinstance(out, Series) and len(out) == 1 and out.values[0] == Price(n % m)
+        )
 
     def test_power_with_fractional_exponent(self):
         base = Decimal("100")
         exp = Decimal("0.5")  # sqrt
         out = BinaryOp(OperatorType.POW, Literal(base), Literal(exp)).evaluate({})
-        assert isinstance(out, Series) and len(out) == 1 and out.values[0] > Price(Decimal("9"))
+        assert (
+            isinstance(out, Series)
+            and len(out) == 1
+            and out.values[0] > Price(Decimal("9"))
+        )
 
     def test_mixed_decimal_float_comparisons(self):
         # comparisons should yield a boolean series
-        out = BinaryOp(OperatorType.EQ, Literal(Decimal("100.5")), Literal(100.5)).evaluate({})
+        out = BinaryOp(
+            OperatorType.EQ, Literal(Decimal("100.5")), Literal(100.5)
+        ).evaluate({})
         assert isinstance(out, Series) and len(out) == 1 and out.values[0] is True
 
 
@@ -284,13 +339,18 @@ class TestFinancialCriticalScenarios:
 # Engine critical issues (metadata, comparisons)
 # ---------------------------------------------------------------------
 
-class TestExpressionEngineCriticalIssues:
 
+class TestExpressionEngineCriticalIssues:
     def test_elementwise_comparison_between_series(self):
-        s1 = mk_series([100.0, 200.0], stamps=(
-            datetime(2024, 1, 1, 10, 0, 0, tzinfo=UTC),
-            datetime(2024, 1, 1, 11, 0, 0, tzinfo=UTC),
-        ), symbol="BTC", tf="1h")
+        s1 = mk_series(
+            [100.0, 200.0],
+            stamps=(
+                datetime(2024, 1, 1, 10, 0, 0, tzinfo=UTC),
+                datetime(2024, 1, 1, 11, 0, 0, tzinfo=UTC),
+            ),
+            symbol="BTC",
+            tf="1h",
+        )
         s2 = mk_series([100.0, 300.0], stamps=s1.timestamps, symbol="BTC", tf="1h")
         res = BinaryOp(OperatorType.EQ, Literal(s1), Literal(s2)).evaluate({})
         assert len(res.values) == 2 and res.values[0] is True and res.values[1] is False
@@ -300,13 +360,19 @@ class TestExpressionEngineCriticalIssues:
 # Internal helpers: metadata inheritance & alignment/broadcasting
 # ---------------------------------------------------------------------
 
+
 class TestExpressionMetadataInheritance:
     def test_series_priority_over_scalar(self):
         series = mk_series([100.0], symbol="BTC", tf="1h")
         scalar = _make_scalar_series(5)
         assert scalar.symbol == SCALAR_SYMBOL
-        aligned_scalar, aligned_series = _align_series(scalar, series, operator=OperatorType.ADD)
-        assert aligned_scalar.symbol == series.symbol and aligned_scalar.timeframe == series.timeframe
+        aligned_scalar, aligned_series = _align_series(
+            scalar, series, operator=OperatorType.ADD
+        )
+        assert (
+            aligned_scalar.symbol == series.symbol
+            and aligned_scalar.timeframe == series.timeframe
+        )
         assert aligned_series is series
 
     def test_align_two_scalars_preserve_scalar_meta(self):
@@ -324,12 +390,21 @@ class TestExpressionMetadataInheritance:
 class TestExpressionBroadcasting:
     def test_broadcast_scalar_to_series(self):
         scalar = _make_scalar_series(5)
-        tgt = mk_series([100.0, 200.0], stamps=(
-            datetime(2024, 1, 1, 10, 0, 0, tzinfo=UTC),
-            datetime(2024, 1, 1, 11, 0, 0, tzinfo=UTC),
-        ), symbol="BTC", tf="1h")
+        tgt = mk_series(
+            [100.0, 200.0],
+            stamps=(
+                datetime(2024, 1, 1, 10, 0, 0, tzinfo=UTC),
+                datetime(2024, 1, 1, 11, 0, 0, tzinfo=UTC),
+            ),
+            symbol="BTC",
+            tf="1h",
+        )
         out = _broadcast_scalar_series(scalar, tgt)
-        assert out.timestamps == tgt.timestamps and out.symbol == tgt.symbol and out.timeframe == tgt.timeframe
+        assert (
+            out.timestamps == tgt.timestamps
+            and out.symbol == tgt.symbol
+            and out.timeframe == tgt.timeframe
+        )
         assert out.values == (Price(5.0), Price(5.0))
 
     def test_broadcast_invalid_scalar_series(self):
@@ -342,30 +417,50 @@ class TestExpressionBroadcasting:
 class TestElementWiseComparison:
     def test_scalar_vs_series(self):
         scalar = _make_scalar_series(100)
-        tgt = mk_series([100.0, 200.0], stamps=(
-            datetime(2024, 1, 1, 10, 0, 0, tzinfo=UTC),
-            datetime(2024, 1, 1, 11, 0, 0, tzinfo=UTC),
-        ), symbol="BTC", tf="1h")
+        tgt = mk_series(
+            [100.0, 200.0],
+            stamps=(
+                datetime(2024, 1, 1, 10, 0, 0, tzinfo=UTC),
+                datetime(2024, 1, 1, 11, 0, 0, tzinfo=UTC),
+            ),
+            symbol="BTC",
+            tf="1h",
+        )
         res = _comparison_series(scalar, tgt, OperatorType.EQ, lambda a, b: a == b)
         assert len(res.values) == 2 and res.values[0] is True and res.values[1] is False
         assert res.symbol == "BTC" and res.timeframe == "1h"
 
     def test_series_vs_scalar(self):
-        tgt = mk_series([100.0, 200.0], stamps=(
-            datetime(2024, 1, 1, 10, 0, 0, tzinfo=UTC),
-            datetime(2024, 1, 1, 11, 0, 0, tzinfo=UTC),
-        ), symbol="BTC", tf="1h")
+        tgt = mk_series(
+            [100.0, 200.0],
+            stamps=(
+                datetime(2024, 1, 1, 10, 0, 0, tzinfo=UTC),
+                datetime(2024, 1, 1, 11, 0, 0, tzinfo=UTC),
+            ),
+            symbol="BTC",
+            tf="1h",
+        )
         scalar = _make_scalar_series(100)
         res = _comparison_series(tgt, scalar, OperatorType.EQ, lambda a, b: a == b)
         assert len(res.values) == 2 and res.values[0] is True and res.values[1] is False
         assert res.symbol == "BTC" and res.timeframe == "1h"
 
     def test_different_lengths_raises(self):
-        s1 = mk_series([100.0, 200.0], stamps=(
-            datetime(2024, 1, 1, 10, 0, 0, tzinfo=UTC),
-            datetime(2024, 1, 1, 11, 0, 0, tzinfo=UTC),
-        ), symbol="BTC", tf="1h")
-        s2 = mk_series([100.0], stamps=(datetime(2024, 1, 1, 10, 0, 0, tzinfo=UTC),), symbol="BTC", tf="1h")
+        s1 = mk_series(
+            [100.0, 200.0],
+            stamps=(
+                datetime(2024, 1, 1, 10, 0, 0, tzinfo=UTC),
+                datetime(2024, 1, 1, 11, 0, 0, tzinfo=UTC),
+            ),
+            symbol="BTC",
+            tf="1h",
+        )
+        s2 = mk_series(
+            [100.0],
+            stamps=(datetime(2024, 1, 1, 10, 0, 0, tzinfo=UTC),),
+            symbol="BTC",
+            tf="1h",
+        )
         with pytest.raises(ValueError, match="different lengths"):
             _comparison_series(s1, s2, OperatorType.EQ, lambda a, b: a == b)
 
@@ -373,6 +468,7 @@ class TestElementWiseComparison:
 # ---------------------------------------------------------------------
 # BinaryOp evaluation variants (mixed scalar/series)
 # ---------------------------------------------------------------------
+
 
 class TestBinaryOpEvaluation:
     def test_mul(self):
@@ -389,7 +485,9 @@ class TestBinaryOpEvaluation:
         assert len(res.values) == 1 and res.values[0] == Price(1.0)
 
     def test_sub(self):
-        res = BinaryOp(OperatorType.SUB, lit_series([100.0]), Literal(50.0)).evaluate({})
+        res = BinaryOp(OperatorType.SUB, lit_series([100.0]), Literal(50.0)).evaluate(
+            {}
+        )
         assert len(res.values) == 1 and res.values[0] == Price(50.0)
 
     def test_pow(self):
@@ -404,8 +502,11 @@ class TestBinaryOpEvaluation:
         # Mimic non-OperatorType with string for explicit NotImplemented
         class MockOperatorType:
             UNSUPPORTED = "UNSUPPORTED"
+
         op = BinaryOp(MockOperatorType.UNSUPPORTED, lit_series([100.0]), Literal(2.0))
-        with pytest.raises(NotImplementedError, match="Binary operator UNSUPPORTED not implemented"):
+        with pytest.raises(
+            NotImplementedError, match="Binary operator UNSUPPORTED not implemented"
+        ):
             op.evaluate({})
 
 
@@ -413,8 +514,11 @@ class TestBinaryOpEvaluation:
 # Coverage-focused tests for internal branches
 # ---------------------------------------------------------------------
 
+
 class TestExpressionCoverageGaps:
-    @pytest.mark.parametrize("val,exp", [(True, Price(Decimal(1))), (False, Price(Decimal(0)))])
+    @pytest.mark.parametrize(
+        "val,exp", [(True, Price(Decimal(1))), (False, Price(Decimal(0)))]
+    )
     def test_coerce_decimal_bools(self, val, exp):
         assert _coerce_decimal(val) == exp
 
@@ -444,7 +548,9 @@ class TestExpressionCoverageGaps:
             raise InvalidOperation("Division by zero")
 
         monkeypatch.setattr(Series, "__truediv__", boom)
-        with pytest.raises(ValueError, match="Invalid arithmetic operation in expression"):
+        with pytest.raises(
+            ValueError, match="Invalid arithmetic operation in expression"
+        ):
             op.evaluate({})
 
     def test_le_and_ge_comparisons(self):

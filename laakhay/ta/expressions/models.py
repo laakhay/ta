@@ -14,6 +14,7 @@ from ..core import Series
 from ..core.types import Price
 from ..core.series import align_series
 
+
 class OperatorType(Enum):
     """Types of operators in expressions."""
 
@@ -42,6 +43,7 @@ class OperatorType(Enum):
     NEG = "-"
     POS = "+"
 
+
 import operator as _py_operator
 
 _OPERATOR_MAP = {
@@ -64,6 +66,7 @@ _OPERATOR_MAP = {
     _py_operator.pos: OperatorType.POS,
 }
 
+
 def _resolve_operator(operator):
     if isinstance(operator, OperatorType):
         return operator
@@ -72,6 +75,7 @@ def _resolve_operator(operator):
     else:
         # Only report 'Binary operator' in message for test regex match
         raise NotImplementedError(f"Binary operator {operator} not implemented")
+
 
 SCALAR_SYMBOL = "__SCALAR__"
 SCALAR_TIMEFRAME = "1s"
@@ -108,7 +112,9 @@ def _is_scalar_series(series: Series[Any]) -> bool:
     return series.symbol == SCALAR_SYMBOL
 
 
-def _broadcast_scalar_series(scalar: Series[Any], reference: Series[Any]) -> Series[Any]:
+def _broadcast_scalar_series(
+    scalar: Series[Any], reference: Series[Any]
+) -> Series[Any]:
     """Broadcast a scalar series to full metadata of the reference series."""
     if not _is_scalar_series(scalar):
         raise ValueError("Attempted to broadcast a non-scalar series")
@@ -137,8 +143,8 @@ def _align_series(
     # Ensure symbols/timeframes now match
     if left.symbol != right.symbol or left.timeframe != right.timeframe:
         raise ValueError("mismatched metadata")
-    how = 'inner'
-    fill = 'none'
+    how = "inner"
+    fill = "none"
     try:
         aligned_left, aligned_right = align_series(
             left,
@@ -152,23 +158,30 @@ def _align_series(
         )
     except ValueError as ve:
         msg = str(ve)
-        if 'Alignment resulted in an empty timestamp set.' in msg:
-            raise ValueError(f"Cannot perform {operator.value} on series of different lengths")
-        if 'timestamp alignment' in msg:
+        if "Alignment resulted in an empty timestamp set." in msg:
+            raise ValueError(
+                f"Cannot perform {operator.value} on series of different lengths"
+            )
+        if "timestamp alignment" in msg:
             raise ValueError("timestamp alignment")
         raise
     if len(aligned_left) != len(aligned_right):
-        raise ValueError(f"Cannot perform {operator.value} on series of different lengths")
+        raise ValueError(
+            f"Cannot perform {operator.value} on series of different lengths"
+        )
     if (not left_scalar and len(aligned_left) != len(orig_left)) or (
         not right_scalar and len(aligned_right) != len(orig_right)
     ):
-        raise ValueError(f"Cannot perform {operator.value} on series of different lengths")
+        raise ValueError(
+            f"Cannot perform {operator.value} on series of different lengths"
+        )
     # Preserve identity if unchanged
     if aligned_left == orig_left:
         aligned_left = orig_left
     if aligned_right == orig_right:
         aligned_right = orig_right
     return aligned_left, aligned_right
+
 
 # Use new _align_series in _comparison_series
 def _comparison_series(
@@ -178,7 +191,10 @@ def _comparison_series(
     compare: Callable[[Any, Any], bool],
 ) -> Series[bool]:
     left_aligned, right_aligned = _align_series(left, right, operator=operator)
-    result_values = tuple(bool(compare(lv, rv)) for lv, rv in zip(left_aligned.values, right_aligned.values, strict=False))
+    result_values = tuple(
+        bool(compare(lv, rv))
+        for lv, rv in zip(left_aligned.values, right_aligned.values, strict=False)
+    )
     return Series[bool](
         timestamps=left_aligned.timestamps,
         values=result_values,
@@ -203,7 +219,9 @@ class ExpressionNode(ABC):
         """Multiplication operator."""
         return BinaryOp(OperatorType.MUL, self, _wrap_literal(other))
 
-    def __truediv__(self, other: ExpressionNode | Series[Any] | float | int) -> BinaryOp:
+    def __truediv__(
+        self, other: ExpressionNode | Series[Any] | float | int
+    ) -> BinaryOp:
         """Division operator."""
         return BinaryOp(OperatorType.DIV, self, _wrap_literal(other))
 
@@ -329,7 +347,9 @@ class BinaryOp(ExpressionNode):
             OperatorType.POW,
         }:
             try:
-                left_aligned, right_aligned = _align_series(left_result, right_result, operator=op_type)
+                left_aligned, right_aligned = _align_series(
+                    left_result, right_result, operator=op_type
+                )
                 if op_type == OperatorType.ADD:
                     result = left_aligned + right_aligned
                 elif op_type == OperatorType.SUB:
@@ -341,14 +361,20 @@ class BinaryOp(ExpressionNode):
                 elif op_type == OperatorType.MOD:
                     result = left_aligned % right_aligned
                 elif op_type == OperatorType.POW:
-                    result = left_aligned ** right_aligned
+                    result = left_aligned**right_aligned
             except ValueError as ve:
                 err = str(ve)
-                if 'mismatched metadata' in err or 'symbol' in err or 'timeframe' in err:
+                if (
+                    "mismatched metadata" in err
+                    or "symbol" in err
+                    or "timeframe" in err
+                ):
                     raise ValueError("mismatched metadata")
-                elif 'different lengths' in err or 'empty timestamp' in err:
-                    raise ValueError(f"Cannot perform {op_type.value} on series of different lengths")
-                elif 'timestamp alignment' in err:
+                elif "different lengths" in err or "empty timestamp" in err:
+                    raise ValueError(
+                        f"Cannot perform {op_type.value} on series of different lengths"
+                    )
+                elif "timestamp alignment" in err:
                     raise ValueError("timestamp alignment")
                 else:
                     raise
@@ -357,28 +383,58 @@ class BinaryOp(ExpressionNode):
         else:
             # All other ops as before
             if op_type == OperatorType.EQ:
-                result = _comparison_series(left_result, right_result, op_type, lambda a, b: a == b)
+                result = _comparison_series(
+                    left_result, right_result, op_type, lambda a, b: a == b
+                )
             elif op_type == OperatorType.NE:
-                result = _comparison_series(left_result, right_result, op_type, lambda a, b: a != b)
+                result = _comparison_series(
+                    left_result, right_result, op_type, lambda a, b: a != b
+                )
             elif op_type == OperatorType.LT:
-                result = _comparison_series(left_result, right_result, op_type, lambda a, b: a < b)
+                result = _comparison_series(
+                    left_result, right_result, op_type, lambda a, b: a < b
+                )
             elif op_type == OperatorType.LE:
-                result = _comparison_series(left_result, right_result, op_type, lambda a, b: a <= b)
+                result = _comparison_series(
+                    left_result, right_result, op_type, lambda a, b: a <= b
+                )
             elif op_type == OperatorType.GT:
-                result = _comparison_series(left_result, right_result, op_type, lambda a, b: a > b)
+                result = _comparison_series(
+                    left_result, right_result, op_type, lambda a, b: a > b
+                )
             elif op_type == OperatorType.GE:
-                result = _comparison_series(left_result, right_result, op_type, lambda a, b: a >= b)
+                result = _comparison_series(
+                    left_result, right_result, op_type, lambda a, b: a >= b
+                )
             elif op_type in {OperatorType.AND, OperatorType.OR}:
-                left_aligned, right_aligned = _align_series(left_result, right_result, operator=op_type)
+                left_aligned, right_aligned = _align_series(
+                    left_result, right_result, operator=op_type
+                )
+
                 def _truthy(v: Any) -> bool:
-                    if isinstance(v, bool): return v
-                    if isinstance(v, (int, float, Decimal)): return bool(Decimal(str(v)))
-                    try: return bool(Decimal(str(v)))
-                    except Exception: return bool(v)
+                    if isinstance(v, bool):
+                        return v
+                    if isinstance(v, (int, float, Decimal)):
+                        return bool(Decimal(str(v)))
+                    try:
+                        return bool(Decimal(str(v)))
+                    except Exception:
+                        return bool(v)
+
                 if op_type == OperatorType.AND:
-                    values = tuple(_truthy(lv) and _truthy(rv) for lv, rv in zip(left_aligned.values, right_aligned.values, strict=False))
+                    values = tuple(
+                        _truthy(lv) and _truthy(rv)
+                        for lv, rv in zip(
+                            left_aligned.values, right_aligned.values, strict=False
+                        )
+                    )
                 else:
-                    values = tuple(_truthy(lv) or _truthy(rv) for lv, rv in zip(left_aligned.values, right_aligned.values, strict=False))
+                    values = tuple(
+                        _truthy(lv) or _truthy(rv)
+                        for lv, rv in zip(
+                            left_aligned.values, right_aligned.values, strict=False
+                        )
+                    )
                 result = Series[bool](
                     timestamps=left_aligned.timestamps,
                     values=values,
@@ -386,7 +442,9 @@ class BinaryOp(ExpressionNode):
                     timeframe=left_aligned.timeframe,
                 )
             else:
-                raise NotImplementedError(f"Binary operator {self.operator} not implemented")
+                raise NotImplementedError(
+                    f"Binary operator {self.operator} not implemented"
+                )
         return result
 
     def dependencies(self) -> list[str]:  # type: ignore[override]
@@ -417,11 +475,17 @@ class UnaryOp(ExpressionNode):
         elif op_type == OperatorType.POS:
             result = operand_result
         elif op_type == OperatorType.NOT:
+
             def _truthy(v: Any) -> bool:
-                if isinstance(v, bool): return v
-                if isinstance(v, (int, float, Decimal)): return bool(Decimal(str(v)))
-                try: return bool(Decimal(str(v)))
-                except Exception: return bool(v)
+                if isinstance(v, bool):
+                    return v
+                if isinstance(v, (int, float, Decimal)):
+                    return bool(Decimal(str(v)))
+                try:
+                    return bool(Decimal(str(v)))
+                except Exception:
+                    return bool(v)
+
             result = Series[bool](
                 timestamps=operand_result.timestamps,
                 values=tuple(not _truthy(v) for v in operand_result.values),

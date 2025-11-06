@@ -15,6 +15,7 @@ def ensure_indicators_registered():
 
     yield
 
+
 @pytest.fixture
 def sample_datetime_utc() -> datetime:
     """Sample UTC datetime for testing."""
@@ -197,6 +198,7 @@ def valid_numeric_strings() -> list[str]:
         "0.0",
     ]
 
+
 # Series and OHLCV test fixtures
 @pytest.fixture
 def sample_timestamps() -> tuple[datetime, ...]:
@@ -209,6 +211,7 @@ def sample_timestamps() -> tuple[datetime, ...]:
         base_time + timedelta(hours=3),
     )
 
+
 @pytest.fixture
 def sample_price_values() -> tuple[Decimal, ...]:
     """Sample price values for testing."""
@@ -218,6 +221,7 @@ def sample_price_values() -> tuple[Decimal, ...]:
         Decimal("99.75"),
         Decimal("102.25"),
     )
+
 
 @pytest.fixture
 def sample_volumes() -> tuple[Decimal, ...]:
@@ -229,18 +233,26 @@ def sample_volumes() -> tuple[Decimal, ...]:
         Decimal("1200"),
     )
 
+
 @pytest.fixture
-def sample_series_data(sample_timestamps: tuple[datetime, ...], sample_price_values: tuple[Decimal, ...]) -> dict[str, Any]:
+def sample_series_data(
+    sample_timestamps: tuple[datetime, ...], sample_price_values: tuple[Decimal, ...]
+) -> dict[str, Any]:
     """Sample series data for testing."""
     return {
         "timestamps": sample_timestamps,
         "values": sample_price_values,
         "symbol": "BTCUSDT",
-        "timeframe": "1h"
+        "timeframe": "1h",
     }
 
+
 @pytest.fixture
-def sample_ohlcv_data(sample_timestamps: tuple[datetime, ...], sample_price_values: tuple[Decimal, ...], sample_volumes: tuple[Decimal, ...]) -> dict[str, Any]:
+def sample_ohlcv_data(
+    sample_timestamps: tuple[datetime, ...],
+    sample_price_values: tuple[Decimal, ...],
+    sample_volumes: tuple[Decimal, ...],
+) -> dict[str, Any]:
     """Sample OHLCV data for testing."""
     return {
         "timestamps": sample_timestamps,
@@ -251,13 +263,19 @@ def sample_ohlcv_data(sample_timestamps: tuple[datetime, ...], sample_price_valu
         "volumes": sample_volumes,
         "is_closed": (True, True, True, True),
         "symbol": "BTCUSDT",
-        "timeframe": "1h"
+        "timeframe": "1h",
     }
 
+
 @pytest.fixture
-def sample_bars(sample_timestamps: tuple[datetime, ...], sample_price_values: tuple[Decimal, ...], sample_volumes: tuple[Decimal, ...]) -> list[Any]:
+def sample_bars(
+    sample_timestamps: tuple[datetime, ...],
+    sample_price_values: tuple[Decimal, ...],
+    sample_volumes: tuple[Decimal, ...],
+) -> list[Any]:
     """Sample Bar objects for testing."""
     from laakhay.ta.core.bar import Bar
+
     return [
         Bar(
             ts=sample_timestamps[i],
@@ -266,20 +284,17 @@ def sample_bars(sample_timestamps: tuple[datetime, ...], sample_price_values: tu
             low=sample_price_values[i],
             close=sample_price_values[i],
             volume=sample_volumes[i],
-            is_closed=True
+            is_closed=True,
         )
         for i in range(len(sample_timestamps))
     ]
 
+
 @pytest.fixture
 def empty_series_data() -> dict[str, Any]:
     """Empty series data for testing."""
-    return {
-        "timestamps": (),
-        "values": (),
-        "symbol": "BTCUSDT",
-        "timeframe": "1h"
-    }
+    return {"timestamps": (), "values": (), "symbol": "BTCUSDT", "timeframe": "1h"}
+
 
 @pytest.fixture
 def unsorted_timestamps() -> tuple[datetime, ...]:

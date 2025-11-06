@@ -22,29 +22,29 @@ class TestATRIndicator:
             datetime(2024, 1, 3, tzinfo=UTC),
             datetime(2024, 1, 4, tzinfo=UTC),
         ]
-        high_values = [Decimal('101'), Decimal('102'), Decimal('103'), Decimal('104')]
-        low_values = [Decimal('99'), Decimal('100'), Decimal('101'), Decimal('102')]
-        close_values = [Decimal('100'), Decimal('101'), Decimal('102'), Decimal('103')]
+        high_values = [Decimal("101"), Decimal("102"), Decimal("103"), Decimal("104")]
+        low_values = [Decimal("99"), Decimal("100"), Decimal("101"), Decimal("102")]
+        close_values = [Decimal("100"), Decimal("101"), Decimal("102"), Decimal("103")]
 
         high_series = Series[Price](
             timestamps=tuple(timestamps),
             values=tuple(high_values),
             symbol="BTCUSDT",
-            timeframe="1h"
+            timeframe="1h",
         )
 
         low_series = Series[Price](
             timestamps=tuple(timestamps),
             values=tuple(low_values),
             symbol="BTCUSDT",
-            timeframe="1h"
+            timeframe="1h",
         )
 
         close_series = Series[Price](
             timestamps=tuple(timestamps),
             values=tuple(close_values),
             symbol="BTCUSDT",
-            timeframe="1h"
+            timeframe="1h",
         )
 
         ctx = SeriesContext(high=high_series, low=low_series, close=close_series)
@@ -58,10 +58,7 @@ class TestATRIndicator:
     def test_atr_empty_series(self):
         """Test ATR with empty input series."""
         empty_series = Series[Price](
-            timestamps=(),
-            values=(),
-            symbol="BTCUSDT",
-            timeframe="1h"
+            timestamps=(), values=(), symbol="BTCUSDT", timeframe="1h"
         )
 
         ctx = SeriesContext(high=empty_series, low=empty_series, close=empty_series)
@@ -75,27 +72,27 @@ class TestATRIndicator:
     def test_atr_insufficient_data(self):
         """Test ATR with insufficient data for period."""
         timestamps = [datetime(2024, 1, 1, tzinfo=UTC)]
-        values = [Decimal('100')]
+        values = [Decimal("100")]
 
         high_series = Series[Price](
             timestamps=tuple(timestamps),
             values=tuple(values),
             symbol="BTCUSDT",
-            timeframe="1h"
+            timeframe="1h",
         )
 
         low_series = Series[Price](
             timestamps=tuple(timestamps),
             values=tuple(values),
             symbol="BTCUSDT",
-            timeframe="1h"
+            timeframe="1h",
         )
 
         close_series = Series[Price](
             timestamps=tuple(timestamps),
             values=tuple(values),
             symbol="BTCUSDT",
-            timeframe="1h"
+            timeframe="1h",
         )
 
         ctx = SeriesContext(high=high_series, low=low_series, close=close_series)
@@ -108,27 +105,27 @@ class TestATRIndicator:
     def test_atr_single_value(self):
         """Test ATR with single value (should return empty)."""
         timestamps = [datetime(2024, 1, 1, tzinfo=UTC)]
-        values = [Decimal('100')]
+        values = [Decimal("100")]
 
         high_series = Series[Price](
             timestamps=tuple(timestamps),
             values=tuple(values),
             symbol="BTCUSDT",
-            timeframe="1h"
+            timeframe="1h",
         )
 
         low_series = Series[Price](
             timestamps=tuple(timestamps),
             values=tuple(values),
             symbol="BTCUSDT",
-            timeframe="1h"
+            timeframe="1h",
         )
 
         close_series = Series[Price](
             timestamps=tuple(timestamps),
             values=tuple(values),
             symbol="BTCUSDT",
-            timeframe="1h"
+            timeframe="1h",
         )
 
         ctx = SeriesContext(high=high_series, low=low_series, close=close_series)
@@ -141,55 +138,64 @@ class TestATRIndicator:
     def test_atr_missing_series(self):
         """Test ATR with missing required series."""
         timestamps = [datetime(2024, 1, 1, tzinfo=UTC)]
-        values = [Decimal('100')]
+        values = [Decimal("100")]
 
         close_series = Series[Price](
             timestamps=tuple(timestamps),
             values=tuple(values),
             symbol="BTCUSDT",
-            timeframe="1h"
+            timeframe="1h",
         )
 
         # Test missing high
         ctx = SeriesContext(low=close_series, close=close_series)
-        with pytest.raises(ValueError, match="True Range requires series: .*high.*low.*close.*"):
+        with pytest.raises(
+            ValueError, match="True Range requires series: .*high.*low.*close.*"
+        ):
             atr(ctx)
 
         # Test missing low
         ctx = SeriesContext(high=close_series, close=close_series)
-        with pytest.raises(ValueError, match="True Range requires series: .*high.*low.*close.*"):
+        with pytest.raises(
+            ValueError, match="True Range requires series: .*high.*low.*close.*"
+        ):
             atr(ctx)
 
         # Test missing close
         ctx = SeriesContext(high=close_series, low=close_series)
-        with pytest.raises(ValueError, match="True Range requires series: .*high.*low.*close.*"):
+        with pytest.raises(
+            ValueError, match="True Range requires series: .*high.*low.*close.*"
+        ):
             atr(ctx)
 
     def test_atr_different_lengths(self):
         """Test ATR with different length series."""
-        timestamps = [datetime(2024, 1, 1, tzinfo=UTC), datetime(2024, 1, 2, tzinfo=UTC)]
-        values = [Decimal('100'), Decimal('101')]
-        short_values = [Decimal('100')]  # Different length
+        timestamps = [
+            datetime(2024, 1, 1, tzinfo=UTC),
+            datetime(2024, 1, 2, tzinfo=UTC),
+        ]
+        values = [Decimal("100"), Decimal("101")]
+        short_values = [Decimal("100")]  # Different length
 
         high_series = Series[Price](
             timestamps=tuple(timestamps),
             values=tuple(values),
             symbol="BTCUSDT",
-            timeframe="1h"
+            timeframe="1h",
         )
 
         low_series = Series[Price](
             timestamps=tuple(timestamps),
             values=tuple(values),
             symbol="BTCUSDT",
-            timeframe="1h"
+            timeframe="1h",
         )
 
         close_series = Series[Price](
             timestamps=tuple(timestamps[:1]),
             values=tuple(short_values),
             symbol="BTCUSDT",
-            timeframe="1h"
+            timeframe="1h",
         )
 
         ctx = SeriesContext(high=high_series, low=low_series, close=close_series)
@@ -198,28 +204,31 @@ class TestATRIndicator:
 
     def test_atr_invalid_period(self):
         """Test ATR with invalid period."""
-        timestamps = [datetime(2024, 1, 1, tzinfo=UTC), datetime(2024, 1, 2, tzinfo=UTC)]
-        values = [Decimal('100'), Decimal('101')]
+        timestamps = [
+            datetime(2024, 1, 1, tzinfo=UTC),
+            datetime(2024, 1, 2, tzinfo=UTC),
+        ]
+        values = [Decimal("100"), Decimal("101")]
 
         high_series = Series[Price](
             timestamps=tuple(timestamps),
             values=tuple(values),
             symbol="BTCUSDT",
-            timeframe="1h"
+            timeframe="1h",
         )
 
         low_series = Series[Price](
             timestamps=tuple(timestamps),
             values=tuple(values),
             symbol="BTCUSDT",
-            timeframe="1h"
+            timeframe="1h",
         )
 
         close_series = Series[Price](
             timestamps=tuple(timestamps),
             values=tuple(values),
             symbol="BTCUSDT",
-            timeframe="1h"
+            timeframe="1h",
         )
 
         ctx = SeriesContext(high=high_series, low=low_series, close=close_series)
@@ -239,21 +248,21 @@ class TestATRIndicator:
             timestamps=tuple(timestamps),
             values=tuple(values),
             symbol="BTCUSDT",
-            timeframe="1h"
+            timeframe="1h",
         )
 
         low_series = Series[Price](
             timestamps=tuple(timestamps),
             values=tuple(values),
             symbol="BTCUSDT",
-            timeframe="1h"
+            timeframe="1h",
         )
 
         close_series = Series[Price](
             timestamps=tuple(timestamps),
             values=tuple(values),
             symbol="BTCUSDT",
-            timeframe="1h"
+            timeframe="1h",
         )
 
         ctx = SeriesContext(high=high_series, low=low_series, close=close_series)
@@ -273,21 +282,21 @@ class TestATRIndicator:
             timestamps=tuple(timestamps),
             values=tuple(values),
             symbol="ETHUSDT",
-            timeframe="4h"
+            timeframe="4h",
         )
 
         low_series = Series[Price](
             timestamps=tuple(timestamps),
             values=tuple(values),
             symbol="ETHUSDT",
-            timeframe="4h"
+            timeframe="4h",
         )
 
         close_series = Series[Price](
             timestamps=tuple(timestamps),
             values=tuple(values),
             symbol="ETHUSDT",
-            timeframe="4h"
+            timeframe="4h",
         )
 
         ctx = SeriesContext(high=high_series, low=low_series, close=close_series)

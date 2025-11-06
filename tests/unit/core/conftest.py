@@ -22,7 +22,7 @@ def price_series(timestamp):
         timestamps=(timestamp,),
         values=(Price(Decimal("100")),),
         symbol="TEST",
-        timeframe="1s"
+        timeframe="1s",
     )
 
 
@@ -34,7 +34,7 @@ def multi_point_series(timestamp):
         timestamps=(timestamp, timestamp2),
         values=(Price(Decimal("100")), Price(Decimal("200"))),
         symbol="TEST",
-        timeframe="1s"
+        timeframe="1s",
     )
 
 
@@ -46,5 +46,5 @@ def different_series(timestamp):
         timestamps=(timestamp, timestamp2),
         values=(Price(Decimal("50")), Price(Decimal("75"))),
         symbol="TEST",
-        timeframe="1s"
+        timeframe="1s",
     )

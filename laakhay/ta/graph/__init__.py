@@ -1,6 +1,12 @@
 """Graph/planner package centralizing DAG planning and evaluation."""
 
-from .planner import AlignmentPolicy, alignment, compute_plan, get_alignment_policy, plan_expression
+from .planner import (
+    AlignmentPolicy,
+    alignment,
+    compute_plan,
+    get_alignment_policy,
+    plan_expression,
+)
 from .evaluator import Evaluator
 from .types import PlanResult, SignalRequirements
 

@@ -36,7 +36,12 @@ def alignment(
         with alignment(how="outer", fill="ffill"):
             expr.run(ds)
     """
-    prev = (_policy.how, _policy.fill, _policy.left_fill_value, _policy.right_fill_value)
+    prev = (
+        _policy.how,
+        _policy.fill,
+        _policy.left_fill_value,
+        _policy.right_fill_value,
+    )
     try:
         if how is not None:
             _policy.how = how
@@ -48,6 +53,6 @@ def alignment(
             _policy.right_fill_value = right_fill_value
         yield
     finally:
-        _policy.how, _policy.fill, _policy.left_fill_value, _policy.right_fill_value = prev
-
-
+        _policy.how, _policy.fill, _policy.left_fill_value, _policy.right_fill_value = (
+            prev
+        )

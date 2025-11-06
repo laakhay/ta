@@ -31,12 +31,12 @@ class TestEngine:
 
         # Create test series
         timestamps = [datetime(2024, 1, 1, tzinfo=UTC)]
-        values = [Decimal('100')]
+        values = [Decimal("100")]
         series = Series[Price](
             timestamps=tuple(timestamps),
             values=tuple(values),
             symbol="BTCUSDT",
-            timeframe="1h"
+            timeframe="1h",
         )
 
         literal = Literal(series)
@@ -66,12 +66,12 @@ class TestEngine:
 
         # Create test series
         timestamps = [datetime(2024, 1, 1, tzinfo=UTC)]
-        values = [Decimal('100')]
+        values = [Decimal("100")]
         series = Series[Price](
             timestamps=tuple(timestamps),
             values=tuple(values),
             symbol="BTCUSDT",
-            timeframe="1h"
+            timeframe="1h",
         )
 
         # Create binary operation: series + 10
@@ -87,7 +87,7 @@ class TestEngine:
         assert result.symbol == "BTCUSDT"
         assert result.timeframe == "1h"
         assert len(result.values) == 1
-        assert result.values[0] == Decimal('110')
+        assert result.values[0] == Decimal("110")
 
     def test_evaluate_with_dataset(self):
         """Test evaluating expression with dataset context."""
@@ -95,12 +95,12 @@ class TestEngine:
 
         # Create test series
         timestamps = [datetime(2024, 1, 1, tzinfo=UTC)]
-        values = [Decimal('100')]
+        values = [Decimal("100")]
         series = Series[Price](
             timestamps=tuple(timestamps),
             values=tuple(values),
             symbol="BTCUSDT",
-            timeframe="1h"
+            timeframe="1h",
         )
 
         # Create literal that references dataset
@@ -117,13 +117,16 @@ class TestEngine:
         engine = Engine()
 
         # Create test series
-        timestamps = [datetime(2024, 1, 1, tzinfo=UTC), datetime(2024, 1, 2, tzinfo=UTC)]
-        values = [Decimal('100'), Decimal('110')]
+        timestamps = [
+            datetime(2024, 1, 1, tzinfo=UTC),
+            datetime(2024, 1, 2, tzinfo=UTC),
+        ]
+        values = [Decimal("100"), Decimal("110")]
         series = Series[Price](
             timestamps=tuple(timestamps),
             values=tuple(values),
             symbol="BTCUSDT",
-            timeframe="1h"
+            timeframe="1h",
         )
 
         # Create expression: (series * 2) + 10
@@ -138,8 +141,8 @@ class TestEngine:
         assert result.symbol == "BTCUSDT"
         assert result.timeframe == "1h"
         assert len(result.values) == 2
-        assert result.values[0] == Decimal('210')
-        assert result.values[1] == Decimal('230')
+        assert result.values[0] == Decimal("210")
+        assert result.values[1] == Decimal("230")
 
     def test_evaluate_empty_dataset(self):
         """Test evaluating with empty dataset."""
@@ -156,6 +159,6 @@ class TestEngine:
     def test_cache_initialization(self):
         """Test that cache is properly initialized."""
         engine = Engine()
-        assert hasattr(engine, '_cache')
+        assert hasattr(engine, "_cache")
         assert isinstance(engine._cache, dict)
         assert len(engine._cache) == 0

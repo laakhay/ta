@@ -31,7 +31,7 @@ class TestDumpCSV:
             volumes=(Decimal("1000"), Decimal("1100")),
             is_closed=(True, False),
             symbol="BTCUSDT",
-            timeframe="1h"
+            timeframe="1h",
         )
 
     @pytest.fixture
@@ -46,12 +46,12 @@ class TestDumpCSV:
             timestamps=timestamps,
             values=(Decimal("100.0"), Decimal("100.5"), Decimal("101.0")),
             symbol="BTCUSDT",
-            timeframe="1h"
+            timeframe="1h",
         )
 
     def test_dump_ohlcv_csv(self, sample_ohlcv: OHLCV) -> None:
         """Test dumping OHLCV data to CSV."""
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.csv', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".csv", delete=False) as f:
             temp_path = f.name
 
         try:
@@ -64,15 +64,20 @@ class TestDumpCSV:
 
             assert len(lines) == 3  # Header + 2 data rows
             assert "timestamp,open,high,low,close,volume,is_closed" in lines[0]
-            assert "2024-01-01T00:00:00+00:00,100.0,101.0,99.0,100.5,1000,True" in lines[1]
-            assert "2024-01-01T01:00:00+00:00,100.5,102.0,100.0,101.5,1100,False" in lines[2]
+            assert (
+                "2024-01-01T00:00:00+00:00,100.0,101.0,99.0,100.5,1000,True" in lines[1]
+            )
+            assert (
+                "2024-01-01T01:00:00+00:00,100.5,102.0,100.0,101.5,1100,False"
+                in lines[2]
+            )
 
         finally:
             Path(temp_path).unlink()
 
     def test_dump_series_csv(self, sample_series: Series[Price]) -> None:
         """Test dumping Series data to CSV."""
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.csv', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".csv", delete=False) as f:
             temp_path = f.name
 
         try:
@@ -94,7 +99,7 @@ class TestDumpCSV:
 
     def test_to_csv_with_custom_columns(self, sample_ohlcv: OHLCV) -> None:
         """Test dumping CSV with custom column mappings."""
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.csv', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".csv", delete=False) as f:
             temp_path = f.name
 
         try:
@@ -108,7 +113,7 @@ class TestDumpCSV:
                 low_col="l",
                 close_col="c",
                 volume_col="v",
-                is_closed_col="closed"
+                is_closed_col="closed",
             )
 
             # Verify CSV content
@@ -117,7 +122,9 @@ class TestDumpCSV:
 
             assert len(lines) == 3  # Header + 2 data rows
             assert "time,o,h,l,c,v,closed" in lines[0]
-            assert "2024-01-01T00:00:00+00:00,100.0,101.0,99.0,100.5,1000,True" in lines[1]
+            assert (
+                "2024-01-01T00:00:00+00:00,100.0,101.0,99.0,100.5,1000,True" in lines[1]
+            )
 
         finally:
             Path(temp_path).unlink()
@@ -135,7 +142,7 @@ class TestDumpCSV:
 
     def test_to_csv_invalid_data_type(self) -> None:
         """Test dumping invalid data type."""
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.csv', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".csv", delete=False) as f:
             temp_path = f.name
 
         try:
@@ -155,10 +162,10 @@ class TestDumpCSV:
             volumes=(),
             is_closed=(),
             symbol="BTCUSDT",
-            timeframe="1h"
+            timeframe="1h",
         )
 
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.csv', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".csv", delete=False) as f:
             temp_path = f.name
 
         try:
@@ -177,13 +184,10 @@ class TestDumpCSV:
     def test_to_csv_empty_series(self) -> None:
         """Test dumping empty Series data."""
         empty_series = Series[Price](
-            timestamps=(),
-            values=(),
-            symbol="BTCUSDT",
-            timeframe="1h"
+            timestamps=(), values=(), symbol="BTCUSDT", timeframe="1h"
         )
 
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.csv', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".csv", delete=False) as f:
             temp_path = f.name
 
         try:
@@ -214,10 +218,10 @@ class TestCSVExportCriticalIssues:
             timestamps=(datetime(2024, 1, 1, tzinfo=UTC),),
             values=(Price(Decimal("100.123456789")),),  # High precision decimal
             symbol="BTC",
-            timeframe="1h"
+            timeframe="1h",
         )
 
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.csv', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".csv", delete=False) as f:
             temp_path = f.name
 
         try:
@@ -228,7 +232,9 @@ class TestCSVExportCriticalIssues:
             imported_series = from_csv(temp_path, "BTC", "1h")
 
             # This should work - precision should be preserved
-            assert imported_series.values[0] == Price(Decimal("100.123456789")), "Decimal precision should be preserved"
+            assert imported_series.values[0] == Price(Decimal("100.123456789")), (
+                "Decimal precision should be preserved"
+            )
 
         finally:
             os.unlink(temp_path)
@@ -249,10 +255,10 @@ class TestCSVExportCriticalIssues:
             volumes=(Qty(Decimal("1000.123456789")),),
             is_closed=(True,),
             symbol="BTC",
-            timeframe="1h"
+            timeframe="1h",
         )
 
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.csv', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".csv", delete=False) as f:
             temp_path = f.name
 
         try:
@@ -263,8 +269,12 @@ class TestCSVExportCriticalIssues:
             imported_ohlcv = from_csv(temp_path, "BTC", "1h")
 
             # This should work - precision should be preserved
-            assert imported_ohlcv.opens[0] == Price(Decimal("100.123456789")), "Open price precision should be preserved"
-            assert imported_ohlcv.volumes[0] == Qty(Decimal("1000.123456789")), "Volume precision should be preserved"
+            assert imported_ohlcv.opens[0] == Price(Decimal("100.123456789")), (
+                "Open price precision should be preserved"
+            )
+            assert imported_ohlcv.volumes[0] == Qty(Decimal("1000.123456789")), (
+                "Volume precision should be preserved"
+            )
 
         finally:
             os.unlink(temp_path)

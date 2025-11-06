@@ -29,7 +29,11 @@ class ParamSchema:
             raise ValueError("Required parameters cannot have default values")
 
         # Optional parameters may have None default; ensure selectable defaults are legitimate.
-        if not self.required and self.default is not None and self.valid_values is not None:
+        if (
+            not self.required
+            and self.default is not None
+            and self.valid_values is not None
+        ):
             if self.default not in self.valid_values:
                 raise ValueError(f"Default value {self.default} not in valid_values")
 
@@ -54,8 +58,12 @@ class IndicatorSchema:
 
     name: str
     description: str = ""
-    parameters: dict[str, ParamSchema] = field(default_factory=lambda: dict[str, ParamSchema]())
-    outputs: dict[str, OutputSchema] = field(default_factory=lambda: dict[str, OutputSchema]())
+    parameters: dict[str, ParamSchema] = field(
+        default_factory=lambda: dict[str, ParamSchema]()
+    )
+    outputs: dict[str, OutputSchema] = field(
+        default_factory=lambda: dict[str, OutputSchema]()
+    )
     aliases: list[str] = field(default_factory=lambda: list[str]())
     metadata: "IndicatorMetadata" = field(default_factory=lambda: IndicatorMetadata())
     output_metadata: dict[str, dict[str, Any]] = field(default_factory=dict)
@@ -126,7 +134,7 @@ class IndicatorSchema:
                 name=name,
                 type=output_type,
                 description=output_data.get("description", ""),
-        )
+            )
 
         return cls(
             name=data["name"],

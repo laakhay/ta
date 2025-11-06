@@ -59,7 +59,11 @@ class TestTypes:
             assert isinstance(value, (RateLike,))
 
         # Test TimestampLike
-        timestamp_like_values = [datetime(2024, 1, 1), "2024-01-01T12:00:00", 1704110400]
+        timestamp_like_values = [
+            datetime(2024, 1, 1),
+            "2024-01-01T12:00:00",
+            1704110400,
+        ]
         for value in timestamp_like_values:
             assert isinstance(value, (TimestampLike,))
 
@@ -67,7 +71,12 @@ class TestTypes:
         date_obj = date(2024, 1, 1)
         assert isinstance(date_obj, (TimestampLike,))
 
-    def test_type_operations(self, sample_prices: dict[str, int | float | str | Decimal], sample_quantities: dict[str, int | float | str | Decimal], sample_rates: dict[str, int | float | str | Decimal]) -> None:
+    def test_type_operations(
+        self,
+        sample_prices: dict[str, int | float | str | Decimal],
+        sample_quantities: dict[str, int | float | str | Decimal],
+        sample_rates: dict[str, int | float | str | Decimal],
+    ) -> None:
         """Test that types work correctly in operations."""
         # Test Price operations
         price1 = coerce_price(sample_prices["int"])

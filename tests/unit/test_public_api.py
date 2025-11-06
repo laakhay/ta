@@ -46,8 +46,19 @@ class TestIndicatorHandle:
             datetime(2024, 1, 4, tzinfo=UTC),
             datetime(2024, 1, 5, tzinfo=UTC),
         ]
-        values = [Price(Decimal('100')), Price(Decimal('110')), Price(Decimal('120')), Price(Decimal('130')), Price(Decimal('140'))]
-        close_series = Series[Price](timestamps=tuple(timestamps), values=tuple(values), symbol="BTCUSDT", timeframe="1h")
+        values = [
+            Price(Decimal("100")),
+            Price(Decimal("110")),
+            Price(Decimal("120")),
+            Price(Decimal("130")),
+            Price(Decimal("140")),
+        ]
+        close_series = Series[Price](
+            timestamps=tuple(timestamps),
+            values=tuple(values),
+            symbol="BTCUSDT",
+            timeframe="1h",
+        )
 
         sma_handle = ta.indicator("sma", period=3)
         result = sma_handle(close_series)
@@ -65,8 +76,13 @@ class TestIndicatorHandle:
             datetime(2024, 1, 2, tzinfo=UTC),
             datetime(2024, 1, 3, tzinfo=UTC),
         ]
-        values = [Price(Decimal('100')), Price(Decimal('110')), Price(Decimal('120'))]
-        close_series = Series[Price](timestamps=tuple(timestamps), values=tuple(values), symbol="BTCUSDT", timeframe="1h")
+        values = [Price(Decimal("100")), Price(Decimal("110")), Price(Decimal("120"))]
+        close_series = Series[Price](
+            timestamps=tuple(timestamps),
+            values=tuple(values),
+            symbol="BTCUSDT",
+            timeframe="1h",
+        )
 
         dataset = Dataset()
         dataset.add("BTCUSDT", "1h", "close", close_series)
@@ -150,8 +166,13 @@ class TestTASeries:
     def test_ta_series_creation(self):
         """Test creating TASeries."""
         timestamps = [datetime(2024, 1, 1, tzinfo=UTC)]
-        values = [Price(Decimal('100'))]
-        close_series = Series[Price](timestamps=tuple(timestamps), values=tuple(values), symbol="BTCUSDT", timeframe="1h")
+        values = [Price(Decimal("100"))]
+        close_series = Series[Price](
+            timestamps=tuple(timestamps),
+            values=tuple(values),
+            symbol="BTCUSDT",
+            timeframe="1h",
+        )
 
         ta_series = ta(close_series)
         assert isinstance(ta_series, TASeries)
@@ -159,11 +180,21 @@ class TestTASeries:
     def test_ta_series_with_additional_series(self):
         """Test TASeries with additional series."""
         timestamps = [datetime(2024, 1, 1, tzinfo=UTC)]
-        close_values = [Price(Decimal('100'))]
-        volume_values = [Volume(Decimal('1000'))]
+        close_values = [Price(Decimal("100"))]
+        volume_values = [Volume(Decimal("1000"))]
 
-        close_series = Series[Price](timestamps=tuple(timestamps), values=tuple(close_values), symbol="BTCUSDT", timeframe="1h")
-        volume_series = Series[Volume](timestamps=tuple(timestamps), values=tuple(volume_values), symbol="BTCUSDT", timeframe="1h")
+        close_series = Series[Price](
+            timestamps=tuple(timestamps),
+            values=tuple(close_values),
+            symbol="BTCUSDT",
+            timeframe="1h",
+        )
+        volume_series = Series[Volume](
+            timestamps=tuple(timestamps),
+            values=tuple(volume_values),
+            symbol="BTCUSDT",
+            timeframe="1h",
+        )
 
         ta_series = ta(close_series, volume=volume_series)
         assert isinstance(ta_series, TASeries)
@@ -171,8 +202,13 @@ class TestTASeries:
     def test_ta_series_indicator_access(self):
         """Test accessing indicators on TASeries."""
         timestamps = [datetime(2024, 1, 1, tzinfo=UTC)]
-        values = [Price(Decimal('100'))]
-        close_series = Series[Price](timestamps=tuple(timestamps), values=tuple(values), symbol="BTCUSDT", timeframe="1h")
+        values = [Price(Decimal("100"))]
+        close_series = Series[Price](
+            timestamps=tuple(timestamps),
+            values=tuple(values),
+            symbol="BTCUSDT",
+            timeframe="1h",
+        )
 
         ta_series = ta(close_series)
 
@@ -181,13 +217,20 @@ class TestTASeries:
         assert callable(sma_func)
 
         result = sma_func(period=20)
-        assert isinstance(result, Expression)  # Should return Expression for algebraic composition
+        assert isinstance(
+            result, Expression
+        )  # Should return Expression for algebraic composition
 
     def test_ta_series_invalid_indicator(self):
         """Test accessing invalid indicator on TASeries."""
         timestamps = [datetime(2024, 1, 1, tzinfo=UTC)]
-        values = [Price(Decimal('100'))]
-        close_series = Series[Price](timestamps=tuple(timestamps), values=tuple(values), symbol="BTCUSDT", timeframe="1h")
+        values = [Price(Decimal("100"))]
+        close_series = Series[Price](
+            timestamps=tuple(timestamps),
+            values=tuple(values),
+            symbol="BTCUSDT",
+            timeframe="1h",
+        )
 
         ta_series = ta(close_series)
 
@@ -197,8 +240,13 @@ class TestTASeries:
     def test_ta_series_algebraic_operations(self):
         """Test algebraic operations on TASeries."""
         timestamps = [datetime(2024, 1, 1, tzinfo=UTC)]
-        values = [Price(Decimal('100'))]
-        close_series = Series[Price](timestamps=tuple(timestamps), values=tuple(values), symbol="BTCUSDT", timeframe="1h")
+        values = [Price(Decimal("100"))]
+        close_series = Series[Price](
+            timestamps=tuple(timestamps),
+            values=tuple(values),
+            symbol="BTCUSDT",
+            timeframe="1h",
+        )
 
         ta_series = ta(close_series)
 
@@ -223,7 +271,7 @@ class TestLiteralFunction:
         """Test creating literals with different types."""
         int_literal = ta.literal(15)
         float_literal = ta.literal(15.5)
-        decimal_literal = ta.literal(Decimal('15.5'))
+        decimal_literal = ta.literal(Decimal("15.5"))
 
         assert isinstance(int_literal, Expression)
         assert isinstance(float_literal, Expression)
@@ -243,8 +291,19 @@ class TestPublicAPIIntegration:
             datetime(2024, 1, 4, tzinfo=UTC),
             datetime(2024, 1, 5, tzinfo=UTC),
         ]
-        values = [Price(Decimal('100')), Price(Decimal('110')), Price(Decimal('120')), Price(Decimal('130')), Price(Decimal('140'))]
-        close_series = Series[Price](timestamps=tuple(timestamps), values=tuple(values), symbol="BTCUSDT", timeframe="1h")
+        values = [
+            Price(Decimal("100")),
+            Price(Decimal("110")),
+            Price(Decimal("120")),
+            Price(Decimal("130")),
+            Price(Decimal("140")),
+        ]
+        close_series = Series[Price](
+            timestamps=tuple(timestamps),
+            values=tuple(values),
+            symbol="BTCUSDT",
+            timeframe="1h",
+        )
 
         # Vision API example
         sma_fast = ta.indicator("sma", period=20)
@@ -270,32 +329,55 @@ class TestPublicAPIIntegration:
     def test_alternative_api_example(self):
         """Test the alternative API: ta(series).indicator()"""
         timestamps = [datetime(2024, 1, 1, tzinfo=UTC)]
-        values = [Price(Decimal('100'))]
-        close_series = Series[Price](timestamps=tuple(timestamps), values=tuple(values), symbol="BTCUSDT", timeframe="1h")
+        values = [Price(Decimal("100"))]
+        close_series = Series[Price](
+            timestamps=tuple(timestamps),
+            values=tuple(values),
+            symbol="BTCUSDT",
+            timeframe="1h",
+        )
 
         # Alternative API
         sma_20 = ta(close_series).sma(20)
         rsi_14 = ta(close_series).rsi(14)
 
-        assert isinstance(sma_20, Expression)  # Should return Expression for algebraic composition
-        assert isinstance(rsi_14, Expression)  # Should return Expression for algebraic composition
+        assert isinstance(
+            sma_20, Expression
+        )  # Should return Expression for algebraic composition
+        assert isinstance(
+            rsi_14, Expression
+        )  # Should return Expression for algebraic composition
 
         # Test algebraic composition
-        strategy = (ta(close_series).sma(20) > ta(close_series).ema(12)) & (ta(close_series).rsi(14) < 30)
+        strategy = (ta(close_series).sma(20) > ta(close_series).ema(12)) & (
+            ta(close_series).rsi(14) < 30
+        )
         assert isinstance(strategy, Expression)
 
     def test_multi_series_indicators(self):
         """Test multi-series indicators with the public API."""
         timestamps = [datetime(2024, 1, 1, tzinfo=UTC)]
-        close_values = [Price(Decimal('100'))]
-        volume_values = [Volume(Decimal('1000'))]
+        close_values = [Price(Decimal("100"))]
+        volume_values = [Volume(Decimal("1000"))]
 
-        close_series = Series[Price](timestamps=tuple(timestamps), values=tuple(close_values), symbol="BTCUSDT", timeframe="1h")
-        volume_series = Series[Volume](timestamps=tuple(timestamps), values=tuple(volume_values), symbol="BTCUSDT", timeframe="1h")
+        close_series = Series[Price](
+            timestamps=tuple(timestamps),
+            values=tuple(close_values),
+            symbol="BTCUSDT",
+            timeframe="1h",
+        )
+        volume_series = Series[Volume](
+            timestamps=tuple(timestamps),
+            values=tuple(volume_values),
+            symbol="BTCUSDT",
+            timeframe="1h",
+        )
 
         # Test with TASeries
         obv_result = ta(close_series, volume=volume_series).obv()
-        assert isinstance(obv_result, Expression)  # Should return Expression for algebraic composition
+        assert isinstance(
+            obv_result, Expression
+        )  # Should return Expression for algebraic composition
 
         # Test with indicator handles
         obv_handle = ta.indicator("obv")

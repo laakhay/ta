@@ -10,7 +10,9 @@ from laakhay.ta.core.timestamps import coerce_timestamp
 class TestCoerceTimestamp:
     """Test coerce_timestamp function."""
 
-    def test_coerce_timestamp_datetime(self, sample_datetime_utc: datetime, sample_datetime_naive: datetime) -> None:
+    def test_coerce_timestamp_datetime(
+        self, sample_datetime_utc: datetime, sample_datetime_naive: datetime
+    ) -> None:
         """Test timestamp coercion with datetime objects."""
         result_utc = coerce_timestamp(sample_datetime_utc)
         assert result_utc == sample_datetime_utc
@@ -21,7 +23,9 @@ class TestCoerceTimestamp:
         assert result_naive.tzinfo == UTC
         assert result_naive.replace(tzinfo=None) == sample_datetime_naive
 
-    def test_coerce_timestamp_unix(self, sample_timestamp_unix: int, sample_datetime_utc: datetime) -> None:
+    def test_coerce_timestamp_unix(
+        self, sample_timestamp_unix: int, sample_datetime_utc: datetime
+    ) -> None:
         """Test timestamp coercion with Unix timestamps."""
         result = coerce_timestamp(sample_timestamp_unix)
         assert result == sample_datetime_utc
@@ -33,7 +37,9 @@ class TestCoerceTimestamp:
         expected = datetime.fromtimestamp(negative_ts, tz=UTC)
         assert result_neg == expected
 
-    def test_coerce_timestamp_iso_string(self, sample_iso_string: str, sample_datetime_utc: datetime) -> None:
+    def test_coerce_timestamp_iso_string(
+        self, sample_iso_string: str, sample_datetime_utc: datetime
+    ) -> None:
         """Test timestamp coercion with ISO 8601 strings."""
         result = coerce_timestamp(sample_iso_string)
         assert result == sample_datetime_utc
@@ -49,7 +55,9 @@ class TestCoerceTimestamp:
         result_naive = coerce_timestamp(naive_iso)
         assert result_naive.tzinfo == UTC
 
-    def test_coerce_timestamp_invalid(self, invalid_timestamp_strings: list[str]) -> None:
+    def test_coerce_timestamp_invalid(
+        self, invalid_timestamp_strings: list[str]
+    ) -> None:
         """Test timestamp coercion with invalid inputs."""
         # Test invalid string formats
         for invalid_str in invalid_timestamp_strings:
@@ -79,7 +87,9 @@ class TestCoerceTimestamp:
         assert result.second == 0
         assert result.tzinfo == UTC
 
-    def test_coerce_timestamp_epoch_variants(self, sample_datetime_utc: datetime) -> None:
+    def test_coerce_timestamp_epoch_variants(
+        self, sample_datetime_utc: datetime
+    ) -> None:
         """Test timestamp coercion with various epoch formats."""
         # Test different epoch scales
         base_ts = int(sample_datetime_utc.timestamp())
@@ -102,7 +112,9 @@ class TestCoerceTimestamp:
         result_ns = coerce_timestamp(ns_ts)
         assert result_ns == sample_datetime_utc
 
-    def test_coerce_timestamp_string_epoch(self, sample_timestamp_unix_str: str, sample_datetime_utc: datetime) -> None:
+    def test_coerce_timestamp_string_epoch(
+        self, sample_timestamp_unix_str: str, sample_datetime_utc: datetime
+    ) -> None:
         """Test timestamp coercion with string epoch values."""
         result = coerce_timestamp(sample_timestamp_unix_str)
         assert result == sample_datetime_utc
@@ -118,7 +130,9 @@ class TestCoerceTimestamp:
         expected_float = datetime.fromtimestamp(1704110400.123, tz=UTC)
         assert result_float == expected_float
 
-    def test_coerce_timestamp_fallback_patterns(self, valid_timestamp_strings: list[str]) -> None:
+    def test_coerce_timestamp_fallback_patterns(
+        self, valid_timestamp_strings: list[str]
+    ) -> None:
         """Test timestamp coercion with various valid string formats."""
         for ts_str in valid_timestamp_strings:
             result = coerce_timestamp(ts_str)
@@ -175,6 +189,7 @@ class TestCoerceTimestamp:
 
         # Test date object (covers line 112)
         from datetime import date
+
         date_obj = date(2024, 1, 1)
         result = coerce_timestamp(date_obj)
         assert result.year == 2024

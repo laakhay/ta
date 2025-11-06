@@ -29,7 +29,9 @@ def test_ref_basic_extraction():
     dataset = Dataset()
 
     close_4h = _make_series([100, 110, 105], timedelta(hours=4), "4h")
-    close_1h = _make_series([100, 102, 104, 106, 108, 110, 109, 108, 107], timedelta(hours=1), "1h")
+    close_1h = _make_series(
+        [100, 102, 104, 106, 108, 110, 109, 108, 107], timedelta(hours=1), "1h"
+    )
 
     dataset.add_series("BTCUSDT", "4h", close_4h, "close")
     dataset.add_series("BTCUSDT", "1h", close_1h, "close")

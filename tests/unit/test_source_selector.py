@@ -44,8 +44,16 @@ def test_source_selects_field():
     close_vals = close.run(dataset)
     open_vals = open_.run(dataset)
 
-    assert list(close_vals[("BTCUSDT", "1h", "default")].values) == [Price("100"), Price("105"), Price("110")]
-    assert list(open_vals[("BTCUSDT", "1h", "default")].values) == [Price("98"), Price("104"), Price("111")]
+    assert list(close_vals[("BTCUSDT", "1h", "default")].values) == [
+        Price("100"),
+        Price("105"),
+        Price("110"),
+    ]
+    assert list(open_vals[("BTCUSDT", "1h", "default")].values) == [
+        Price("98"),
+        Price("104"),
+        Price("111"),
+    ]
 
 
 def test_source_missing_field_raises():

@@ -16,7 +16,7 @@ def from_csv(
     timeframe: str,
     source: str = "csv",
     timestamp_col: str = "timestamp",
-    **col_mapping: str
+    **col_mapping: str,
 ) -> OHLCV | Series[Price]:
     path = Path(path)
     if not path.exists():
@@ -51,7 +51,9 @@ def from_csv(
         for row_num, row in enumerate(reader, start=2):
             try:
                 if timestamp_col not in row:
-                    raise ValueError(f"Timestamp column '{timestamp_col}' not found in CSV")
+                    raise ValueError(
+                        f"Timestamp column '{timestamp_col}' not found in CSV"
+                    )
                 timestamp = coerce_timestamp(row[timestamp_col])
                 timestamps.append(timestamp)
 
@@ -75,7 +77,9 @@ def from_csv(
                     except Exception as e:
                         raise ValueError(f"Invalid numeric data: {e}")
 
-                    is_closed_val = row.get(default_mapping["is_closed_col"], "true").lower()
+                    is_closed_val = row.get(
+                        default_mapping["is_closed_col"], "true"
+                    ).lower()
                     is_closed.append(is_closed_val in ("true", "1", "yes", "closed"))
                 else:
                     if default_mapping["value_col"] not in row:
@@ -174,5 +178,3 @@ def to_csv(
                         default_mapping["value_col"]: str(data.values[i]),
                     }
                 )
-
-

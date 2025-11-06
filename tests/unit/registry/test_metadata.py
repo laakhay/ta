@@ -44,7 +44,9 @@ from laakhay.ta.registry import describe_indicator, get_global_registry
         ("swing_lows", ("high", "low"), (), ("left", "right"), None),
     ],
 )
-def test_indicator_metadata(name, required_fields, optional_fields, lookback_params, default_lookback):
+def test_indicator_metadata(
+    name, required_fields, optional_fields, lookback_params, default_lookback
+):
     registry = get_global_registry()
     handle = registry.get(name)
     assert handle is not None, f"Indicator '{name}' not registered"

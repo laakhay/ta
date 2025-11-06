@@ -26,7 +26,10 @@ _SELECT_OUTPUT_METADATA = {
     "result": {"type": "price", "role": "selector", "polarity": "neutral"}
 }
 
-@register("select", description=_SELECT_DESCRIPTION, output_metadata=_SELECT_OUTPUT_METADATA)
+
+@register(
+    "select", description=_SELECT_DESCRIPTION, output_metadata=_SELECT_OUTPUT_METADATA
+)
 def _select_indicator(ctx: SeriesContext, field: str) -> Series[Any]:
     if field not in ctx.available_series:
         raise ValueError(
@@ -40,7 +43,11 @@ def ensure_namespace_registered() -> None:
     registry = get_global_registry()
     if "select" not in registry._indicators:
         # Re-apply the decorator to register the select helper without reloading modules.
-        register("select", description=_SELECT_DESCRIPTION, output_metadata=_SELECT_OUTPUT_METADATA)(_select_indicator)
+        register(
+            "select",
+            description=_SELECT_DESCRIPTION,
+            output_metadata=_SELECT_OUTPUT_METADATA,
+        )(_select_indicator)
 
 
 def indicator(name: str, **params: Any) -> IndicatorHandle:
@@ -160,7 +167,9 @@ def resample(
         )
     factor = target_minutes // source_minutes
     if factor < 1:
-        raise ValueError("Target timeframe must be greater than or equal to source timeframe")
+        raise ValueError(
+            "Target timeframe must be greater than or equal to source timeframe"
+        )
 
     target_param = "ohlcv" if field.lower() == "ohlcv" else field
     handle = indicator(
@@ -183,12 +192,15 @@ class TANamespace:
         self.ref = ref
         self.resample = resample
 
-    def __call__(self, series: Series[Price], **additional_series: Series[Any]) -> TASeries:
+    def __call__(
+        self, series: Series[Price], **additional_series: Series[Any]
+    ) -> TASeries:
         return TASeries(series, **additional_series)
 
     def __getattr__(self, name: str) -> Any:
         if name == "register":
             from ..registry.registry import register as _register  # avoid cycle
+
             return _register
         registry = get_global_registry()
         handle = registry.get(name) if hasattr(registry, "get") else None
@@ -202,13 +214,18 @@ class TANamespace:
             except Exception:
                 pass
             for module_name in list(sys.modules.keys()):
-                if module_name.startswith("laakhay.ta.indicators.") and module_name != "laakhay.ta.indicators.__init__":
+                if (
+                    module_name.startswith("laakhay.ta.indicators.")
+                    and module_name != "laakhay.ta.indicators.__init__"
+                ):
                     importlib.reload(sys.modules[module_name])
             handle = registry.get(name) if hasattr(registry, "get") else None
 
         if handle is not None:
+
             def factory(**params: Any) -> IndicatorHandle:
                 return IndicatorHandle(name, **params)
+
             return factory
 
         raise AttributeError(f"Indicator '{name}' not found")
@@ -229,7 +246,10 @@ class TASeries:
             import sys
 
             for module_name in list(sys.modules.keys()):
-                if module_name.startswith("laakhay.ta.indicators.") and module_name != "laakhay.ta.indicators.__init__":
+                if (
+                    module_name.startswith("laakhay.ta.indicators.")
+                    and module_name != "laakhay.ta.indicators.__init__"
+                ):
                     importlib.reload(sys.modules[module_name])
 
         if name in self._registry._indicators:

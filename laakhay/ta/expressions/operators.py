@@ -170,7 +170,7 @@ class Expression:
         lines = ["digraph Expression {", "  rankdir=LR;"]
         for node_id, node in plan.graph.nodes.items():
             label = _node_label(node.node)
-            lines.append(f"  n{node_id} [shape=box,label=\"{label}\"];\n")
+            lines.append(f'  n{node_id} [shape=box,label="{label}"];\n')
             for child in node.children:
                 lines.append(f"  n{node_id} -> n{child};")
         lines.append("}")
@@ -202,7 +202,9 @@ def _node_label(node: ExpressionNode) -> str:
     return t
 
 
-def _to_node(value: Expression | ExpressionNode | Series[Any] | float | int) -> ExpressionNode:
+def _to_node(
+    value: Expression | ExpressionNode | Series[Any] | float | int,
+) -> ExpressionNode:
     if isinstance(value, Expression):
         return value._node  # type: ignore[misc]
     if isinstance(value, ExpressionNode):

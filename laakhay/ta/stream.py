@@ -152,7 +152,9 @@ class Stream:
     # Internal helpers
     # ------------------------------------------------------------------
 
-    def _collect_transitions(self, name: str, result: Any) -> list[AvailabilityTransition]:
+    def _collect_transitions(
+        self, name: str, result: Any
+    ) -> list[AvailabilityTransition]:
         transitions: list[AvailabilityTransition] = []
         last_masks = self._last_masks.setdefault(name, {})
         last_lengths = self._last_lengths.setdefault(name, {})

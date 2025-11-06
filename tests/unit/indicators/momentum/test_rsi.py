@@ -23,7 +23,7 @@ class TestRSIIndicator:
             timestamps=tuple(timestamps),
             values=tuple(values),
             symbol="BTCUSDT",
-            timeframe="1h"
+            timeframe="1h",
         )
 
         ctx = SeriesContext(close=close_series)
@@ -41,10 +41,7 @@ class TestRSIIndicator:
     def test_rsi_empty_series(self):
         """Test RSI with empty input series."""
         close_series = Series[Price](
-            timestamps=(),
-            values=(),
-            symbol="BTCUSDT",
-            timeframe="1h"
+            timestamps=(), values=(), symbol="BTCUSDT", timeframe="1h"
         )
 
         ctx = SeriesContext(close=close_series)
@@ -64,7 +61,7 @@ class TestRSIIndicator:
             timestamps=tuple(timestamps),
             values=tuple(values),
             symbol="BTCUSDT",
-            timeframe="1h"
+            timeframe="1h",
         )
 
         ctx = SeriesContext(close=close_series)
@@ -77,13 +74,13 @@ class TestRSIIndicator:
     def test_rsi_single_value(self):
         """Test RSI with single value (should return empty)."""
         timestamps = [datetime(2024, 1, 1, tzinfo=UTC)]
-        values = [Decimal('100')]
+        values = [Decimal("100")]
 
         close_series = Series[Price](
             timestamps=tuple(timestamps),
             values=tuple(values),
             symbol="BTCUSDT",
-            timeframe="1h"
+            timeframe="1h",
         )
 
         ctx = SeriesContext(close=close_series)
@@ -102,7 +99,7 @@ class TestRSIIndicator:
             timestamps=tuple(timestamps),
             values=tuple(values),
             symbol="BTCUSDT",
-            timeframe="1h"
+            timeframe="1h",
         )
 
         ctx = SeriesContext(close=close_series)
@@ -122,7 +119,7 @@ class TestRSIIndicator:
             timestamps=tuple(timestamps),
             values=tuple(values),
             symbol="BTCUSDT",
-            timeframe="1h"
+            timeframe="1h",
         )
 
         ctx = SeriesContext(close=close_series)
@@ -142,7 +139,7 @@ class TestRSIIndicator:
             timestamps=tuple(timestamps),
             values=tuple(values),
             symbol="ETHUSDT",
-            timeframe="4h"
+            timeframe="4h",
         )
 
         ctx = SeriesContext(close=close_series)
@@ -154,13 +151,13 @@ class TestRSIIndicator:
     def test_rsi_constant_prices(self):
         """Test RSI with constant prices (should result in RSI = 50)."""
         timestamps = [datetime(2024, 1, i, tzinfo=UTC) for i in range(1, 17)]  # 16 days
-        values = [Decimal('100')] * 16  # All same price
+        values = [Decimal("100")] * 16  # All same price
 
         close_series = Series[Price](
             timestamps=tuple(timestamps),
             values=tuple(values),
             symbol="BTCUSDT",
-            timeframe="1h"
+            timeframe="1h",
         )
 
         ctx = SeriesContext(close=close_series)
@@ -174,13 +171,15 @@ class TestRSIIndicator:
     def test_rsi_uptrend(self):
         """Test RSI with uptrending prices (should result in high RSI)."""
         timestamps = [datetime(2024, 1, i, tzinfo=UTC) for i in range(1, 17)]  # 16 days
-        values = [Decimal(str(100 + i * 2)) for i in range(16)]  # Strong uptrend: 100, 102, 104, ...
+        values = [
+            Decimal(str(100 + i * 2)) for i in range(16)
+        ]  # Strong uptrend: 100, 102, 104, ...
 
         close_series = Series[Price](
             timestamps=tuple(timestamps),
             values=tuple(values),
             symbol="BTCUSDT",
-            timeframe="1h"
+            timeframe="1h",
         )
 
         ctx = SeriesContext(close=close_series)
@@ -193,13 +192,15 @@ class TestRSIIndicator:
     def test_rsi_downtrend(self):
         """Test RSI with downtrending prices (should result in low RSI)."""
         timestamps = [datetime(2024, 1, i, tzinfo=UTC) for i in range(1, 17)]  # 16 days
-        values = [Decimal(str(130 - i * 2)) for i in range(16)]  # Strong downtrend: 130, 128, 126, ...
+        values = [
+            Decimal(str(130 - i * 2)) for i in range(16)
+        ]  # Strong downtrend: 130, 128, 126, ...
 
         close_series = Series[Price](
             timestamps=tuple(timestamps),
             values=tuple(values),
             symbol="BTCUSDT",
-            timeframe="1h"
+            timeframe="1h",
         )
 
         ctx = SeriesContext(close=close_series)

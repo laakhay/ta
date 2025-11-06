@@ -11,7 +11,12 @@ from laakhay.ta.indicators.pattern import swing_points, swing_highs, swing_lows
 from laakhay.ta.registry.models import SeriesContext
 
 
-def _make_price_series(values: list[int | float | Decimal], *, symbol: str = "BTCUSDT", timeframe: str = "1h") -> Series[Price]:
+def _make_price_series(
+    values: list[int | float | Decimal],
+    *,
+    symbol: str = "BTCUSDT",
+    timeframe: str = "1h",
+) -> Series[Price]:
     base = datetime(2024, 1, 1, tzinfo=UTC)
     timestamps = tuple(base + timedelta(hours=i) for i in range(len(values)))
     return Series[Price](
@@ -33,16 +38,48 @@ def test_swing_points_flags_basic_detection():
     low_series = result["swing_low"]
 
     assert high_series.values == (
-        False, False, True, False, False, False, True, False, False
+        False,
+        False,
+        True,
+        False,
+        False,
+        False,
+        True,
+        False,
+        False,
     )
     assert low_series.values == (
-        False, False, False, False, True, False, False, False, False
+        False,
+        False,
+        False,
+        False,
+        True,
+        False,
+        False,
+        False,
+        False,
     )
     assert high_series.availability_mask == (
-        False, True, True, True, True, True, True, True, False
+        False,
+        True,
+        True,
+        True,
+        True,
+        True,
+        True,
+        True,
+        False,
     )
     assert low_series.availability_mask == (
-        False, True, True, True, True, True, True, True, False
+        False,
+        True,
+        True,
+        True,
+        True,
+        True,
+        True,
+        True,
+        False,
     )
 
 
@@ -58,10 +95,26 @@ def test_swing_points_levels_reference_prices():
 
     # Masks only flag confirmed swing candles
     assert high_series.availability_mask == (
-        False, False, True, False, False, False, True, False, False
+        False,
+        False,
+        True,
+        False,
+        False,
+        False,
+        True,
+        False,
+        False,
     )
     assert low_series.availability_mask == (
-        False, False, False, False, True, False, False, False, False
+        False,
+        False,
+        False,
+        False,
+        True,
+        False,
+        False,
+        False,
+        False,
     )
 
     # Values inherit underlying price series
@@ -92,12 +145,18 @@ def test_swing_highs_direct_api_levels():
     # Levels inherit prices but only mark confirmed swing highs in availability mask.
     assert levels.values == high.values
     assert levels.availability_mask == (
-        False, False, True, False, False, False, True, False, False
+        False,
+        False,
+        True,
+        False,
+        False,
+        False,
+        True,
+        False,
+        False,
     )
     # Flags represent the same pattern as swing_points overall result.
-    assert flags.values == (
-        False, False, True, False, False, False, True, False, False
-    )
+    assert flags.values == (False, False, True, False, False, False, True, False, False)
 
 
 def test_swing_lows_direct_api_levels():
@@ -110,10 +169,26 @@ def test_swing_lows_direct_api_levels():
 
     assert levels.values == low.values
     assert levels.availability_mask == (
-        False, False, False, False, True, False, False, False, False
+        False,
+        False,
+        False,
+        False,
+        True,
+        False,
+        False,
+        False,
+        False,
     )
     assert flags.values == (
-        False, False, False, False, True, False, False, False, False
+        False,
+        False,
+        False,
+        False,
+        True,
+        False,
+        False,
+        False,
+        False,
     )
 
 

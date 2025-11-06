@@ -31,7 +31,7 @@ def multi_point_series(timestamp):
         timestamps=(timestamp, timestamp2),
         values=(Price(Decimal("100")), Price(Decimal("200"))),
         symbol="TEST",
-        timeframe="1s"
+        timeframe="1s",
     )
 
 

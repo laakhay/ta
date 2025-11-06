@@ -11,7 +11,11 @@ from .types import Graph, GraphNode
 
 
 def _is_indicator_node(node: ExpressionNode) -> bool:
-    return node.__class__.__name__ == "IndicatorNode" and hasattr(node, "name") and hasattr(node, "params")
+    return (
+        node.__class__.__name__ == "IndicatorNode"
+        and hasattr(node, "name")
+        and hasattr(node, "params")
+    )
 
 
 def build_graph(root: ExpressionNode) -> Graph:
@@ -66,7 +70,9 @@ def build_graph(root: ExpressionNode) -> Graph:
 
         # Compute hash from signature for structural caching
         sig_hash = hashlib.sha1(repr(signature).encode("utf-8")).hexdigest()
-        nodes[node_id] = GraphNode(id=node_id, node=node, children=children, signature=signature, hash=sig_hash)
+        nodes[node_id] = GraphNode(
+            id=node_id, node=node, children=children, signature=signature, hash=sig_hash
+        )
         return node_id, signature
 
     root_id, root_sig = visit(root)

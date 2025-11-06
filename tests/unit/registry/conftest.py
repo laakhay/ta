@@ -41,10 +41,7 @@ def registry():
 def param_schema():
     """Standard parameter schema."""
     return ParamSchema(
-        name="test_param",
-        type=float,
-        required=True,
-        description="Test parameter"
+        name="test_param", type=float, required=True, description="Test parameter"
     )
 
 
@@ -55,15 +52,17 @@ def indicator_schema(param_schema):
         name="test_indicator",
         description="Test indicator",
         parameters={"test_param": param_schema},
-        outputs={}
+        outputs={},
     )
 
 
 @pytest.fixture
 def test_function():
     """Standard test function."""
+
     def func(ctx: SeriesContext, test_param: float) -> Series[Price]:
         return Series((), (), "TEST", "1s")
+
     return func
 
 
@@ -75,5 +74,5 @@ def indicator_handle(test_function, indicator_schema):
         func=test_function,
         signature=signature(test_function),
         schema=indicator_schema,
-        aliases=[]
+        aliases=[],
     )

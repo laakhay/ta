@@ -9,7 +9,7 @@ from .. import register, SeriesContext, Price, rolling_mean
 def sma(ctx: SeriesContext, period: int = 20) -> Series[Price]:
     """
     Simple Moving Average using rolling_mean primitive.
-    
+
     This implementation uses the rolling_mean primitive instead of custom code,
     making it more consistent and maintainable.
     """

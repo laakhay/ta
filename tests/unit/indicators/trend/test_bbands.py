@@ -23,7 +23,7 @@ class TestBollingerBandsIndicator:
             timestamps=tuple(timestamps),
             values=tuple(values),
             symbol="BTCUSDT",
-            timeframe="1h"
+            timeframe="1h",
         )
 
         ctx = SeriesContext(close=close_series)
@@ -44,10 +44,7 @@ class TestBollingerBandsIndicator:
     def test_bbands_empty_series(self):
         """Test Bollinger Bands with empty input series."""
         close_series = Series[Price](
-            timestamps=(),
-            values=(),
-            symbol="BTCUSDT",
-            timeframe="1h"
+            timestamps=(), values=(), symbol="BTCUSDT", timeframe="1h"
         )
 
         ctx = SeriesContext(close=close_series)
@@ -69,7 +66,7 @@ class TestBollingerBandsIndicator:
             timestamps=tuple(timestamps),
             values=tuple(values),
             symbol="BTCUSDT",
-            timeframe="1h"
+            timeframe="1h",
         )
 
         ctx = SeriesContext(close=close_series)
@@ -83,27 +80,35 @@ class TestBollingerBandsIndicator:
     def test_bbands_invalid_parameters(self):
         """Test Bollinger Bands with invalid parameters."""
         timestamps = [datetime(2024, 1, 1, tzinfo=UTC)]
-        values = [Decimal('100')]
+        values = [Decimal("100")]
 
         close_series = Series[Price](
             timestamps=tuple(timestamps),
             values=tuple(values),
             symbol="BTCUSDT",
-            timeframe="1h"
+            timeframe="1h",
         )
 
         ctx = SeriesContext(close=close_series)
 
-        with pytest.raises(ValueError, match="Bollinger Bands period and std_dev must be positive"):
+        with pytest.raises(
+            ValueError, match="Bollinger Bands period and std_dev must be positive"
+        ):
             bbands(ctx, period=0)
 
-        with pytest.raises(ValueError, match="Bollinger Bands period and std_dev must be positive"):
+        with pytest.raises(
+            ValueError, match="Bollinger Bands period and std_dev must be positive"
+        ):
             bbands(ctx, period=-1)
 
-        with pytest.raises(ValueError, match="Bollinger Bands period and std_dev must be positive"):
+        with pytest.raises(
+            ValueError, match="Bollinger Bands period and std_dev must be positive"
+        ):
             bbands(ctx, period=20, std_dev=0)
 
-        with pytest.raises(ValueError, match="Bollinger Bands period and std_dev must be positive"):
+        with pytest.raises(
+            ValueError, match="Bollinger Bands period and std_dev must be positive"
+        ):
             bbands(ctx, period=20, std_dev=-1)
 
     def test_bbands_default_parameters(self):
@@ -115,11 +120,13 @@ class TestBollingerBandsIndicator:
             timestamps=tuple(timestamps),
             values=tuple(values),
             symbol="BTCUSDT",
-            timeframe="1h"
+            timeframe="1h",
         )
 
         ctx = SeriesContext(close=close_series)
-        upper_band, middle_band, lower_band = bbands(ctx)  # Use defaults: period=20, std_dev=2.0
+        upper_band, middle_band, lower_band = bbands(
+            ctx
+        )  # Use defaults: period=20, std_dev=2.0
 
         assert len(upper_band.timestamps) == 6  # 25 - 20 + 1
         assert len(middle_band.timestamps) == 6
@@ -134,7 +141,7 @@ class TestBollingerBandsIndicator:
             timestamps=tuple(timestamps),
             values=tuple(values),
             symbol="BTCUSDT",
-            timeframe="1h"
+            timeframe="1h",
         )
 
         ctx = SeriesContext(close=close_series)
@@ -154,7 +161,7 @@ class TestBollingerBandsIndicator:
             timestamps=tuple(timestamps),
             values=tuple(values),
             symbol="ETHUSDT",
-            timeframe="4h"
+            timeframe="4h",
         )
 
         ctx = SeriesContext(close=close_series)
@@ -176,7 +183,7 @@ class TestBollingerBandsIndicator:
             timestamps=tuple(timestamps),
             values=tuple(values),
             symbol="BTCUSDT",
-            timeframe="1h"
+            timeframe="1h",
         )
 
         ctx = SeriesContext(close=close_series)

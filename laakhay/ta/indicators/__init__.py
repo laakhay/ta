@@ -18,10 +18,23 @@ from ..api.namespace import _select_indicator  # noqa: F401
 
 # Import primitives directly from the module to avoid circular imports
 from ..primitives import (
-    diff, rolling_max, rolling_mean, rolling_min, rolling_sum, rolling_std, shift,
-    rolling_argmax, rolling_argmin, select,
-    cumulative_sum, positive_values, negative_values,
-    rolling_ema, true_range, typical_price, sign
+    diff,
+    rolling_max,
+    rolling_mean,
+    rolling_min,
+    rolling_sum,
+    rolling_std,
+    shift,
+    rolling_argmax,
+    rolling_argmin,
+    select,
+    cumulative_sum,
+    positive_values,
+    negative_values,
+    rolling_ema,
+    true_range,
+    typical_price,
+    sign,
 )
 
 # Import all indicators
@@ -39,14 +52,43 @@ from .pattern.fib import fib_retracement
 
 __all__ = [
     # Core types
-    "Series", "Price", "Qty", "SeriesContext", "register", "Expression", "Literal",
+    "Series",
+    "Price",
+    "Qty",
+    "SeriesContext",
+    "register",
+    "Expression",
+    "Literal",
     # Primitives
-    "diff", "rolling_max", "rolling_mean", "rolling_min", "rolling_sum", 
-    "rolling_std", "shift", "rolling_argmax", "rolling_argmin", "select",
-    "cumulative_sum", "positive_values", "negative_values",
-    "rolling_ema", "true_range", "typical_price", "sign",
+    "diff",
+    "rolling_max",
+    "rolling_mean",
+    "rolling_min",
+    "rolling_sum",
+    "rolling_std",
+    "shift",
+    "rolling_argmax",
+    "rolling_argmin",
+    "select",
+    "cumulative_sum",
+    "positive_values",
+    "negative_values",
+    "rolling_ema",
+    "true_range",
+    "typical_price",
+    "sign",
     # Indicators
-    "sma", "ema", "macd", "bbands", "rsi", "stochastic", "atr", "obv", "vwap",
-    "swing_points", "swing_highs", "swing_lows", "fib_retracement"
+    "sma",
+    "ema",
+    "macd",
+    "bbands",
+    "rsi",
+    "stochastic",
+    "atr",
+    "obv",
+    "vwap",
+    "swing_points",
+    "swing_highs",
+    "swing_lows",
+    "fib_retracement",
 ]
-
