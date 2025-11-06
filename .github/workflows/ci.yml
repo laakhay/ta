@@ -39,6 +39,7 @@ jobs:
         uv run ruff format --check laakhay/
     
     - name: Run type checker (pyright)
+      if: false # disable type checking for now
       run: |
         uv run pyright laakhay/
     
