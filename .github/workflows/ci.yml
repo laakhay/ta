@@ -32,29 +32,35 @@ jobs:
     
     - name: Install project (editable)
       run: |
-        uv pip install --editable .
+        source .venv/bin/activate
+        pip install --editable .
 
     - name: Run linter (ruff)
       run: |
-        uv run ruff check laakhay/
+        source .venv/bin/activate
+        ruff check laakhay/
     
     - name: Run formatter check (ruff)
       run: |
-        uv run ruff format --check laakhay/
+        source .venv/bin/activate
+        ruff format --check laakhay/
     
     - name: Run type checker (pyright)
       if: false # disable type checking for now
       run: |
-        uv run pyright laakhay/
+        source .venv/bin/activate
+        pyright laakhay/
     
     - name: Run tests
       run: |
-        uv run pytest tests/ -v --tb=short
+        source .venv/bin/activate
+        pytest tests/ -v --tb=short
     
     - name: Run tests with coverage
       if: matrix.python-version == '3.13'
       run: |
-        uv run pytest tests/ --cov=laakhay.ta --cov-report=xml --cov-report=term-missing
+        source .venv/bin/activate
+        pytest tests/ --cov=laakhay.ta --cov-report=xml --cov-report=term-missing
     
     - name: Upload coverage to Codecov
       if: matrix.python-version == '3.13'
@@ -87,12 +93,15 @@ jobs:
     
     - name: Install project (editable)
       run: |
-        uv pip install --editable .
+        source .venv/bin/activate
+        pip install --editable .
 
     - name: Build package
       run: |
-        uv run python -m build
+        source .venv/bin/activate
+        python -m build
     
     - name: Check package
       run: |
-        uv run twine check dist/*
+        source .venv/bin/activate
+        twine check dist/*
