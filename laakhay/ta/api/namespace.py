@@ -21,13 +21,26 @@ _TIMEFRAME_MULTIPLIERS: dict[str, int] = {
     "w": 60 * 24 * 7,
 }
 
-@register("select", description="Select a field from the evaluation context")
+_SELECT_DESCRIPTION = "Select a field from the evaluation context"
+_SELECT_OUTPUT_METADATA = {
+    "result": {"type": "price", "role": "selector", "polarity": "neutral"}
+}
+
+@register("select", description=_SELECT_DESCRIPTION, output_metadata=_SELECT_OUTPUT_METADATA)
 def _select_indicator(ctx: SeriesContext, field: str) -> Series[Any]:
     if field not in ctx.available_series:
         raise ValueError(
             f"Field '{field}' not found in SeriesContext; available: {ctx.available_series}"
         )
     return getattr(ctx, field)
+
+
+def ensure_namespace_registered() -> None:
+    """Re-register namespace helpers if the global registry was cleared."""
+    registry = get_global_registry()
+    if "select" not in registry._indicators:
+        # Re-apply the decorator to register the select helper without reloading modules.
+        register("select", description=_SELECT_DESCRIPTION, output_metadata=_SELECT_OUTPUT_METADATA)(_select_indicator)
 
 
 def indicator(name: str, **params: Any) -> IndicatorHandle:
@@ -157,8 +170,8 @@ def resample(
         target=target_param,
         target_timeframe=to_timeframe,
     )
-    context = dataset.select(symbol=symbol, timeframe=from_timeframe).to_context()
-    return handle(context)
+    view = dataset.select(symbol=symbol, timeframe=from_timeframe)
+    return handle(view)
 
 
 class TANamespace:
@@ -174,6 +187,9 @@ class TANamespace:
         return TASeries(series, **additional_series)
 
     def __getattr__(self, name: str) -> Any:
+        if name == "register":
+            from ..registry.registry import register as _register  # avoid cycle
+            return _register
         registry = get_global_registry()
         handle = registry.get(name) if hasattr(registry, "get") else None
 
@@ -281,6 +297,9 @@ class TASeries:
 
 
 ta = TANamespace()
+
+# Ensure helper indicators (e.g., select) are present on module import.
+ensure_namespace_registered()
 
 
 __all__ = [

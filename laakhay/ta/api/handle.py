@@ -38,6 +38,9 @@ class IndicatorNode(ExpressionNode):
         params_str = ", ".join(f"{k}={v}" for k, v in self.params.items())
         return f"{self.name}({params_str})"
 
+    def run(self, context: dict[str, Series[Any]]) -> Series[Any]:
+        return self.evaluate(context)
+
 
 class IndicatorHandle:
     """Handle for an indicator that can be called and composed algebraically."""
@@ -54,6 +57,16 @@ class IndicatorHandle:
             for module_name in list(sys.modules.keys()):
                 if module_name.startswith("laakhay.ta.indicators.") and module_name != "laakhay.ta.indicators.__init__":
                     importlib.reload(sys.modules[module_name])
+
+            # Ensure namespace helpers (e.g., select/source) are registered even if the
+            # registry was cleared mid-test. This avoids reloading the module, which
+            # would create new class objects and break isinstance checks.
+            namespace_module = sys.modules.get("laakhay.ta.api.namespace")
+            if namespace_module is None:
+                namespace_module = importlib.import_module("laakhay.ta.api.namespace")
+            ensure_func = getattr(namespace_module, "ensure_namespace_registered", None)
+            if callable(ensure_func):
+                ensure_func()
 
             if name not in self._registry._indicators:
                 raise ValueError(f"Indicator '{name}' not found in registry")
