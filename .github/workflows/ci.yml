@@ -26,7 +26,7 @@ jobs:
         enable-cache: true
     
     - name: Install dependencies
-      run: uv sync --extra dev --group dev
+      run: uv sync --extra dev
 
     - name: Run linter (ruff)
       run: uv run ruff check laakhay/
@@ -70,7 +70,7 @@ jobs:
         enable-cache: true
     
     - name: Install dependencies
-      run: uv sync --extra dev --group dev
+      run: uv sync --extra dev
 
     - name: Build package
       run: uv run python -m build

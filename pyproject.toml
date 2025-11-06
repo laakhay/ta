@@ -19,12 +19,13 @@ Issues    = "https://github.com/laakhay/ta/issues"
 
 [project.optional-dependencies]
 dev = [
-    "pytest>=8.0", 
+    "pytest>=8.0",
     "pytest-asyncio>=0.21.0",
-    "pytest-cov>=4.0.0",
+    "pytest-cov>=7.0.0",
     "ruff>=0.1.0",
     "build>=1.0.0",
-    "twine>=5.0.0"
+    "twine>=5.0.0",
+    "pyright>=1.1.406",
 ]
 
 [tool.uv.build-backend]
@@ -68,10 +69,4 @@ ignore = [
     "F841",
     "F811",
     "B018",
-]
-
-[dependency-groups]
-dev = [
-    "pyright>=1.1.406",
-    "pytest-cov>=7.0.0",
 ]

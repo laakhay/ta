@@ -357,12 +357,7 @@ dev = [
     { name = "pytest-cov" },
     { name = "ruff" },
     { name = "twine" },
-]
-
-[package.dev-dependencies]
-dev = [
     { name = "pyright" },
-    { name = "pytest-cov" },
 ]
 
 [package.metadata]
@@ -370,17 +365,12 @@ requires-dist = [
     { name = "build", marker = "extra == 'dev'", specifier = ">=1.0.0" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.0" },
     { name = "pytest-asyncio", marker = "extra == 'dev'", specifier = ">=0.21.0" },
-    { name = "pytest-cov", marker = "extra == 'dev'", specifier = ">=4.0.0" },
+    { name = "pytest-cov", marker = "extra == 'dev'", specifier = ">=7.0.0" },
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.1.0" },
     { name = "twine", marker = "extra == 'dev'", specifier = ">=5.0.0" },
+    { name = "pyright", marker = "extra == 'dev'", specifier = ">=1.1.406" },
 ]
 provides-extras = ["dev"]
-
-[package.metadata.requires-dev]
-dev = [
-    { name = "pyright", specifier = ">=1.1.406" },
-    { name = "pytest-cov", specifier = ">=7.0.0" },
-]
 
 [[package]]
 name = "markdown-it-py"
