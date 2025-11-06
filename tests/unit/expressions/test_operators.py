@@ -59,7 +59,9 @@ class TestExpression:
 
         add = BinaryOp(OperatorType.ADD, literal_10, literal_20)
         ex_add = Expression(add)
-        assert ex_add.describe() == "(10 + 20)"
+        desc = ex_add.describe()
+        assert "(10 + 20)" in desc
+        assert "alignment:" in desc
         assert isinstance(ex_add.dependencies(), list)
 
     @pytest.mark.parametrize(
@@ -166,7 +168,7 @@ class TestExpression:
             symbol=multi_point_series.symbol,
             timeframe=multi_point_series.timeframe,
         )
-        with pytest.raises(ValueError, match="timestamp alignment"):
+        with pytest.raises(ValueError, match="different lengths"):
             (as_expression(multi_point_series) + as_expression(shifted)).evaluate({})
 
 
@@ -221,4 +223,3 @@ class TestExpressionEvaluationEdgeCases:
 # ---------------------------------------------------------------------
 # Financial-critical scenarios
 # ---------------------------------------------------------------------
-
