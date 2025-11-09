@@ -49,6 +49,21 @@ from .volatility.atr import atr
 from .volume.obv import obv
 from .volume.vwap import vwap
 
+# Import event patterns
+from .events import (
+    cross,
+    crossdown,
+    crossup,
+    enter,
+    exit,
+    falling,
+    falling_pct,
+    in_channel,
+    out,
+    rising,
+    rising_pct,
+)
+
 __all__ = [
     # Core types
     "Series",
@@ -90,4 +105,16 @@ __all__ = [
     "swing_highs",
     "swing_lows",
     "fib_retracement",
+    # Event patterns
+    "crossup",
+    "crossdown",
+    "cross",
+    "in_channel",
+    "out",
+    "enter",
+    "exit",
+    "rising",
+    "falling",
+    "rising_pct",
+    "falling_pct",
 ]
