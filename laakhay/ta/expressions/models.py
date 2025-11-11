@@ -140,6 +140,9 @@ def _align_series(
     # Ensure symbols/timeframes now match
     if left.symbol != right.symbol or left.timeframe != right.timeframe:
         raise ValueError("mismatched metadata")
+    # Check original lengths before alignment (for non-scalar series)
+    if not left_scalar and not right_scalar and len(orig_left) != len(orig_right):
+        raise ValueError(f"Cannot perform {operator.value} on series of different lengths")
     how = "inner"
     fill = "none"
     try:
@@ -153,6 +156,38 @@ def _align_series(
             symbol=left.symbol,
             timeframe=left.timeframe,
         )
+        # Check if alignment resulted in fewer points than original (misaligned timestamps)
+        if not left_scalar and not right_scalar:
+            if len(aligned_left) < len(orig_left) or len(aligned_right) < len(orig_right):
+                raise ValueError(f"Cannot perform {operator.value} on series of different lengths")
+        # align_series should always return series of the same length with how="inner"
+        # If lengths don't match, it's a bug or the series have incompatible timestamps
+        if len(aligned_left) != len(aligned_right):
+            # Log for debugging - this shouldn't happen
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.warning(
+                f"align_series returned different lengths: left={len(aligned_left)}, right={len(aligned_right)}, "
+                f"left_timestamps={len(aligned_left.timestamps) if aligned_left.timestamps else 0}, "
+                f"right_timestamps={len(aligned_right.timestamps) if aligned_right.timestamps else 0}"
+            )
+            # Try to fix by re-aligning with the shorter length
+            min_len = min(len(aligned_left), len(aligned_right))
+            if min_len > 0:
+                aligned_left = Series(
+                    timestamps=aligned_left.timestamps[:min_len],
+                    values=aligned_left.values[:min_len],
+                    symbol=aligned_left.symbol,
+                    timeframe=aligned_left.timeframe,
+                )
+                aligned_right = Series(
+                    timestamps=aligned_right.timestamps[:min_len],
+                    values=aligned_right.values[:min_len],
+                    symbol=aligned_right.symbol,
+                    timeframe=aligned_right.timeframe,
+                )
+            else:
+                raise ValueError(f"Cannot perform {operator.value} on series of different lengths")
     except ValueError as ve:
         msg = str(ve)
         if "Alignment resulted in an empty timestamp set." in msg:
@@ -160,12 +195,6 @@ def _align_series(
         if "timestamp alignment" in msg:
             raise ValueError("timestamp alignment")
         raise
-    if len(aligned_left) != len(aligned_right):
-        raise ValueError(f"Cannot perform {operator.value} on series of different lengths")
-    if (not left_scalar and len(aligned_left) != len(orig_left)) or (
-        not right_scalar and len(aligned_right) != len(orig_right)
-    ):
-        raise ValueError(f"Cannot perform {operator.value} on series of different lengths")
     # Preserve identity if unchanged
     if aligned_left == orig_left:
         aligned_left = orig_left
@@ -418,6 +447,72 @@ class BinaryOp(ExpressionNode):
     def __hash__(self) -> int:
         """Hash function for use in sets and dictionaries."""
         return hash((type(self).__name__, self.operator, self.left, self.right))
+
+    def evaluate_aligned(self, left: Series[Any], right: Series[Any]) -> Series[Any]:
+        op_type = _resolve_operator(self.operator)
+
+        def _ensure_alignment() -> tuple[Series[Any], Series[Any]]:
+            aligned_meta = (
+                left.symbol == right.symbol
+                and left.timeframe == right.timeframe
+                and left.timestamps == right.timestamps
+                and len(left.values) == len(right.values)
+            )
+            if aligned_meta:
+                return left, right
+            return _align_series(left, right, operator=op_type)
+
+        left_aligned, right_aligned = _ensure_alignment()
+
+        if op_type == OperatorType.ADD:
+            return left_aligned + right_aligned
+        if op_type == OperatorType.SUB:
+            return left_aligned - right_aligned
+        if op_type == OperatorType.MUL:
+            return left_aligned * right_aligned
+        if op_type == OperatorType.DIV:
+            return left_aligned / right_aligned
+        if op_type == OperatorType.MOD:
+            return left_aligned % right_aligned
+        if op_type == OperatorType.POW:
+            return left_aligned**right_aligned
+        if op_type == OperatorType.EQ:
+            return _comparison_series(left_aligned, right_aligned, op_type, lambda a, b: a == b)
+        if op_type == OperatorType.NE:
+            return _comparison_series(left_aligned, right_aligned, op_type, lambda a, b: a != b)
+        if op_type == OperatorType.LT:
+            return _comparison_series(left_aligned, right_aligned, op_type, lambda a, b: a < b)
+        if op_type == OperatorType.LE:
+            return _comparison_series(left_aligned, right_aligned, op_type, lambda a, b: a <= b)
+        if op_type == OperatorType.GT:
+            return _comparison_series(left_aligned, right_aligned, op_type, lambda a, b: a > b)
+        if op_type == OperatorType.GE:
+            return _comparison_series(left_aligned, right_aligned, op_type, lambda a, b: a >= b)
+        if op_type in {OperatorType.AND, OperatorType.OR}:
+
+            def _truthy(value: Any) -> bool:
+                if isinstance(value, bool):
+                    return value
+                if isinstance(value, (int, float, Decimal)):
+                    return bool(Decimal(str(value)))
+                try:
+                    return bool(Decimal(str(value)))
+                except Exception:
+                    return bool(value)
+
+            values = tuple(
+                _truthy(lv) and _truthy(rv)
+                if op_type == OperatorType.AND
+                else _truthy(lv) or _truthy(rv)
+                for lv, rv in zip(left_aligned.values, right_aligned.values, strict=False)
+            )
+            return Series[bool](
+                timestamps=left_aligned.timestamps,
+                values=values,
+                symbol=left_aligned.symbol,
+                timeframe=left_aligned.timeframe,
+            )
+        raise NotImplementedError(f"operator {self.operator} not supported in evaluate_aligned")
 
 
 @dataclass(eq=False)

@@ -12,6 +12,7 @@ from ..expressions.models import Literal
 from ..registry import register
 from ..registry.models import SeriesContext
 from ..registry.registry import get_global_registry
+from ..primitives import _select_field  # Import the function that handles derived fields
 from .handle import IndicatorHandle
 
 _TIMEFRAME_MULTIPLIERS: dict[str, int] = {
@@ -27,9 +28,9 @@ _SELECT_OUTPUT_METADATA = {"result": {"type": "price", "role": "selector", "pola
 
 @register("select", description=_SELECT_DESCRIPTION, output_metadata=_SELECT_OUTPUT_METADATA)
 def _select_indicator(ctx: SeriesContext, field: str) -> Series[Any]:
-    if field not in ctx.available_series:
-        raise ValueError(f"Field '{field}' not found in SeriesContext; available: {ctx.available_series}")
-    return getattr(ctx, field)
+    """Select a field from the context, supporting both standard and derived fields."""
+    # Use _select_field from primitives which handles derived fields (hlc3, ohlc4, etc.)
+    return _select_field(ctx, field)
 
 
 def ensure_namespace_registered() -> None:
