@@ -5,9 +5,11 @@ from __future__ import annotations
 from decimal import Decimal
 
 from ...core import Series
+from ...core.series import align_series
 from ...core.types import Price
+from ...api.handle import IndicatorNode as TAIndicatorNode
 from ...expressions.operators import Expression
-from ...primitives import _select, shift
+from ...primitives import _select
 from ...registry.models import SeriesContext
 from ...registry.registry import register
 
@@ -20,9 +22,49 @@ def _extract_series(
     if value is None:
         return _select(ctx)
     elif isinstance(value, Expression):
-        result = value.evaluate({})
+        # Convert SeriesContext to dict for Expression.evaluate()
+        # Use close as the base context to ensure consistent evaluation
+        base_series = _select(ctx)
+        context_dict: dict[str, Series[Price]] = {}
+        for field_name in ctx.available_series:
+            series = getattr(ctx, field_name)
+            # Ensure all context series have the same length as the base series
+            # by aligning them (this handles different lookback periods)
+            if len(series) != len(base_series):
+                try:
+                    aligned_base, aligned_series = align_series(base_series, series, how="inner")
+                    context_dict[field_name] = aligned_series
+                except ValueError:
+                    # If alignment fails, use the original series
+                    context_dict[field_name] = series
+            else:
+                context_dict[field_name] = series
+        result = value.evaluate(context_dict)
         if not isinstance(result, Series):
             raise TypeError(f"Expression evaluated to {type(result)}, expected Series")
+        return result
+    elif isinstance(value, TAIndicatorNode):
+        # Handle IndicatorNode (internal node from laakhay-ta)
+        # Convert SeriesContext to dict for IndicatorNode.evaluate()
+        # Use close as the base context to ensure consistent evaluation
+        base_series = _select(ctx)
+        context_dict: dict[str, Series[Price]] = {}
+        for field_name in ctx.available_series:
+            series = getattr(ctx, field_name)
+            # Ensure all context series have the same length as the base series
+            # by aligning them (this handles different lookback periods)
+            if len(series) != len(base_series):
+                try:
+                    aligned_base, aligned_series = align_series(base_series, series, how="inner")
+                    context_dict[field_name] = aligned_series
+                except ValueError:
+                    # If alignment fails, use the original series
+                    context_dict[field_name] = series
+            else:
+                context_dict[field_name] = series
+        result = value.evaluate(context_dict)
+        if not isinstance(result, Series):
+            raise TypeError(f"IndicatorNode evaluated to {type(result)}, expected Series")
         return result
     elif isinstance(value, Series):
         return value
