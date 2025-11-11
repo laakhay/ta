@@ -1,10 +1,13 @@
 [build-system]
-requires = ["uv_build>=0.9.4,<0.10.0"]
-build-backend = "uv_build"
+requires = [
+    "hatchling>=1.18.0",
+    "hatch-vcs>=0.3.0",
+]
+build-backend = "hatchling.build"
 
 [project]
 name = "laakhay-ta"
-version = "0.1.0"
+dynamic = ["version"]
 description = "Stateless Technical Analysis Library built with ♥︎ by Laakhay"
 readme = "README.md"
 requires-python = ">=3.12"
@@ -28,12 +31,34 @@ dev = [
     "pyright>=1.1.406",
 ]
 
-[tool.uv.build-backend]
-module-root = "laakhay"
-module-name = "ta"
-namespace = true
-source-exclude = ["tests/**", "docs/**", "build/**", "dist/**"]
-wheel-exclude  = ["tests/**", "docs/**", "build/**", "dist/**"]
+[tool.hatch.build.targets.wheel]
+packages = ["laakhay"]
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "/laakhay",
+    "/README.md",
+    "/LICENSE",
+    "/pyproject.toml",
+]
+exclude = [
+    "/tests",
+    "/.pytest_cache",
+    "/__pycache__",
+    "*.pyc",
+    "*.pyo",
+    "*.pyd",
+    "/.venv",
+    "/venv",
+    "/build",
+    "/dist",
+    "*.egg-info",
+]
+
+[tool.hatch.version]
+source = "vcs"
+version-scheme = "guess-next-dev"
+local-scheme = "node-and-date"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

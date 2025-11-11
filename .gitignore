@@ -3,6 +3,9 @@
 **/__pycache__/
 **/.DS_Store
 
+# Lock files
+uv.lock
+
 # Build artefacts
 dist/
 *.tar.gz
