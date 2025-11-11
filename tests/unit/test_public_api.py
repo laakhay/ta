@@ -217,9 +217,7 @@ class TestTASeries:
         assert callable(sma_func)
 
         result = sma_func(period=20)
-        assert isinstance(
-            result, Expression
-        )  # Should return Expression for algebraic composition
+        assert isinstance(result, Expression)  # Should return Expression for algebraic composition
 
     def test_ta_series_invalid_indicator(self):
         """Test accessing invalid indicator on TASeries."""
@@ -341,17 +339,11 @@ class TestPublicAPIIntegration:
         sma_20 = ta(close_series).sma(20)
         rsi_14 = ta(close_series).rsi(14)
 
-        assert isinstance(
-            sma_20, Expression
-        )  # Should return Expression for algebraic composition
-        assert isinstance(
-            rsi_14, Expression
-        )  # Should return Expression for algebraic composition
+        assert isinstance(sma_20, Expression)  # Should return Expression for algebraic composition
+        assert isinstance(rsi_14, Expression)  # Should return Expression for algebraic composition
 
         # Test algebraic composition
-        strategy = (ta(close_series).sma(20) > ta(close_series).ema(12)) & (
-            ta(close_series).rsi(14) < 30
-        )
+        strategy = (ta(close_series).sma(20) > ta(close_series).ema(12)) & (ta(close_series).rsi(14) < 30)
         assert isinstance(strategy, Expression)
 
     def test_multi_series_indicators(self):
@@ -375,9 +367,7 @@ class TestPublicAPIIntegration:
 
         # Test with TASeries
         obv_result = ta(close_series, volume=volume_series).obv()
-        assert isinstance(
-            obv_result, Expression
-        )  # Should return Expression for algebraic composition
+        assert isinstance(obv_result, Expression)  # Should return Expression for algebraic composition
 
         # Test with indicator handles
         obv_handle = ta.indicator("obv")

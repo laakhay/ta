@@ -57,9 +57,7 @@ class TestATRIndicator:
 
     def test_atr_empty_series(self):
         """Test ATR with empty input series."""
-        empty_series = Series[Price](
-            timestamps=(), values=(), symbol="BTCUSDT", timeframe="1h"
-        )
+        empty_series = Series[Price](timestamps=(), values=(), symbol="BTCUSDT", timeframe="1h")
 
         ctx = SeriesContext(high=empty_series, low=empty_series, close=empty_series)
         result = atr(ctx)
@@ -149,23 +147,17 @@ class TestATRIndicator:
 
         # Test missing high
         ctx = SeriesContext(low=close_series, close=close_series)
-        with pytest.raises(
-            ValueError, match="True Range requires series: .*high.*low.*close.*"
-        ):
+        with pytest.raises(ValueError, match="True Range requires series: .*high.*low.*close.*"):
             atr(ctx)
 
         # Test missing low
         ctx = SeriesContext(high=close_series, close=close_series)
-        with pytest.raises(
-            ValueError, match="True Range requires series: .*high.*low.*close.*"
-        ):
+        with pytest.raises(ValueError, match="True Range requires series: .*high.*low.*close.*"):
             atr(ctx)
 
         # Test missing close
         ctx = SeriesContext(high=close_series, low=close_series)
-        with pytest.raises(
-            ValueError, match="True Range requires series: .*high.*low.*close.*"
-        ):
+        with pytest.raises(ValueError, match="True Range requires series: .*high.*low.*close.*"):
             atr(ctx)
 
     def test_atr_different_lengths(self):

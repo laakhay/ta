@@ -14,15 +14,11 @@ from laakhay.ta.primitives import (
 from laakhay.ta.registry.models import SeriesContext
 
 
-def _make_series(
-    values: list[int | float | Decimal], symbol: str = "BTCUSDT", timeframe: str = "1h"
-) -> Series[Price]:
+def _make_series(values: list[int | float | Decimal], symbol: str = "BTCUSDT", timeframe: str = "1h") -> Series[Price]:
     base = datetime(2024, 1, 1, tzinfo=UTC)
     timestamps = tuple(base + timedelta(hours=i) for i in range(len(values)))
     price_values = tuple(Decimal(str(v)) for v in values)
-    return Series[Price](
-        timestamps=timestamps, values=price_values, symbol=symbol, timeframe=timeframe
-    )
+    return Series[Price](timestamps=timestamps, values=price_values, symbol=symbol, timeframe=timeframe)
 
 
 def test_rolling_argmax_offsets_basic():

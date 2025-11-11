@@ -91,19 +91,13 @@ class TestLiteral:
         literal_node = Literal(42)
         assert literal_node.value == 42
         assert literal_node.describe() == "42"
-        assert hash(Literal(10)) == hash(
-            Literal(10)
-        )  # same payload, same hash semantics
+        assert hash(Literal(10)) == hash(Literal(10))  # same payload, same hash semantics
 
     def test_creation_series_and_evaluate(self):
         s = mk_series([Decimal("100")])
         literal_node = Literal(s)
         out = literal_node.evaluate({})
-        assert (
-            isinstance(out, Series)
-            and len(out) == 1
-            and out.values[0] == Price(Decimal("100"))
-        )
+        assert isinstance(out, Series) and len(out) == 1 and out.values[0] == Price(Decimal("100"))
 
     def test_evaluate_scalar(self):
         out = Literal(10).evaluate({})
@@ -189,9 +183,7 @@ class TestBinaryOp:
             tf="1s",
         )
         op = BinaryOp(OperatorType.ADD, Literal(s2), Literal(s3))
-        with pytest.raises(
-            ValueError, match=r"Cannot perform \+ on series of different lengths"
-        ):
+        with pytest.raises(ValueError, match=r"Cannot perform \+ on series of different lengths"):
             op.evaluate({})
 
     def test_unsupported_operator_raises(self):
@@ -271,9 +263,7 @@ class TestFinancialCriticalScenarios:
 
     def test_pow_large_exponent_handles(self):
         out = BinaryOp(OperatorType.POW, Literal(10), Literal(100)).evaluate({})
-        assert (
-            isinstance(out, Series) and len(out) == 1
-        )  # value existence is enough; huge ints are supported
+        assert isinstance(out, Series) and len(out) == 1  # value existence is enough; huge ints are supported
 
     def test_nested(self):
         # (10 + 20) * (10 - 20) = 30 * (-10) = -300
@@ -296,11 +286,7 @@ class TestFinancialCriticalScenarios:
         p1 = Decimal("100.123456789")
         p2 = Decimal("200.987654321")
         out = BinaryOp(OperatorType.ADD, Literal(p1), Literal(p2)).evaluate({})
-        assert (
-            isinstance(out, Series)
-            and len(out) == 1
-            and out.values[0] == Price(p1 + p2)
-        )
+        assert isinstance(out, Series) and len(out) == 1 and out.values[0] == Price(p1 + p2)
 
     def test_division_by_very_small_number(self):
         big = Decimal("1000000000000")
@@ -313,25 +299,17 @@ class TestFinancialCriticalScenarios:
         n = Decimal("1000000000000")
         m = Decimal("7")
         out = BinaryOp(OperatorType.MOD, Literal(n), Literal(m)).evaluate({})
-        assert (
-            isinstance(out, Series) and len(out) == 1 and out.values[0] == Price(n % m)
-        )
+        assert isinstance(out, Series) and len(out) == 1 and out.values[0] == Price(n % m)
 
     def test_power_with_fractional_exponent(self):
         base = Decimal("100")
         exp = Decimal("0.5")  # sqrt
         out = BinaryOp(OperatorType.POW, Literal(base), Literal(exp)).evaluate({})
-        assert (
-            isinstance(out, Series)
-            and len(out) == 1
-            and out.values[0] > Price(Decimal("9"))
-        )
+        assert isinstance(out, Series) and len(out) == 1 and out.values[0] > Price(Decimal("9"))
 
     def test_mixed_decimal_float_comparisons(self):
         # comparisons should yield a boolean series
-        out = BinaryOp(
-            OperatorType.EQ, Literal(Decimal("100.5")), Literal(100.5)
-        ).evaluate({})
+        out = BinaryOp(OperatorType.EQ, Literal(Decimal("100.5")), Literal(100.5)).evaluate({})
         assert isinstance(out, Series) and len(out) == 1 and out.values[0] is True
 
 
@@ -366,13 +344,8 @@ class TestExpressionMetadataInheritance:
         series = mk_series([100.0], symbol="BTC", tf="1h")
         scalar = _make_scalar_series(5)
         assert scalar.symbol == SCALAR_SYMBOL
-        aligned_scalar, aligned_series = _align_series(
-            scalar, series, operator=OperatorType.ADD
-        )
-        assert (
-            aligned_scalar.symbol == series.symbol
-            and aligned_scalar.timeframe == series.timeframe
-        )
+        aligned_scalar, aligned_series = _align_series(scalar, series, operator=OperatorType.ADD)
+        assert aligned_scalar.symbol == series.symbol and aligned_scalar.timeframe == series.timeframe
         assert aligned_series is series
 
     def test_align_two_scalars_preserve_scalar_meta(self):
@@ -400,11 +373,7 @@ class TestExpressionBroadcasting:
             tf="1h",
         )
         out = _broadcast_scalar_series(scalar, tgt)
-        assert (
-            out.timestamps == tgt.timestamps
-            and out.symbol == tgt.symbol
-            and out.timeframe == tgt.timeframe
-        )
+        assert out.timestamps == tgt.timestamps and out.symbol == tgt.symbol and out.timeframe == tgt.timeframe
         assert out.values == (Price(5.0), Price(5.0))
 
     def test_broadcast_invalid_scalar_series(self):
@@ -485,9 +454,7 @@ class TestBinaryOpEvaluation:
         assert len(res.values) == 1 and res.values[0] == Price(1.0)
 
     def test_sub(self):
-        res = BinaryOp(OperatorType.SUB, lit_series([100.0]), Literal(50.0)).evaluate(
-            {}
-        )
+        res = BinaryOp(OperatorType.SUB, lit_series([100.0]), Literal(50.0)).evaluate({})
         assert len(res.values) == 1 and res.values[0] == Price(50.0)
 
     def test_pow(self):
@@ -504,9 +471,7 @@ class TestBinaryOpEvaluation:
             UNSUPPORTED = "UNSUPPORTED"
 
         op = BinaryOp(MockOperatorType.UNSUPPORTED, lit_series([100.0]), Literal(2.0))
-        with pytest.raises(
-            NotImplementedError, match="Binary operator UNSUPPORTED not implemented"
-        ):
+        with pytest.raises(NotImplementedError, match="Binary operator UNSUPPORTED not implemented"):
             op.evaluate({})
 
 
@@ -516,9 +481,7 @@ class TestBinaryOpEvaluation:
 
 
 class TestExpressionCoverageGaps:
-    @pytest.mark.parametrize(
-        "val,exp", [(True, Price(Decimal(1))), (False, Price(Decimal(0)))]
-    )
+    @pytest.mark.parametrize("val,exp", [(True, Price(Decimal(1))), (False, Price(Decimal(0)))])
     def test_coerce_decimal_bools(self, val, exp):
         assert _coerce_decimal(val) == exp
 
@@ -548,9 +511,7 @@ class TestExpressionCoverageGaps:
             raise InvalidOperation("Division by zero")
 
         monkeypatch.setattr(Series, "__truediv__", boom)
-        with pytest.raises(
-            ValueError, match="Invalid arithmetic operation in expression"
-        ):
+        with pytest.raises(ValueError, match="Invalid arithmetic operation in expression"):
             op.evaluate({})
 
     def test_le_and_ge_comparisons(self):

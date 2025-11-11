@@ -65,14 +65,104 @@ def _select(ctx: SeriesContext) -> Series[Price]:
 
 def _select_field(ctx: SeriesContext, field: str) -> Series[Price]:
     """Return a specific field from the context, raising if unavailable."""
+    # Handle derived price fields
+    field_lower = field.lower()
+
+    # hlc3 - Typical Price: (high + low + close) / 3
+    if field_lower in ("hlc3", "typical_price"):
+        if (
+            "high" not in ctx.available_series
+            or "low" not in ctx.available_series
+            or "close" not in ctx.available_series
+        ):
+            raise ValueError(f"SeriesContext missing required fields for '{field}': need 'high', 'low', 'close'")
+        high = ctx.high
+        low = ctx.low
+        close = ctx.close
+        return (high + low + close) / Decimal(3)
+
+    # ohlc4 - Average Price: (open + high + low + close) / 4
+    if field_lower in ("ohlc4", "weighted_close"):
+        if (
+            "open" not in ctx.available_series
+            or "high" not in ctx.available_series
+            or "low" not in ctx.available_series
+            or "close" not in ctx.available_series
+        ):
+            raise ValueError(
+                f"SeriesContext missing required fields for '{field}': need 'open', 'high', 'low', 'close'"
+            )
+        open_series = ctx.open
+        high = ctx.high
+        low = ctx.low
+        close = ctx.close
+        return (open_series + high + low + close) / Decimal(4)
+
+    # hl2 - Mid Price: (high + low) / 2
+    if field_lower in ("hl2", "median_price"):
+        if "high" not in ctx.available_series or "low" not in ctx.available_series:
+            raise ValueError(f"SeriesContext missing required fields for '{field}': need 'high', 'low'")
+        high = ctx.high
+        low = ctx.low
+        return (high + low) / Decimal(2)
+
+    # range - High - Low
+    if field_lower == "range":
+        if "high" not in ctx.available_series or "low" not in ctx.available_series:
+            raise ValueError(f"SeriesContext missing required fields for '{field}': need 'high', 'low'")
+        high = ctx.high
+        low = ctx.low
+        return high - low
+
+    # upper_wick - High - max(Open, Close)
+    if field_lower == "upper_wick":
+        if (
+            "high" not in ctx.available_series
+            or "open" not in ctx.available_series
+            or "close" not in ctx.available_series
+        ):
+            raise ValueError(f"SeriesContext missing required fields for '{field}': need 'high', 'open', 'close'")
+        high = ctx.high
+        open_series = ctx.open
+        close = ctx.close
+        # Element-wise max of open and close, then subtract from high
+        max_open_close = ew_binary(open_series, close, max)  # type: ignore
+        return high - max_open_close
+
+    # lower_wick - min(Open, Close) - Low
+    if field_lower == "lower_wick":
+        if (
+            "open" not in ctx.available_series
+            or "close" not in ctx.available_series
+            or "low" not in ctx.available_series
+        ):
+            raise ValueError(f"SeriesContext missing required fields for '{field}': need 'open', 'close', 'low'")
+        open_series = ctx.open
+        close = ctx.close
+        low = ctx.low
+        # Element-wise min of open and close, then subtract low
+        min_open_close = ew_binary(open_series, close, min)  # type: ignore
+        return min_open_close - low
+
+    # Standard fields (close, high, low, open, volume)
     if field in ctx.available_series:
         return getattr(ctx, field)
+
     raise ValueError(f"SeriesContext missing required field '{field}'")
 
 
 @register("select", description="Select a named series from the context")
 def select(ctx: SeriesContext, field: str = "close") -> Series[Price]:
-    """Expose a specific field as an indicator for downstream composition."""
+    """Expose a specific field as an indicator for downstream composition.
+
+    Supports standard fields (close, high, low, open, volume) and derived fields:
+    - hlc3 / typical_price: (high + low + close) / 3
+    - ohlc4 / weighted_close: (open + high + low + close) / 4
+    - hl2 / median_price: (high + low) / 2
+    - range: high - low
+    - upper_wick: high - max(open, close)
+    - lower_wick: min(open, close) - low
+    """
     return _select_field(ctx, field)
 
 

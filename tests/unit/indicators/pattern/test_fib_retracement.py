@@ -46,9 +46,7 @@ def test_fib_retracement_down_levels():
 
     # 61.8% retracement: high - (high-low)*0.618 = 18 - 9*0.618
     expected_618 = Decimal("18") - (Decimal("18") - Decimal("9")) * Decimal("0.618")
-    assert level_618.values[-1].quantize(Decimal("0.0001")) == expected_618.quantize(
-        Decimal("0.0001")
-    )
+    assert level_618.values[-1].quantize(Decimal("0.0001")) == expected_618.quantize(Decimal("0.0001"))
     assert level_618.availability_mask[-1]
 
     # 50% retracement
@@ -69,9 +67,7 @@ def test_fib_retracement_up_levels():
     assert up.availability_mask[-1]
     # Expected: move down from high=18 (idx=0) to low=10 (idx=6); low occurs after high
     expected = Decimal("10") + (Decimal("18") - Decimal("10")) * Decimal("0.382")
-    assert up.values[-1].quantize(Decimal("0.0001")) == expected.quantize(
-        Decimal("0.0001")
-    )
+    assert up.values[-1].quantize(Decimal("0.0001")) == expected.quantize(Decimal("0.0001"))
 
 
 def test_fib_retracement_insufficient_swings():
@@ -86,6 +82,4 @@ def test_fib_retracement_insufficient_swings():
 
     assert all(not flag for flag in anchor_high.availability_mask)
     assert all(not flag for flag in anchor_low.availability_mask)
-    assert result["down"] == {} or all(
-        not series.availability_mask[-1] for series in result["down"].values()
-    )
+    assert result["down"] == {} or all(not series.availability_mask[-1] for series in result["down"].values())

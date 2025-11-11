@@ -19,9 +19,7 @@ UTC = UTC
 # ---------------------------------------------------------------------
 
 
-def mk_series_from_fixture(
-    sample_series_data: dict[str, Any], symbol="BTCUSDT", tf="1h"
-):
+def mk_series_from_fixture(sample_series_data: dict[str, Any], symbol="BTCUSDT", tf="1h"):
     return Series[Price](
         timestamps=sample_series_data["timestamps"],
         values=sample_series_data["values"],
@@ -116,12 +114,7 @@ class TestDatasetMetadata:
 class TestDatasetCore:
     def test_empty_and_metadata(self):
         ds = Dataset()
-        assert (
-            len(ds) == 0
-            and ds.symbols == set()
-            and ds.timeframes == set()
-            and ds.sources == set()
-        )
+        assert len(ds) == 0 and ds.symbols == set() and ds.timeframes == set() and ds.sources == set()
 
         md = DatasetMetadata(description="X")
         ds2 = Dataset(metadata=md)
@@ -349,9 +342,7 @@ class TestDatasetSerializationCriticalIssues:
         for (
             k,
             v,
-        ) in (
-            ds2._series.items()
-        ):  # using internal mapping intentionally for strict check
+        ) in ds2._series.items():  # using internal mapping intentionally for strict check
             if k.symbol == "BTC_PERP":
                 found = v
                 break

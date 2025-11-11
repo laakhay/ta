@@ -7,7 +7,7 @@ from typing import Any
 from ..core import Series
 from ..core.dataset import Dataset
 from ..core.series import align_series
-from ..expressions.models import BinaryOp, Literal, OperatorType, UnaryOp
+from ..expressions.models import SCALAR_SYMBOL, BinaryOp, Literal, OperatorType, UnaryOp
 from .types import PlanResult, SignalRequirements
 
 
@@ -111,20 +111,27 @@ class Evaluator:
             if n.operator in arithmetic_ops | comparison_ops:
                 left, right = children_outputs[0], children_outputs[1]
                 if isinstance(left, Series) and isinstance(right, Series):
-                    left, right = align_series(
-                        left,
-                        right,
-                        **alignment_args,
-                        symbol=left.symbol,
-                        timeframe=left.timeframe,
-                    )
+                    left_is_scalar = left.symbol == SCALAR_SYMBOL
+                    right_is_scalar = right.symbol == SCALAR_SYMBOL
+                    if not (left_is_scalar or right_is_scalar):
+                        left, right = align_series(
+                            left,
+                            right,
+                            **alignment_args,
+                            symbol=left.symbol,
+                            timeframe=left.timeframe,
+                        )
                 return n.evaluate_aligned(left, right)
             # Otherwise, fallback to default logic (e.g. logical)
             return n.evaluate(context)
         elif isinstance(n, UnaryOp):
             return n.evaluate(context)
         elif isinstance(n, Literal):
-            return n.value
+            result = n.evaluate(context)
+            # If result is a scalar Series, extract the scalar value for test compatibility
+            if isinstance(result, Series) and result.symbol == SCALAR_SYMBOL and len(result) == 1:
+                return result.values[0]
+            return result
         elif hasattr(n, "__class__") and n.__class__.__name__ == "IndicatorNode":
             # For now, simply invoke .run(context) if present (stub; to be improved)
             return n.run(context)

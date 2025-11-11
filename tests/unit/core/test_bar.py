@@ -190,9 +190,7 @@ class TestBarFromDictCriticalIssues:
             "close": 100.5,
             "volume": 1000.0,
         }
-        with pytest.raises(
-            ValueError, match=r"Field 'low' \(alias 'low'\) cannot be None"
-        ):
+        with pytest.raises(ValueError, match=r"Field 'low' \(alias 'low'\) cannot be None"):
             Bar.from_dict(data)
 
     @pytest.mark.parametrize(

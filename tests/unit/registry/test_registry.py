@@ -34,17 +34,13 @@ class TestSeriesContext:
     def test_private_attribute_access(self, test_series):
         """Test SeriesContext private attribute access raises error."""
         context = SeriesContext(test_series=test_series)
-        with pytest.raises(
-            AttributeError, match="'SeriesContext' object has no attribute '_private'"
-        ):
+        with pytest.raises(AttributeError, match="'SeriesContext' object has no attribute '_private'"):
             _ = context._private
 
     def test_missing_series_access(self, test_series):
         """Test SeriesContext missing series access raises error."""
         context = SeriesContext(test_series=test_series)
-        with pytest.raises(
-            AttributeError, match="Series 'missing_series' not found in context"
-        ):
+        with pytest.raises(AttributeError, match="Series 'missing_series' not found in context"):
             _ = context.missing_series
 
 
@@ -68,23 +64,17 @@ class TestIndicatorHandle:
 
     def test_parameter_coercion_str_to_float_invalid(self, indicator_handle):
         """Test parameter coercion from invalid string to float raises error."""
-        with pytest.raises(
-            ValueError, match="Parameter 'test_param' expects float, got str"
-        ):
+        with pytest.raises(ValueError, match="Parameter 'test_param' expects float, got str"):
             indicator_handle.with_overrides(test_param="invalid")
 
     def test_parameter_coercion_wrong_type(self, indicator_handle):
         """Test parameter coercion with wrong type raises error."""
-        with pytest.raises(
-            ValueError, match="Parameter 'test_param' expects float, got list"
-        ):
+        with pytest.raises(ValueError, match="Parameter 'test_param' expects float, got list"):
             indicator_handle.with_overrides(test_param=[])
 
     def test_unknown_parameter_error(self, indicator_handle):
         """Test IndicatorHandle with unknown parameter raises error."""
-        with pytest.raises(
-            ValueError, match="Unknown parameter 'unknown_param' for indicator"
-        ):
+        with pytest.raises(ValueError, match="Unknown parameter 'unknown_param' for indicator"):
             indicator_handle.with_overrides(unknown_param=42)
 
     def test_partial_function(self, indicator_handle, series_context):
@@ -116,9 +106,7 @@ class TestRegistry:
             return Series((), (), "TEST", "1s")
 
         registry.register(test_function, "func1")
-        with pytest.raises(
-            ValueError, match="Alias 'func1' conflicts with existing indicator"
-        ):
+        with pytest.raises(ValueError, match="Alias 'func1' conflicts with existing indicator"):
             registry.register(test_func2, "func2", aliases=["func1"])
 
     def test_alias_resolution(self, registry, test_function):
@@ -272,9 +260,7 @@ class TestRegistrySchemaBuilding:
     def test_build_schema_skip_first_parameter(self, registry):
         """Test _build_schema skips first parameter (SeriesContext)."""
 
-        def test_function(
-            ctx: SeriesContext, param1: int, param2: str = "default"
-        ) -> Series[Price]:
+        def test_function(ctx: SeriesContext, param1: int, param2: str = "default") -> Series[Price]:
             return Series((), (), "TEST", "1s")
 
         schema = registry._build_schema(test_function, "test_function", "Test function")
@@ -286,9 +272,7 @@ class TestRegistrySchemaBuilding:
     def test_build_schema_required_parameter_detection(self, registry):
         """Test _build_schema correctly detects required parameters."""
 
-        def test_function(
-            ctx: SeriesContext, required_param: int, optional_param: str = "default"
-        ) -> Series[Price]:
+        def test_function(ctx: SeriesContext, required_param: int, optional_param: str = "default") -> Series[Price]:
             return Series((), (), "TEST", "1s")
 
         schema = registry._build_schema(test_function, "test_function", "Test function")
@@ -365,9 +349,7 @@ class TestRegistryGlobalFunctions:
             return Series((), (), "TEST", "1s")
 
         timestamp = datetime(2024, 1, 1, 0, 0, 0, tzinfo=UTC)
-        context = SeriesContext(
-            test_series=Series((timestamp,), (Price(100),), "TEST", "1s")
-        )
+        context = SeriesContext(test_series=Series((timestamp,), (Price(100),), "TEST", "1s"))
         result = indicator("test_indicator_func")(context)
         assert isinstance(result, Series)
 
@@ -439,9 +421,7 @@ class TestRegistryErrorHandling:
 
         def test_indicator(period: int) -> Series[Price]:  # Wrong first parameter
             """Test indicator with wrong first parameter type."""
-            return Series[Price](
-                timestamps=(), values=(), symbol="TEST", timeframe="1h"
-            )
+            return Series[Price](timestamps=(), values=(), symbol="TEST", timeframe="1h")
 
         # This should raise an error
         with pytest.raises(
@@ -458,9 +438,7 @@ class TestRegistryErrorHandling:
 
         def test_indicator() -> Series[Price]:  # No parameters
             """Test indicator with no parameters."""
-            return Series[Price](
-                timestamps=(), values=(), symbol="TEST", timeframe="1h"
-            )
+            return Series[Price](timestamps=(), values=(), symbol="TEST", timeframe="1h")
 
         # This should raise an error
         with pytest.raises(
@@ -534,9 +512,7 @@ class TestRegistryErrorHandling:
             return 42
 
         # Test all unsupported types raise errors
-        with pytest.raises(
-            ValueError, match="Indicator function 'union_indicator' must return Series"
-        ):
+        with pytest.raises(ValueError, match="Indicator function 'union_indicator' must return Series"):
             registry.register(union_indicator)
 
         with pytest.raises(
@@ -545,12 +521,8 @@ class TestRegistryErrorHandling:
         ):
             registry.register(optional_indicator)
 
-        with pytest.raises(
-            ValueError, match="Indicator function 'list_indicator' must return Series"
-        ):
+        with pytest.raises(ValueError, match="Indicator function 'list_indicator' must return Series"):
             registry.register(list_indicator)
 
-        with pytest.raises(
-            ValueError, match="Indicator function 'int_indicator' must return Series"
-        ):
+        with pytest.raises(ValueError, match="Indicator function 'int_indicator' must return Series"):
             registry.register(int_indicator)

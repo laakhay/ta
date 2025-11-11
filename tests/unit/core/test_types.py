@@ -99,5 +99,3 @@ class TestTypes:
         result_rate = rate1 + rate2
         assert isinstance(result_rate, Decimal)
         assert result_rate == Decimal("10.5")
-
-

@@ -192,9 +192,7 @@ class TestEndToEnd:
         # Should have 2 results (same as SMA(2))
         assert len(result.values) == 2
         # Result should be boolean (True/False)
-        assert all(
-            val in (Price(Decimal("1")), Price(Decimal("0"))) for val in result.values
-        )
+        assert all(val in (Price(Decimal("1")), Price(Decimal("0"))) for val in result.values)
 
         # First value: 104 > 105 = False (0)
         assert result.values[0] == Price(Decimal("0"))
@@ -208,9 +206,7 @@ class TestEndToEnd:
         sma_2 = indicator("sma", period=2)
 
         # Should raise error for empty dataset
-        with pytest.raises(
-            ValueError, match="SeriesContext has no series to operate on"
-        ):
+        with pytest.raises(ValueError, match="SeriesContext has no series to operate on"):
             sma_2(empty_ds)
 
         # Test with insufficient data

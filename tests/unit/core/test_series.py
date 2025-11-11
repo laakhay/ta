@@ -32,9 +32,7 @@ def mk_series(vals, stamps, symbol="BTC", tf="1h"):
     """Create a Series[Price] with Price-wrapped values."""
     return Series[Price](
         timestamps=stamps,
-        values=tuple(
-            Price(Decimal(str(v))) if not isinstance(v, Price) else v for v in vals
-        ),
+        values=tuple(Price(Decimal(str(v))) if not isinstance(v, Price) else v for v in vals),
         symbol=symbol,
         timeframe=tf,
     )
@@ -287,16 +285,12 @@ def test_slice_by_time_range():
 def test_slice_by_time_invalid_range():
     s = mk_series([100], ts((2024, 1, 1, 10)))
     with pytest.raises(ValueError):
-        _ = s.slice_by_time(
-            datetime(2024, 1, 1, 12, tzinfo=UTC), datetime(2024, 1, 1, 11, tzinfo=UTC)
-        )
+        _ = s.slice_by_time(datetime(2024, 1, 1, 12, tzinfo=UTC), datetime(2024, 1, 1, 11, tzinfo=UTC))
 
 
 def test_slice_by_time_empty_result():
     s = mk_series([100], ts((2024, 1, 1, 10)))
-    r = s.slice_by_time(
-        datetime(2024, 1, 1, 12, tzinfo=UTC), datetime(2024, 1, 1, 13, tzinfo=UTC)
-    )
+    r = s.slice_by_time(datetime(2024, 1, 1, 12, tzinfo=UTC), datetime(2024, 1, 1, 13, tzinfo=UTC))
     assert len(r.timestamps) == 0 and len(r.values) == 0
     assert r.symbol == s.symbol and r.timeframe == s.timeframe
 

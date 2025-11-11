@@ -80,9 +80,7 @@ class TestEMAIndicator:
 
     def test_ema_empty_series(self):
         """Test EMA with empty input series."""
-        close_series = Series[Price](
-            timestamps=(), values=(), symbol="BTCUSDT", timeframe="1h"
-        )
+        close_series = Series[Price](timestamps=(), values=(), symbol="BTCUSDT", timeframe="1h")
 
         ctx = SeriesContext(close=close_series)
         result = ema(ctx, period=3)
@@ -194,9 +192,9 @@ class TestEMAIndicator:
         # For period=2, alpha = 2/(2+1) = 2/3
         # EMA[1] = 100 (first value)
         # EMA[2] = (2/3) * 110 + (1/3) * 100 = 73.33 + 33.33 = 106.67
-        expected_second_value = Decimal("2") / Decimal("3") * Decimal("110") + Decimal(
-            "1"
-        ) / Decimal("3") * Decimal("100")
+        expected_second_value = Decimal("2") / Decimal("3") * Decimal("110") + Decimal("1") / Decimal("3") * Decimal(
+            "100"
+        )
 
         assert result.values[0] == Decimal("100")
         assert abs(float(result.values[1]) - float(expected_second_value)) < 0.01
