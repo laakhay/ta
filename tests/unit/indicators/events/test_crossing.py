@@ -3,8 +3,6 @@
 from datetime import UTC, datetime
 from decimal import Decimal
 
-import pytest
-
 from laakhay.ta.core.series import Series
 from laakhay.ta.core.types import Price
 from laakhay.ta.indicators.events.crossing import cross, crossdown, crossup
@@ -25,7 +23,7 @@ class TestCrossUp:
         # a starts below b, then crosses above
         a_values = [Decimal("10"), Decimal("15"), Decimal("25"), Decimal("30")]
         b_values = [Decimal("20"), Decimal("20"), Decimal("20"), Decimal("20")]
-        
+
         a_series = Series[Price](
             timestamps=tuple(timestamps),
             values=tuple(a_values),
@@ -38,23 +36,23 @@ class TestCrossUp:
             symbol="BTCUSDT",
             timeframe="1h",
         )
-        
+
         ctx = SeriesContext(price=a_series)
         result = crossup(ctx, a=a_series, b=b_series)
-        
+
         assert len(result) == 4
         assert result.symbol == "BTCUSDT"
         assert result.timeframe == "1h"
-        
+
         # First value: False (no previous)
         assert result.values[0] is False
-        
+
         # Second value: False (a=15 < b=20, still below)
         assert result.values[1] is False
-        
+
         # Third value: True (a=25 > b=20 AND previous a=15 <= b=20) - CROSS!
         assert result.values[2] is True
-        
+
         # Fourth value: False (a=30 > b=20 but previous a=25 > b=20, already crossed)
         assert result.values[3] is False
 
@@ -67,17 +65,17 @@ class TestCrossUp:
         ]
         # Price crosses above 50
         price_values = [Decimal("40"), Decimal("45"), Decimal("55")]
-        
+
         price_series = Series[Price](
             timestamps=tuple(timestamps),
             values=tuple(price_values),
             symbol="BTCUSDT",
             timeframe="1h",
         )
-        
+
         ctx = SeriesContext(price=price_series)
         result = crossup(ctx, a=price_series, b=50)
-        
+
         assert len(result) == 3
         # First: False (no previous)
         assert result.values[0] is False
@@ -96,7 +94,7 @@ class TestCrossUp:
         # a stays below b
         a_values = [Decimal("10"), Decimal("15"), Decimal("18")]
         b_values = [Decimal("20"), Decimal("20"), Decimal("20")]
-        
+
         a_series = Series[Price](
             timestamps=tuple(timestamps),
             values=tuple(a_values),
@@ -109,21 +107,19 @@ class TestCrossUp:
             symbol="BTCUSDT",
             timeframe="1h",
         )
-        
+
         ctx = SeriesContext(price=a_series)
         result = crossup(ctx, a=a_series, b=b_series)
-        
+
         assert all(v is False for v in result.values)
 
     def test_crossup_empty_series(self):
         """Test crossup with empty series."""
-        empty_series = Series[Price](
-            timestamps=(), values=(), symbol="BTCUSDT", timeframe="1h"
-        )
-        
+        empty_series = Series[Price](timestamps=(), values=(), symbol="BTCUSDT", timeframe="1h")
+
         ctx = SeriesContext(price=empty_series)
         result = crossup(ctx)
-        
+
         assert len(result) == 0
         assert result.symbol == "BTCUSDT"
 
@@ -142,10 +138,10 @@ class TestCrossUp:
             symbol="BTCUSDT",
             timeframe="1h",
         )
-        
+
         ctx = SeriesContext(price=a_series)
         result = crossup(ctx, a=a_series, b=b_series)
-        
+
         assert len(result) == 1
         assert result.values[0] is False  # No previous to compare
 
@@ -164,7 +160,7 @@ class TestCrossDown:
         # a starts above b, then crosses below
         a_values = [Decimal("30"), Decimal("25"), Decimal("15"), Decimal("10")]
         b_values = [Decimal("20"), Decimal("20"), Decimal("20"), Decimal("20")]
-        
+
         a_series = Series[Price](
             timestamps=tuple(timestamps),
             values=tuple(a_values),
@@ -177,10 +173,10 @@ class TestCrossDown:
             symbol="BTCUSDT",
             timeframe="1h",
         )
-        
+
         ctx = SeriesContext(price=a_series)
         result = crossdown(ctx, a=a_series, b=b_series)
-        
+
         assert len(result) == 4
         # First: False (no previous)
         assert result.values[0] is False
@@ -200,17 +196,17 @@ class TestCrossDown:
         ]
         # Price crosses below 50
         price_values = [Decimal("60"), Decimal("55"), Decimal("45")]
-        
+
         price_series = Series[Price](
             timestamps=tuple(timestamps),
             values=tuple(price_values),
             symbol="BTCUSDT",
             timeframe="1h",
         )
-        
+
         ctx = SeriesContext(price=price_series)
         result = crossdown(ctx, a=price_series, b=50)
-        
+
         assert len(result) == 3
         # First: False (no previous)
         assert result.values[0] is False
@@ -234,7 +230,7 @@ class TestCross:
         # a crosses above, then crosses below
         a_values = [Decimal("10"), Decimal("15"), Decimal("25"), Decimal("15")]
         b_values = [Decimal("20"), Decimal("20"), Decimal("20"), Decimal("20")]
-        
+
         a_series = Series[Price](
             timestamps=tuple(timestamps),
             values=tuple(a_values),
@@ -247,10 +243,10 @@ class TestCross:
             symbol="BTCUSDT",
             timeframe="1h",
         )
-        
+
         ctx = SeriesContext(price=a_series)
         result = cross(ctx, a=a_series, b=b_series)
-        
+
         assert len(result) == 4
         # First: False (no previous)
         assert result.values[0] is False
@@ -270,7 +266,7 @@ class TestCross:
         # a stays above b
         a_values = [Decimal("30"), Decimal("35")]
         b_values = [Decimal("20"), Decimal("20")]
-        
+
         a_series = Series[Price](
             timestamps=tuple(timestamps),
             values=tuple(a_values),
@@ -283,9 +279,8 @@ class TestCross:
             symbol="BTCUSDT",
             timeframe="1h",
         )
-        
+
         ctx = SeriesContext(price=a_series)
         result = cross(ctx, a=a_series, b=b_series)
-        
-        assert all(v is False for v in result.values)
 
+        assert all(v is False for v in result.values)

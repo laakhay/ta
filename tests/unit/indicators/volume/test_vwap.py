@@ -54,9 +54,7 @@ class TestVWAPIndicator:
             timeframe="1h",
         )
 
-        ctx = SeriesContext(
-            high=high_series, low=low_series, close=close_series, volume=volume_series
-        )
+        ctx = SeriesContext(high=high_series, low=low_series, close=close_series, volume=volume_series)
         result = vwap(ctx)
 
         assert result.symbol == "BTCUSDT"
@@ -72,20 +70,16 @@ class TestVWAPIndicator:
         # Cumulative volume = 1000 + 1500 = 2500
         # Cumulative volume*price = 100*1000 + 101*1500 = 100000 + 151500 = 251500
         # VWAP = 251500 / 2500 = 100.6
-        expected_second = (
-            Decimal("100") * Decimal("1000") + Decimal("101") * Decimal("1500")
-        ) / (Decimal("1000") + Decimal("1500"))
+        expected_second = (Decimal("100") * Decimal("1000") + Decimal("101") * Decimal("1500")) / (
+            Decimal("1000") + Decimal("1500")
+        )
         assert abs(float(result.values[1]) - float(expected_second)) < 0.01
 
     def test_vwap_empty_series(self):
         """Test VWAP with empty input series."""
-        empty_series = Series[Price](
-            timestamps=(), values=(), symbol="BTCUSDT", timeframe="1h"
-        )
+        empty_series = Series[Price](timestamps=(), values=(), symbol="BTCUSDT", timeframe="1h")
 
-        ctx = SeriesContext(
-            high=empty_series, low=empty_series, close=empty_series, volume=empty_series
-        )
+        ctx = SeriesContext(high=empty_series, low=empty_series, close=empty_series, volume=empty_series)
         result = vwap(ctx)
 
         assert result.symbol == "BTCUSDT"
@@ -107,30 +101,22 @@ class TestVWAPIndicator:
 
         # Test missing high
         ctx = SeriesContext(low=close_series, close=close_series, volume=close_series)
-        with pytest.raises(
-            ValueError, match="VWAP requires series: .* missing: .*high.*"
-        ):
+        with pytest.raises(ValueError, match="VWAP requires series: .* missing: .*high.*"):
             vwap(ctx)
 
         # Test missing low
         ctx = SeriesContext(high=close_series, close=close_series, volume=close_series)
-        with pytest.raises(
-            ValueError, match="VWAP requires series: .* missing: .*low.*"
-        ):
+        with pytest.raises(ValueError, match="VWAP requires series: .* missing: .*low.*"):
             vwap(ctx)
 
         # Test missing close
         ctx = SeriesContext(high=close_series, low=close_series, volume=close_series)
-        with pytest.raises(
-            ValueError, match="VWAP requires series: .* missing: .*close.*"
-        ):
+        with pytest.raises(ValueError, match="VWAP requires series: .* missing: .*close.*"):
             vwap(ctx)
 
         # Test missing volume
         ctx = SeriesContext(high=close_series, low=close_series, close=close_series)
-        with pytest.raises(
-            ValueError, match="VWAP requires series: .* missing: .*volume.*"
-        ):
+        with pytest.raises(ValueError, match="VWAP requires series: .* missing: .*volume.*"):
             vwap(ctx)
 
     def test_vwap_different_lengths(self):
@@ -170,9 +156,7 @@ class TestVWAPIndicator:
             timeframe="1h",
         )
 
-        ctx = SeriesContext(
-            high=high_series, low=low_series, close=close_series, volume=volume_series
-        )
+        ctx = SeriesContext(high=high_series, low=low_series, close=close_series, volume=volume_series)
         with pytest.raises(ValueError, match="All series must have the same length"):
             vwap(ctx)
 
@@ -212,9 +196,7 @@ class TestVWAPIndicator:
             timeframe="4h",
         )
 
-        ctx = SeriesContext(
-            high=high_series, low=low_series, close=close_series, volume=volume_series
-        )
+        ctx = SeriesContext(high=high_series, low=low_series, close=close_series, volume=volume_series)
         result = vwap(ctx)
 
         assert result.symbol == "ETHUSDT"
@@ -253,9 +235,7 @@ class TestVWAPIndicator:
             timeframe="1h",
         )
 
-        ctx = SeriesContext(
-            high=high_series, low=low_series, close=close_series, volume=volume_series
-        )
+        ctx = SeriesContext(high=high_series, low=low_series, close=close_series, volume=volume_series)
         result = vwap(ctx)
 
         assert len(result.timestamps) == 1
@@ -302,18 +282,12 @@ class TestVWAPIndicator:
             timeframe="1h",
         )
 
-        ctx = SeriesContext(
-            high=high_series, low=low_series, close=close_series, volume=volume_series
-        )
+        ctx = SeriesContext(high=high_series, low=low_series, close=close_series, volume=volume_series)
         result = vwap(ctx)
 
         # Should fallback to typical price when volume is zero
-        expected_first = (Decimal("101") + Decimal("99") + Decimal("100")) / Decimal(
-            "3"
-        )
-        expected_second = (Decimal("102") + Decimal("100") + Decimal("101")) / Decimal(
-            "3"
-        )
+        expected_first = (Decimal("101") + Decimal("99") + Decimal("100")) / Decimal("3")
+        expected_second = (Decimal("102") + Decimal("100") + Decimal("101")) / Decimal("3")
 
         assert abs(float(result.values[0]) - float(expected_first)) < 0.01
         assert abs(float(result.values[1]) - float(expected_second)) < 0.01

@@ -3,8 +3,6 @@
 from datetime import UTC, datetime
 from decimal import Decimal
 
-import pytest
-
 from laakhay.ta.core.series import Series
 from laakhay.ta.core.types import Price
 from laakhay.ta.indicators.events.trend import falling, falling_pct, rising, rising_pct
@@ -24,17 +22,17 @@ class TestRising:
         ]
         # Values: 10, 15, 12, 20
         values = [Decimal("10"), Decimal("15"), Decimal("12"), Decimal("20")]
-        
+
         series = Series[Price](
             timestamps=tuple(timestamps),
             values=tuple(values),
             symbol="BTCUSDT",
             timeframe="1h",
         )
-        
+
         ctx = SeriesContext(price=series)
         result = rising(ctx, a=series)
-        
+
         assert len(result) == 4
         # First: False (no previous)
         assert result.values[0] is False
@@ -47,13 +45,11 @@ class TestRising:
 
     def test_rising_empty_series(self):
         """Test rising with empty series."""
-        empty_series = Series[Price](
-            timestamps=(), values=(), symbol="BTCUSDT", timeframe="1h"
-        )
-        
+        empty_series = Series[Price](timestamps=(), values=(), symbol="BTCUSDT", timeframe="1h")
+
         ctx = SeriesContext(price=empty_series)
         result = rising(ctx)
-        
+
         assert len(result) == 0
 
     def test_rising_single_value(self):
@@ -64,10 +60,10 @@ class TestRising:
             symbol="BTCUSDT",
             timeframe="1h",
         )
-        
+
         ctx = SeriesContext(price=series)
         result = rising(ctx)
-        
+
         assert len(result) == 1
         assert result.values[0] is False  # No previous to compare
 
@@ -85,17 +81,17 @@ class TestFalling:
         ]
         # Values: 20, 15, 18, 10
         values = [Decimal("20"), Decimal("15"), Decimal("18"), Decimal("10")]
-        
+
         series = Series[Price](
             timestamps=tuple(timestamps),
             values=tuple(values),
             symbol="BTCUSDT",
             timeframe="1h",
         )
-        
+
         ctx = SeriesContext(price=series)
         result = falling(ctx, a=series)
-        
+
         assert len(result) == 4
         # First: False (no previous)
         assert result.values[0] is False
@@ -121,17 +117,17 @@ class TestRisingPct:
         # Values: 100, 104, 106, 110
         # 5% threshold: 100 * 1.05 = 105
         values = [Decimal("100"), Decimal("104"), Decimal("106"), Decimal("110")]
-        
+
         series = Series[Price](
             timestamps=tuple(timestamps),
             values=tuple(values),
             symbol="BTCUSDT",
             timeframe="1h",
         )
-        
+
         ctx = SeriesContext(price=series)
         result = rising_pct(ctx, a=series, pct=5)
-        
+
         assert len(result) == 4
         # First: False (no previous)
         assert result.values[0] is False
@@ -153,17 +149,17 @@ class TestRisingPct:
         ]
         # Values: 100, 110 (10% rise)
         values = [Decimal("100"), Decimal("110")]
-        
+
         series = Series[Price](
             timestamps=tuple(timestamps),
             values=tuple(values),
             symbol="BTCUSDT",
             timeframe="1h",
         )
-        
+
         ctx = SeriesContext(price=series)
         result = rising_pct(ctx, a=series, pct=5)  # 5% threshold
-        
+
         assert len(result) == 2
         # First: False (no previous)
         assert result.values[0] is False
@@ -178,17 +174,17 @@ class TestRisingPct:
         ]
         # Values: 100, 105 (exactly 5% rise)
         values = [Decimal("100"), Decimal("105")]
-        
+
         series = Series[Price](
             timestamps=tuple(timestamps),
             values=tuple(values),
             symbol="BTCUSDT",
             timeframe="1h",
         )
-        
+
         ctx = SeriesContext(price=series)
         result = rising_pct(ctx, a=series, pct=5)
-        
+
         assert len(result) == 2
         assert result.values[0] is False
         # Second: True (105 >= 105 threshold)
@@ -206,17 +202,17 @@ class TestFallingPct:
         ]
         # Values: 100, 90 (10% fall)
         values = [Decimal("100"), Decimal("90")]
-        
+
         series = Series[Price](
             timestamps=tuple(timestamps),
             values=tuple(values),
             symbol="BTCUSDT",
             timeframe="1h",
         )
-        
+
         ctx = SeriesContext(price=series)
         result = falling_pct(ctx, a=series, pct=5)  # 5% threshold
-        
+
         assert len(result) == 2
         # First: False (no previous)
         assert result.values[0] is False
@@ -231,17 +227,17 @@ class TestFallingPct:
         ]
         # Values: 100, 95 (exactly 5% fall)
         values = [Decimal("100"), Decimal("95")]
-        
+
         series = Series[Price](
             timestamps=tuple(timestamps),
             values=tuple(values),
             symbol="BTCUSDT",
             timeframe="1h",
         )
-        
+
         ctx = SeriesContext(price=series)
         result = falling_pct(ctx, a=series, pct=5)
-        
+
         assert len(result) == 2
         assert result.values[0] is False
         # Second: True (95 <= 95 threshold)
@@ -255,19 +251,18 @@ class TestFallingPct:
         ]
         # Values: 100, 98 (only 2% fall, need 5%)
         values = [Decimal("100"), Decimal("98")]
-        
+
         series = Series[Price](
             timestamps=tuple(timestamps),
             values=tuple(values),
             symbol="BTCUSDT",
             timeframe="1h",
         )
-        
+
         ctx = SeriesContext(price=series)
         result = falling_pct(ctx, a=series, pct=5)
-        
+
         assert len(result) == 2
         assert result.values[0] is False
         # Second: False (98 > 95 threshold)
         assert result.values[1] is False
-

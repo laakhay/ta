@@ -25,4 +25,3 @@ __all__ = [
     "rising_pct",
     "falling_pct",
 ]
-

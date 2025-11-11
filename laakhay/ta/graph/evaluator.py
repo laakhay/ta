@@ -7,7 +7,7 @@ from typing import Any
 from ..core import Series
 from ..core.dataset import Dataset
 from ..core.series import align_series
-from ..expressions.models import BinaryOp, Literal, OperatorType, UnaryOp, SCALAR_SYMBOL
+from ..expressions.models import SCALAR_SYMBOL, BinaryOp, Literal, OperatorType, UnaryOp
 from .types import PlanResult, SignalRequirements
 
 

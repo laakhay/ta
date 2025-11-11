@@ -26,9 +26,7 @@ class TestSeriesContext:
         timestamps = [datetime.now(UTC)]
         values = [Decimal("100")]
 
-        price_series = Series[Price](
-            timestamps=timestamps, values=values, symbol="BTCUSDT", timeframe="1h"
-        )
+        price_series = Series[Price](timestamps=timestamps, values=values, symbol="BTCUSDT", timeframe="1h")
 
         ctx = SeriesContext(price=price_series)
 
@@ -40,13 +38,9 @@ class TestSeriesContext:
         timestamps = [datetime.now(UTC)]
         values = [Decimal("100")]
 
-        price_series = Series[Price](
-            timestamps=timestamps, values=values, symbol="BTCUSDT", timeframe="1h"
-        )
+        price_series = Series[Price](timestamps=timestamps, values=values, symbol="BTCUSDT", timeframe="1h")
 
-        volume_series = Series[Price](
-            timestamps=timestamps, values=values, symbol="BTCUSDT", timeframe="1h"
-        )
+        volume_series = Series[Price](timestamps=timestamps, values=values, symbol="BTCUSDT", timeframe="1h")
 
         ctx = SeriesContext(price=price_series, volume=volume_series)
 
@@ -67,18 +61,14 @@ class TestSeriesContext:
             )
         )
 
-        with pytest.raises(
-            AttributeError, match="Series 'missing' not found in context"
-        ):
+        with pytest.raises(AttributeError, match="Series 'missing' not found in context"):
             _ = ctx.missing
 
     def test_series_context_private_attribute(self) -> None:
         """Test accessing private attributes raises AttributeError."""
         ctx = SeriesContext()
 
-        with pytest.raises(
-            AttributeError, match="'SeriesContext' object has no attribute '_private'"
-        ):
+        with pytest.raises(AttributeError, match="'SeriesContext' object has no attribute '_private'"):
             _ = ctx._private
 
 
@@ -112,9 +102,7 @@ class TestIndicatorHandle:
                     description="Period",
                 )
             },
-            outputs={
-                "result": OutputSchema(name="result", type=float, description="Result")
-            },
+            outputs={"result": OutputSchema(name="result", type=float, description="Result")},
         )
 
         handle = IndicatorHandle(
@@ -156,9 +144,7 @@ class TestIndicatorHandle:
                     description="Period",
                 )
             },
-            outputs={
-                "result": OutputSchema(name="result", type=float, description="Result")
-            },
+            outputs={"result": OutputSchema(name="result", type=float, description="Result")},
         )
 
         handle = IndicatorHandle(
@@ -202,9 +188,7 @@ class TestIndicatorHandle:
                     description="Period",
                 )
             },
-            outputs={
-                "result": OutputSchema(name="result", type=float, description="Result")
-            },
+            outputs={"result": OutputSchema(name="result", type=float, description="Result")},
         )
 
         handle = IndicatorHandle(
@@ -261,9 +245,7 @@ class TestIndicatorHandle:
                     description="Period",
                 )
             },
-            outputs={
-                "result": OutputSchema(name="result", type=float, description="Result")
-            },
+            outputs={"result": OutputSchema(name="result", type=float, description="Result")},
         )
 
         handle = IndicatorHandle(
@@ -316,9 +298,7 @@ class TestIndicatorHandle:
     def test_optional_parameter_schema(self) -> None:
         """Optional parameters with None defaults should remain optional."""
 
-        def optional_indicator(
-            ctx: SeriesContext, threshold: int | None = None
-        ) -> Series[Price]:
+        def optional_indicator(ctx: SeriesContext, threshold: int | None = None) -> Series[Price]:
             return Series[Price](
                 timestamps=[datetime.now(UTC)],
                 values=[Decimal("100")],
@@ -342,9 +322,7 @@ class TestIndicatorHandle:
                     description="Optional threshold",
                 )
             },
-            outputs={
-                "result": OutputSchema(name="result", type=float, description="Result")
-            },
+            outputs={"result": OutputSchema(name="result", type=float, description="Result")},
         )
 
         handle = IndicatorHandle(

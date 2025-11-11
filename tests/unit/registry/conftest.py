@@ -40,9 +40,7 @@ def registry():
 @pytest.fixture
 def param_schema():
     """Standard parameter schema."""
-    return ParamSchema(
-        name="test_param", type=float, required=True, description="Test parameter"
-    )
+    return ParamSchema(name="test_param", type=float, required=True, description="Test parameter")
 
 
 @pytest.fixture

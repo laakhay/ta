@@ -15,9 +15,7 @@ class TestParamSchema:
 
     def test_required_parameter(self) -> None:
         """Test required parameter creation."""
-        param = ParamSchema(
-            name="period", type=int, required=True, description="Period length"
-        )
+        param = ParamSchema(name="period", type=int, required=True, description="Period length")
 
         assert param.name == "period"
         assert param.type is int
@@ -57,9 +55,7 @@ class TestParamSchema:
     def test_parameter_validation_errors(self) -> None:
         """Test parameter validation rules."""
         # Required parameter with default should fail
-        with pytest.raises(
-            ValueError, match="Required parameters cannot have default values"
-        ):
+        with pytest.raises(ValueError, match="Required parameters cannot have default values"):
             ParamSchema(name="period", type=int, required=True, default=20)
 
         # Optional parameter without default should now be allowed (None is valid default)
@@ -68,15 +64,11 @@ class TestParamSchema:
         assert param.default is None
 
         # Empty name should fail
-        with pytest.raises(
-            ValueError, match="Parameter name must be a non-empty string"
-        ):
+        with pytest.raises(ValueError, match="Parameter name must be a non-empty string"):
             ParamSchema(name="", type=int)
 
         # None name should fail
-        with pytest.raises(
-            ValueError, match="Parameter name must be a non-empty string"
-        ):
+        with pytest.raises(ValueError, match="Parameter name must be a non-empty string"):
             ParamSchema(name=None, type=int)  # type: ignore[arg-type]
 
         # Default value not in valid_values should fail
@@ -125,9 +117,7 @@ class TestIndicatorSchema:
 
     def test_indicator_schema_creation(self) -> None:
         """Test basic indicator schema creation."""
-        param = ParamSchema(
-            name="period", type=int, required=True, description="Period length"
-        )
+        param = ParamSchema(name="period", type=int, required=True, description="Period length")
         output = OutputSchema(name="sma", type=float, description="SMA values")
 
         schema = IndicatorSchema(
@@ -157,9 +147,7 @@ class TestIndicatorSchema:
 
     def test_indicator_schema_to_dict(self) -> None:
         """Test schema serialization to dictionary."""
-        param = ParamSchema(
-            name="period", type=int, required=True, description="Period length"
-        )
+        param = ParamSchema(name="period", type=int, required=True, description="Period length")
         output = OutputSchema(name="rsi", type=float, description="RSI values")
 
         schema = IndicatorSchema(
@@ -266,17 +254,13 @@ class TestIndicatorSchema:
                 }
             },
         }
-        with pytest.raises(
-            ValueError, match="Unsupported parameter type: unknown_type"
-        ):
+        with pytest.raises(ValueError, match="Unsupported parameter type: unknown_type"):
             IndicatorSchema.from_dict(data_with_unknown_param)
 
         # Unknown output type should fail
         data_with_unknown_output = {
             "name": "test",
-            "outputs": {
-                "output": {"type": "unknown_type", "description": "Test output"}
-            },
+            "outputs": {"output": {"type": "unknown_type", "description": "Test output"}},
         }
         with pytest.raises(ValueError, match="Unsupported output type: unknown_type"):
             IndicatorSchema.from_dict(data_with_unknown_output)
@@ -338,9 +322,7 @@ class TestRegistryCriticalIssues:
         from laakhay.ta.core.types import Price
         from laakhay.ta.registry.models import IndicatorHandle
 
-        def test_indicator(
-            series: Series[Price], optional_param: int | None = None
-        ) -> Series[Price]:
+        def test_indicator(series: Series[Price], optional_param: int | None = None) -> Series[Price]:
             """Test indicator with optional parameter."""
             return series
 

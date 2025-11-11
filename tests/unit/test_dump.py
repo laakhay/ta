@@ -64,13 +64,8 @@ class TestDumpCSV:
 
             assert len(lines) == 3  # Header + 2 data rows
             assert "timestamp,open,high,low,close,volume,is_closed" in lines[0]
-            assert (
-                "2024-01-01T00:00:00+00:00,100.0,101.0,99.0,100.5,1000,True" in lines[1]
-            )
-            assert (
-                "2024-01-01T01:00:00+00:00,100.5,102.0,100.0,101.5,1100,False"
-                in lines[2]
-            )
+            assert "2024-01-01T00:00:00+00:00,100.0,101.0,99.0,100.5,1000,True" in lines[1]
+            assert "2024-01-01T01:00:00+00:00,100.5,102.0,100.0,101.5,1100,False" in lines[2]
 
         finally:
             Path(temp_path).unlink()
@@ -122,9 +117,7 @@ class TestDumpCSV:
 
             assert len(lines) == 3  # Header + 2 data rows
             assert "time,o,h,l,c,v,closed" in lines[0]
-            assert (
-                "2024-01-01T00:00:00+00:00,100.0,101.0,99.0,100.5,1000,True" in lines[1]
-            )
+            assert "2024-01-01T00:00:00+00:00,100.0,101.0,99.0,100.5,1000,True" in lines[1]
 
         finally:
             Path(temp_path).unlink()
@@ -183,9 +176,7 @@ class TestDumpCSV:
 
     def test_to_csv_empty_series(self) -> None:
         """Test dumping empty Series data."""
-        empty_series = Series[Price](
-            timestamps=(), values=(), symbol="BTCUSDT", timeframe="1h"
-        )
+        empty_series = Series[Price](timestamps=(), values=(), symbol="BTCUSDT", timeframe="1h")
 
         with tempfile.NamedTemporaryFile(mode="w", suffix=".csv", delete=False) as f:
             temp_path = f.name
@@ -232,9 +223,7 @@ class TestCSVExportCriticalIssues:
             imported_series = from_csv(temp_path, "BTC", "1h")
 
             # This should work - precision should be preserved
-            assert imported_series.values[0] == Price(Decimal("100.123456789")), (
-                "Decimal precision should be preserved"
-            )
+            assert imported_series.values[0] == Price(Decimal("100.123456789")), "Decimal precision should be preserved"
 
         finally:
             os.unlink(temp_path)
@@ -272,9 +261,7 @@ class TestCSVExportCriticalIssues:
             assert imported_ohlcv.opens[0] == Price(Decimal("100.123456789")), (
                 "Open price precision should be preserved"
             )
-            assert imported_ohlcv.volumes[0] == Qty(Decimal("1000.123456789")), (
-                "Volume precision should be preserved"
-            )
+            assert imported_ohlcv.volumes[0] == Qty(Decimal("1000.123456789")), "Volume precision should be preserved"
 
         finally:
             os.unlink(temp_path)

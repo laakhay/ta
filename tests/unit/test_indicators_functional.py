@@ -189,7 +189,5 @@ class TestIndicatorsFunctional:
         sma_2 = indicator("sma", period=2)
 
         # Test that indicator raises appropriate error for empty dataset
-        with pytest.raises(
-            ValueError, match="SeriesContext has no series to operate on"
-        ):
+        with pytest.raises(ValueError, match="SeriesContext has no series to operate on"):
             sma_2(ds)

@@ -3,8 +3,6 @@
 from datetime import UTC, datetime
 from decimal import Decimal
 
-import pytest
-
 from laakhay.ta.core.series import Series
 from laakhay.ta.core.types import Price
 from laakhay.ta.indicators.events.channel import enter, exit, in_channel, out
@@ -28,7 +26,7 @@ class TestInChannel:
         price_values = [Decimal("45"), Decimal("50"), Decimal("55"), Decimal("40")]
         upper_values = [Decimal("60"), Decimal("60"), Decimal("60"), Decimal("60")]
         lower_values = [Decimal("40"), Decimal("40"), Decimal("40"), Decimal("40")]
-        
+
         price_series = Series[Price](
             timestamps=tuple(timestamps),
             values=tuple(price_values),
@@ -47,10 +45,10 @@ class TestInChannel:
             symbol="BTCUSDT",
             timeframe="1h",
         )
-        
+
         ctx = SeriesContext(price=price_series)
         result = in_channel(ctx, price=price_series, upper=upper_series, lower=lower_series)
-        
+
         assert len(result) == 4
         # First: True (45 >= 40 and 45 <= 60)
         assert result.values[0] is True
@@ -70,18 +68,18 @@ class TestInChannel:
         ]
         # Price: 45, 50, 55
         price_values = [Decimal("45"), Decimal("50"), Decimal("55")]
-        
+
         price_series = Series[Price](
             timestamps=tuple(timestamps),
             values=tuple(price_values),
             symbol="BTCUSDT",
             timeframe="1h",
         )
-        
+
         ctx = SeriesContext(price=price_series)
         # Channel: 40 to 60
         result = in_channel(ctx, price=price_series, upper=60, lower=40)
-        
+
         assert len(result) == 3
         assert all(result.values)  # All should be True (all within 40-60)
 
@@ -93,17 +91,17 @@ class TestInChannel:
         ]
         # Price: 30, 70 (outside 40-60 channel)
         price_values = [Decimal("30"), Decimal("70")]
-        
+
         price_series = Series[Price](
             timestamps=tuple(timestamps),
             values=tuple(price_values),
             symbol="BTCUSDT",
             timeframe="1h",
         )
-        
+
         ctx = SeriesContext(price=price_series)
         result = in_channel(ctx, price=price_series, upper=60, lower=40)
-        
+
         assert len(result) == 2
         assert all(v is False for v in result.values)  # Both outside
 
@@ -121,17 +119,17 @@ class TestOut:
         # Price: 30, 50, 70
         # Channel: 40-60
         price_values = [Decimal("30"), Decimal("50"), Decimal("70")]
-        
+
         price_series = Series[Price](
             timestamps=tuple(timestamps),
             values=tuple(price_values),
             symbol="BTCUSDT",
             timeframe="1h",
         )
-        
+
         ctx = SeriesContext(price=price_series)
         result = out(ctx, price=price_series, upper=60, lower=40)
-        
+
         assert len(result) == 3
         # First: True (30 < 40)
         assert result.values[0] is True
@@ -155,17 +153,17 @@ class TestEnter:
         # Price: 30 (outside), 35 (outside), 45 (inside), 50 (inside)
         # Channel: 40-60
         price_values = [Decimal("30"), Decimal("35"), Decimal("45"), Decimal("50")]
-        
+
         price_series = Series[Price](
             timestamps=tuple(timestamps),
             values=tuple(price_values),
             symbol="BTCUSDT",
             timeframe="1h",
         )
-        
+
         ctx = SeriesContext(price=price_series)
         result = enter(ctx, price=price_series, upper=60, lower=40)
-        
+
         assert len(result) == 4
         # First: False (no previous)
         assert result.values[0] is False
@@ -191,17 +189,17 @@ class TestExit:
         # Price: 50 (inside), 55 (inside), 35 (outside), 30 (outside)
         # Channel: 40-60
         price_values = [Decimal("50"), Decimal("55"), Decimal("35"), Decimal("30")]
-        
+
         price_series = Series[Price](
             timestamps=tuple(timestamps),
             values=tuple(price_values),
             symbol="BTCUSDT",
             timeframe="1h",
         )
-        
+
         ctx = SeriesContext(price=price_series)
         result = exit(ctx, price=price_series, upper=60, lower=40)
-        
+
         assert len(result) == 4
         # First: False (no previous)
         assert result.values[0] is False
@@ -211,4 +209,3 @@ class TestExit:
         assert result.values[2] is True
         # Fourth: False (30 is outside but 35 was already outside)
         assert result.values[3] is False
-

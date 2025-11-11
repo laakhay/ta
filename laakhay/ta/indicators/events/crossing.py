@@ -4,10 +4,10 @@ from __future__ import annotations
 
 from decimal import Decimal
 
+from ...api.handle import IndicatorNode as TAIndicatorNode
 from ...core import Series
 from ...core.series import align_series
 from ...core.types import Price
-from ...api.handle import IndicatorNode as TAIndicatorNode
 from ...expressions.operators import Expression
 from ...primitives import _select
 from ...registry.models import SeriesContext
@@ -69,7 +69,7 @@ def _extract_series(
         return result
     elif isinstance(value, Series):
         return value
-    elif isinstance(value, (int, float, Decimal)):
+    elif isinstance(value, int | float | Decimal):
         # Convert scalar to series matching reference or context
         if reference_series is not None:
             ref = reference_series
@@ -93,46 +93,42 @@ def crossup(
 ) -> Series[bool]:
     """
     Detect when series a crosses above series b.
-    
+
     Logic: (a > b) and (shift(a, 1) <= shift(b, 1))
-    
+
     Args:
         ctx: Series context (used if a/b not provided)
         a: First series (defaults to ctx.price or ctx.close)
         b: Second series or scalar value (defaults to ctx.price or ctx.close if a not provided)
-    
+
     Returns:
         Boolean series where True indicates a cross above event
-    
+
     Examples:
         # Golden cross: SMA(20) crosses above SMA(50)
         crossup(sma(20), sma(50))
-        
+
         # Price crosses above resistance
         crossup(close, sma(200))
-        
+
         # RSI crosses above 70 (overbought)
         crossup(rsi(14), 70)
     """
     # Extract series
     a_series = _extract_series(a, ctx)
     b_series = _extract_series(b, ctx, reference_series=a_series)
-    
+
     # Handle empty series
     if len(a_series) == 0 or len(b_series) == 0:
-        return Series[bool](
-            timestamps=(), values=(), symbol=a_series.symbol, timeframe=a_series.timeframe
-        )
-    
+        return Series[bool](timestamps=(), values=(), symbol=a_series.symbol, timeframe=a_series.timeframe)
+
     # Align series to common timestamps
     try:
         a_aligned, b_aligned = align_series(a_series, b_series, how="inner")
     except ValueError:
         # No common timestamps
-        return Series[bool](
-            timestamps=(), values=(), symbol=a_series.symbol, timeframe=a_series.timeframe
-        )
-    
+        return Series[bool](timestamps=(), values=(), symbol=a_series.symbol, timeframe=a_series.timeframe)
+
     if len(a_aligned) < 2:
         # Need at least 2 points for crossing detection
         return Series[bool](
@@ -141,11 +137,11 @@ def crossup(
             symbol=a_aligned.symbol,
             timeframe=a_aligned.timeframe,
         )
-    
+
     # Build result: first value is always False (no previous to compare)
     result_values: list[bool] = [False]
     result_timestamps: list = [a_aligned.timestamps[0]]
-    
+
     # Check crossings starting from index 1
     # We compare current values with previous values directly
     for i in range(1, len(a_aligned)):
@@ -153,13 +149,13 @@ def crossup(
         b_curr = b_aligned.values[i]
         a_prev = a_aligned.values[i - 1]
         b_prev = b_aligned.values[i - 1]
-        
+
         # Cross above: current a > b AND previous a <= b
         crossed = (a_curr > b_curr) and (a_prev <= b_prev)
-        
+
         result_values.append(crossed)
         result_timestamps.append(a_aligned.timestamps[i])
-    
+
     return Series[bool](
         timestamps=tuple(result_timestamps),
         values=tuple(result_values),
@@ -176,43 +172,39 @@ def crossdown(
 ) -> Series[bool]:
     """
     Detect when series a crosses below series b.
-    
+
     Logic: (a < b) and (shift(a, 1) >= shift(b, 1))
-    
+
     Args:
         ctx: Series context (used if a/b not provided)
         a: First series (defaults to ctx.price or ctx.close)
         b: Second series or scalar value (defaults to ctx.price or ctx.close if a not provided)
-    
+
     Returns:
         Boolean series where True indicates a cross below event
-    
+
     Examples:
         # Death cross: SMA(20) crosses below SMA(50)
         crossdown(sma(20), sma(50))
-        
+
         # Price crosses below support
         crossdown(close, sma(200))
-        
+
         # RSI crosses below 30 (oversold)
         crossdown(rsi(14), 30)
     """
     # Extract series (same as crossup)
     a_series = _extract_series(a, ctx)
     b_series = _extract_series(b, ctx, reference_series=a_series)
-    
+
     if len(a_series) == 0 or len(b_series) == 0:
-        return Series[bool](
-            timestamps=(), values=(), symbol=a_series.symbol, timeframe=a_series.timeframe
-        )
-    
+        return Series[bool](timestamps=(), values=(), symbol=a_series.symbol, timeframe=a_series.timeframe)
+
     try:
         a_aligned, b_aligned = align_series(a_series, b_series, how="inner")
     except ValueError:
-        return Series[bool](
-            timestamps=(), values=(), symbol=a_series.symbol, timeframe=a_series.timeframe
-        )
-    
+        return Series[bool](timestamps=(), values=(), symbol=a_series.symbol, timeframe=a_series.timeframe)
+
     if len(a_aligned) < 2:
         return Series[bool](
             timestamps=a_aligned.timestamps,
@@ -220,7 +212,7 @@ def crossdown(
             symbol=a_aligned.symbol,
             timeframe=a_aligned.timeframe,
         )
-    
+
     if len(a_aligned) < 2:
         return Series[bool](
             timestamps=a_aligned.timestamps,
@@ -228,22 +220,22 @@ def crossdown(
             symbol=a_aligned.symbol,
             timeframe=a_aligned.timeframe,
         )
-    
+
     result_values: list[bool] = [False]
     result_timestamps: list = [a_aligned.timestamps[0]]
-    
+
     for i in range(1, len(a_aligned)):
         a_curr = a_aligned.values[i]
         b_curr = b_aligned.values[i]
         a_prev = a_aligned.values[i - 1]
         b_prev = b_aligned.values[i - 1]
-        
+
         # Cross below: current a < b AND previous a >= b
         crossed = (a_curr < b_curr) and (a_prev >= b_prev)
-        
+
         result_values.append(crossed)
         result_timestamps.append(a_aligned.timestamps[i])
-    
+
     return Series[bool](
         timestamps=tuple(result_timestamps),
         values=tuple(result_values),
@@ -260,17 +252,17 @@ def cross(
 ) -> Series[bool]:
     """
     Detect when series a crosses series b in either direction.
-    
+
     Logic: crossup(a, b) or crossdown(a, b)
-    
+
     Args:
         ctx: Series context (used if a/b not provided)
         a: First series (defaults to ctx.price or ctx.close)
         b: Second series or scalar value (defaults to ctx.price or ctx.close if a not provided)
-    
+
     Returns:
         Boolean series where True indicates any crossing event
-    
+
     Examples:
         # Any crossing between two SMAs
         cross(sma(20), sma(50))
@@ -278,26 +270,23 @@ def cross(
     # Get crossup and crossdown events
     up_events = crossup(ctx, a, b)
     down_events = crossdown(ctx, a, b)
-    
+
     # Combine: True if either crossup or crossdown is True
     if len(up_events) == 0:
         return down_events
     if len(down_events) == 0:
         return up_events
-    
+
     # Align and combine boolean series
     try:
         up_aligned, down_aligned = align_series(up_events, down_events, how="inner")
     except ValueError:
         # No common timestamps - return the non-empty one or empty
         return up_events if len(up_events) > 0 else down_events
-    
+
     # Combine: True if either is True
-    combined_values = tuple(
-        up_aligned.values[i] or down_aligned.values[i]
-        for i in range(len(up_aligned))
-    )
-    
+    combined_values = tuple(up_aligned.values[i] or down_aligned.values[i] for i in range(len(up_aligned)))
+
     return Series[bool](
         timestamps=up_aligned.timestamps,
         values=combined_values,

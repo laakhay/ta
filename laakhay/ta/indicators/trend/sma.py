@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
+from ...primitives import _select_field
 from .. import Price, Series, SeriesContext, register, rolling_mean
-from ...primitives import _select, _select_field
 
 
 @register("sma", description="Simple Moving Average over a price series")

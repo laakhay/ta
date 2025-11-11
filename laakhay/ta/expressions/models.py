@@ -165,6 +165,7 @@ def _align_series(
         if len(aligned_left) != len(aligned_right):
             # Log for debugging - this shouldn't happen
             import logging
+
             logger = logging.getLogger(__name__)
             logger.warning(
                 f"align_series returned different lengths: left={len(aligned_left)}, right={len(aligned_right)}, "
@@ -493,7 +494,7 @@ class BinaryOp(ExpressionNode):
             def _truthy(value: Any) -> bool:
                 if isinstance(value, bool):
                     return value
-                if isinstance(value, (int, float, Decimal)):
+                if isinstance(value, int | float | Decimal):
                     return bool(Decimal(str(value)))
                 try:
                     return bool(Decimal(str(value)))
@@ -501,9 +502,7 @@ class BinaryOp(ExpressionNode):
                     return bool(value)
 
             values = tuple(
-                _truthy(lv) and _truthy(rv)
-                if op_type == OperatorType.AND
-                else _truthy(lv) or _truthy(rv)
+                _truthy(lv) and _truthy(rv) if op_type == OperatorType.AND else _truthy(lv) or _truthy(rv)
                 for lv, rv in zip(left_aligned.values, right_aligned.values, strict=False)
             )
             return Series[bool](

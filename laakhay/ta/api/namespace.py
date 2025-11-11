@@ -9,10 +9,10 @@ from ..core import Dataset, Series
 from ..core.types import Price
 from ..expressions import Expression, as_expression
 from ..expressions.models import Literal
+from ..primitives import _select_field  # Import the function that handles derived fields
 from ..registry import register
 from ..registry.models import SeriesContext
 from ..registry.registry import get_global_registry
-from ..primitives import _select_field  # Import the function that handles derived fields
 from .handle import IndicatorHandle
 
 _TIMEFRAME_MULTIPLIERS: dict[str, int] = {

@@ -19,11 +19,11 @@ from .. import (
 def _wilder_smoothing(src: Series[Price], period: int) -> Series[Price]:
     """
     Apply Wilder's Smoothing (Modified Moving Average) to a series.
-    
+
     Wilder's Smoothing formula:
     - First value: Simple Moving Average of first 'period' values
     - Subsequent values: (Previous Average × (Period - 1) + Current Value) / Period
-    
+
     This is equivalent to EMA with alpha = 1/period, which gives smoother
     results than standard EMA for RSI calculations.
     """
@@ -43,15 +43,15 @@ def _wilder_smoothing(src: Series[Price], period: int) -> Series[Price]:
             symbol=src.symbol,
             timeframe=src.timeframe,
         )
-    
+
     # Convert values to Decimal
     xs = [Decimal(str(v)) for v in src.values]
     out: list[Decimal] = []
-    
+
     # First value: Simple Moving Average of first 'period' values
     first_avg = sum(xs[:period]) / Decimal(period)
     out.append(first_avg)
-    
+
     # Subsequent values: Wilder's Smoothing
     # avg = (prev_avg * (period - 1) + current) / period
     for i in range(period, len(xs)):
@@ -59,10 +59,10 @@ def _wilder_smoothing(src: Series[Price], period: int) -> Series[Price]:
         current = xs[i]
         new_avg = (prev_avg * Decimal(period - 1) + current) / Decimal(period)
         out.append(new_avg)
-    
+
     # Build result series with timestamps starting from period-1 (first valid RSI point)
     return CoreSeries[Price](
-        timestamps=src.timestamps[period - 1:],
+        timestamps=src.timestamps[period - 1 :],
         values=tuple(Price(v) for v in out),
         symbol=src.symbol,
         timeframe=src.timeframe,
@@ -77,7 +77,7 @@ def rsi(ctx: SeriesContext, period: int = 14) -> Series[Price]:
 
     RSI = 100 - (100 / (1 + RS))
     RS = Average Gain / Average Loss
-    
+
     Uses Wilder's Smoothing (Modified Moving Average) for average gains and losses,
     which provides smoother, more accurate RSI values compared to simple moving average.
     """
@@ -92,7 +92,7 @@ def rsi(ctx: SeriesContext, period: int = 14) -> Series[Price]:
             symbol=close_series.symbol,
             timeframe=close_series.timeframe,
         )
-    
+
     # Calculate price changes and separate gains/losses
     price_changes = diff(ctx)
     gains = positive_values(SeriesContext(close=price_changes))
@@ -106,9 +106,11 @@ def rsi(ctx: SeriesContext, period: int = 14) -> Series[Price]:
         values=losses_values,
         symbol=losses_raw.symbol,
         timeframe=losses_raw.timeframe,
-        availability_mask=losses_raw.availability_mask if hasattr(losses_raw, 'availability_mask') else tuple(True for _ in losses_values),
+        availability_mask=losses_raw.availability_mask
+        if hasattr(losses_raw, "availability_mask")
+        else tuple(True for _ in losses_values),
     )
-    
+
     # Apply Wilder's Smoothing to gains and losses
     # Note: gains and losses are already shifted by 1 (from diff), so we need period+1
     # total values to get period smoothed values
@@ -119,17 +121,17 @@ def rsi(ctx: SeriesContext, period: int = 14) -> Series[Price]:
             symbol=close_series.symbol,
             timeframe=close_series.timeframe,
         )
-    
+
     avg_gains = _wilder_smoothing(gains, period)
     avg_losses = _wilder_smoothing(losses, period)
-    
+
     # Align timestamps (they should already be aligned, but ensure they match)
     if len(avg_gains) != len(avg_losses) or avg_gains.timestamps != avg_losses.timestamps:
         # Find common timestamps
         gain_ts_set = set(avg_gains.timestamps)
         loss_ts_set = set(avg_losses.timestamps)
         common_ts = sorted(gain_ts_set & loss_ts_set)
-        
+
         if not common_ts:
             return close_series.__class__(
                 timestamps=(),
@@ -137,14 +139,14 @@ def rsi(ctx: SeriesContext, period: int = 14) -> Series[Price]:
                 symbol=close_series.symbol,
                 timeframe=close_series.timeframe,
             )
-        
+
         # Build aligned series
-        gain_map = {ts: val for ts, val in zip(avg_gains.timestamps, avg_gains.values)}
-        loss_map = {ts: val for ts, val in zip(avg_losses.timestamps, avg_losses.values)}
-        
+        gain_map = {ts: val for ts, val in zip(avg_gains.timestamps, avg_gains.values, strict=False)}
+        loss_map = {ts: val for ts, val in zip(avg_losses.timestamps, avg_losses.values, strict=False)}
+
         aligned_gains = [gain_map[ts] for ts in common_ts]
         aligned_losses = [loss_map[ts] for ts in common_ts]
-        
+
         avg_gains = CoreSeries[Price](
             timestamps=tuple(common_ts),
             values=tuple(aligned_gains),
@@ -159,27 +161,27 @@ def rsi(ctx: SeriesContext, period: int = 14) -> Series[Price]:
             timeframe=avg_losses.timeframe,
             availability_mask=tuple(True for _ in common_ts),
         )
-    
+
     # Calculate RSI: 100 - (100 / (1 + RS))
     # RS = avg_gains / avg_losses (with epsilon to avoid division by zero)
     rsi_values: list[Price] = []
     epsilon = Decimal("1e-10")
-    
+
     for gain, loss in zip(avg_gains.values, avg_losses.values, strict=False):
         gain_dec = Decimal(str(gain))
         loss_dec = Decimal(str(loss))
-        
+
         # Avoid division by zero
         if loss_dec == 0:
             rs = gain_dec / epsilon
         else:
             rs = gain_dec / (loss_dec + epsilon)
-        
+
         rsi_val = 100 - (100 / (1 + rs))
         # Clamp RSI to [0, 100] range
         rsi_val = max(Decimal(0), min(Decimal(100), rsi_val))
         rsi_values.append(Price(rsi_val))
-    
+
     return CoreSeries[Price](
         timestamps=avg_gains.timestamps,
         values=tuple(rsi_values),

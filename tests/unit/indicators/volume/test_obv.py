@@ -98,13 +98,9 @@ class TestOBVIndicator:
 
     def test_obv_empty_series(self):
         """Test OBV with empty input series."""
-        close_series = Series[Price](
-            timestamps=(), values=(), symbol="BTCUSDT", timeframe="1h"
-        )
+        close_series = Series[Price](timestamps=(), values=(), symbol="BTCUSDT", timeframe="1h")
 
-        volume_series = Series[Qty](
-            timestamps=(), values=(), symbol="BTCUSDT", timeframe="1h"
-        )
+        volume_series = Series[Qty](timestamps=(), values=(), symbol="BTCUSDT", timeframe="1h")
 
         ctx = SeriesContext(close=close_series, volume=volume_series)
         result = obv(ctx)
@@ -128,9 +124,7 @@ class TestOBVIndicator:
 
         # Test missing volume
         ctx = SeriesContext(close=close_series)
-        with pytest.raises(
-            ValueError, match="OBV requires both 'close' and 'volume' series"
-        ):
+        with pytest.raises(ValueError, match="OBV requires both 'close' and 'volume' series"):
             obv(ctx)
 
         # Test missing close
@@ -142,9 +136,7 @@ class TestOBVIndicator:
         )
 
         ctx = SeriesContext(volume=volume_series)
-        with pytest.raises(
-            ValueError, match="OBV requires both 'close' and 'volume' series"
-        ):
+        with pytest.raises(ValueError, match="OBV requires both 'close' and 'volume' series"):
             obv(ctx)
 
     def test_obv_different_lengths(self):
@@ -171,9 +163,7 @@ class TestOBVIndicator:
         )
 
         ctx = SeriesContext(close=close_series, volume=volume_series)
-        with pytest.raises(
-            ValueError, match="Close and volume series must have the same length"
-        ):
+        with pytest.raises(ValueError, match="Close and volume series must have the same length"):
             obv(ctx)
 
     def test_obv_metadata_inheritance(self):

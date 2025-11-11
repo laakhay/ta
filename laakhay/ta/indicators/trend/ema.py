@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from ...core import Series
-from ...primitives import rolling_ema, _select_field  # type: ignore
+from ...primitives import _select_field, rolling_ema  # type: ignore
 from .. import Price, SeriesContext, register
 
 

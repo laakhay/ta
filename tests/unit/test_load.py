@@ -53,9 +53,7 @@ class TestLoadCSV:
 
         try:
             # Load Series data
-            series = from_csv(
-                temp_path, symbol="BTCUSDT", timeframe="1h", value_col="price"
-            )
+            series = from_csv(temp_path, symbol="BTCUSDT", timeframe="1h", value_col="price")
 
             assert isinstance(series, Series)
             assert len(series) == 3
@@ -127,9 +125,7 @@ class TestLoadCSV:
             temp_path = f.name
 
         try:
-            with pytest.raises(
-                ValueError, match="Timestamp column 'timestamp' not found in CSV"
-            ):
+            with pytest.raises(ValueError, match="Timestamp column 'timestamp' not found in CSV"):
                 from_csv(temp_path, symbol="BTCUSDT", timeframe="1h")
         finally:
             Path(temp_path).unlink()
@@ -144,9 +140,7 @@ class TestLoadCSV:
             temp_path = f.name
 
         try:
-            with pytest.raises(
-                ValueError, match="Value column 'value' not found in CSV"
-            ):
+            with pytest.raises(ValueError, match="Value column 'value' not found in CSV"):
                 from_csv(temp_path, symbol="BTCUSDT", timeframe="1h")
         finally:
             Path(temp_path).unlink()
@@ -161,9 +155,7 @@ class TestLoadCSV:
             temp_path = f.name
 
         try:
-            with pytest.raises(
-                ValueError, match="Error parsing row 2.*Invalid numeric data"
-            ):
+            with pytest.raises(ValueError, match="Error parsing row 2.*Invalid numeric data"):
                 from_csv(temp_path, symbol="BTCUSDT", timeframe="1h")
         finally:
             Path(temp_path).unlink()

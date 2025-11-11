@@ -35,19 +35,6 @@ from ..primitives import (
 )
 from ..registry.models import SeriesContext
 from ..registry.registry import register
-from .momentum.rsi import rsi
-from .momentum.stochastic import stochastic
-from .pattern.fib import fib_retracement
-from .pattern.swing import swing_highs, swing_lows, swing_points
-from .trend.bbands import bbands
-from .trend.ema import ema
-from .trend.macd import macd
-
-# Import all indicators
-from .trend.sma import sma
-from .volatility.atr import atr
-from .volume.obv import obv
-from .volume.vwap import vwap
 
 # Import event patterns
 from .events import (
@@ -63,6 +50,19 @@ from .events import (
     rising,
     rising_pct,
 )
+from .momentum.rsi import rsi
+from .momentum.stochastic import stochastic
+from .pattern.fib import fib_retracement
+from .pattern.swing import swing_highs, swing_lows, swing_points
+from .trend.bbands import bbands
+from .trend.ema import ema
+from .trend.macd import macd
+
+# Import all indicators
+from .trend.sma import sma
+from .volatility.atr import atr
+from .volume.obv import obv
+from .volume.vwap import vwap
 
 __all__ = [
     # Core types

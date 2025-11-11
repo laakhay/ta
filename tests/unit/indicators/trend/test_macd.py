@@ -27,9 +27,7 @@ class TestMACDIndicator:
         )
 
         ctx = SeriesContext(close=close_series)
-        macd_line, signal_line, histogram = macd(
-            ctx, fast_period=12, slow_period=26, signal_period=9
-        )
+        macd_line, signal_line, histogram = macd(ctx, fast_period=12, slow_period=26, signal_period=9)
 
         # All should have same length as input
         assert macd_line.symbol == "BTCUSDT"
@@ -45,9 +43,7 @@ class TestMACDIndicator:
 
     def test_macd_empty_series(self):
         """Test MACD with empty input series."""
-        close_series = Series[Price](
-            timestamps=(), values=(), symbol="BTCUSDT", timeframe="1h"
-        )
+        close_series = Series[Price](timestamps=(), values=(), symbol="BTCUSDT", timeframe="1h")
 
         ctx = SeriesContext(close=close_series)
         macd_line, signal_line, histogram = macd(ctx)
@@ -82,9 +78,7 @@ class TestMACDIndicator:
         with pytest.raises(ValueError, match="MACD periods must be positive"):
             macd(ctx, fast_period=12, slow_period=26, signal_period=0)
 
-        with pytest.raises(
-            ValueError, match="Fast period must be less than slow period"
-        ):
+        with pytest.raises(ValueError, match="Fast period must be less than slow period"):
             macd(ctx, fast_period=26, slow_period=12, signal_period=9)
 
     def test_macd_default_parameters(self):
@@ -119,15 +113,11 @@ class TestMACDIndicator:
         )
 
         ctx = SeriesContext(close=close_series)
-        macd_line, signal_line, histogram = macd(
-            ctx, fast_period=12, slow_period=26, signal_period=9
-        )
+        macd_line, signal_line, histogram = macd(ctx, fast_period=12, slow_period=26, signal_period=9)
 
         # Verify histogram calculation
         for i in range(len(histogram.timestamps)):
-            expected_hist = Decimal(str(macd_line.values[i])) - Decimal(
-                str(signal_line.values[i])
-            )
+            expected_hist = Decimal(str(macd_line.values[i])) - Decimal(str(signal_line.values[i]))
             assert abs(float(histogram.values[i]) - float(expected_hist)) < 0.01
 
     def test_macd_metadata_inheritance(self):
@@ -165,9 +155,7 @@ class TestMACDIndicator:
         )
 
         ctx = SeriesContext(close=close_series)
-        macd_line, signal_line, histogram = macd(
-            ctx, fast_period=12, slow_period=26, signal_period=9
-        )
+        macd_line, signal_line, histogram = macd(ctx, fast_period=12, slow_period=26, signal_period=9)
 
         # Should still return series of same length
         assert len(macd_line.timestamps) == 20

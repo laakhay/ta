@@ -11,9 +11,7 @@ from laakhay.ta.core.types import Price
 
 
 def _make_series(values, step: timedelta, label: str):
-    timestamps = tuple(
-        datetime(2024, 1, 1, tzinfo=UTC) + i * step for i in range(len(values))
-    )
+    timestamps = tuple(datetime(2024, 1, 1, tzinfo=UTC) + i * step for i in range(len(values)))
     return Series[Price](
         timestamps=timestamps,
         values=tuple(Decimal(str(v)) for v in values),
@@ -26,9 +24,7 @@ def test_ref_basic_extraction():
     dataset = Dataset()
 
     close_4h = _make_series([100, 110, 105], timedelta(hours=4), "4h")
-    close_1h = _make_series(
-        [100, 102, 104, 106, 108, 110, 109, 108, 107], timedelta(hours=1), "1h"
-    )
+    close_1h = _make_series([100, 102, 104, 106, 108, 110, 109, 108, 107], timedelta(hours=1), "1h")
 
     dataset.add_series("BTCUSDT", "4h", close_4h, "close")
     dataset.add_series("BTCUSDT", "1h", close_1h, "close")
