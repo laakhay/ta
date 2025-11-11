@@ -1,6 +1,7 @@
 # Virtual environment
 .venv/
 **/__pycache__/
+**/.DS_Store
 
 # Build artefacts
 dist/
