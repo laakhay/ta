@@ -34,6 +34,8 @@ check: lint format-check ## Run all checks (lint + format check)
 
 fix: lint-fix format ## Auto-fix all fixable issues (lint + format)
 
+ci: lint format-check test ## Run CI checks (lint + format + test)
+
 build: ## Build the package
 	$(UV) build
 
