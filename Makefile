@@ -9,8 +9,8 @@ install-dev: ## Install dependencies (dev mode)
 	$(UV) sync --extra dev
 	$(UV) pip install -e .
 
-test: ## Run tests
-	$(UV) run pytest tests/ -v
+test: ## Run tests (without coverage)
+	@$(UV) run pytest tests/ -q
 
 test-cov: ## Run tests with coverage (HTML report)
 	$(UV) run pytest tests/unit/ --cov=laakhay.ta --cov-report=term-missing --cov-report=html -v

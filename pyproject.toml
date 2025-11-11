@@ -69,9 +69,6 @@ pythonpath = ["."]
 addopts = [
   "--strict-markers",
   "--tb=short",
-  "--cov=laakhay.ta",
-  "--cov-report=term-missing",
-  "--cov-report=html",
   "--import-mode=importlib"
 ]
 
