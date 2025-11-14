@@ -9,9 +9,45 @@ import pytest
 
 @pytest.fixture(autouse=True)
 def ensure_indicators_registered():
-    """Ensure indicators are registered before each test."""
-    # Force import of indicators to trigger registration
-    from laakhay.ta import indicators  # noqa: F401
+    """Ensure indicators are registered before each test.
+
+    This fixture runs before each test to ensure indicators are registered.
+    If the registry was cleared by a previous test, it will re-import the
+    indicators module to re-register them.
+    """
+    from laakhay.ta.registry.registry import get_global_registry
+
+    registry = get_global_registry()
+
+    # Check if common indicators are already registered
+    common_indicators = ["sma", "ema", "rsi", "select"]
+    has_common = any(name in registry._indicators for name in common_indicators)
+
+    if not has_common:
+        # Registry was likely cleared - need to re-register
+        import importlib
+        import sys
+
+        # Clear the indicators module and submodules from cache to force re-execution
+        module_name = "laakhay.ta.indicators"
+        modules_to_clear = [
+            key for key in list(sys.modules.keys()) if key == module_name or key.startswith(f"{module_name}.")
+        ]
+        for key in modules_to_clear:
+            del sys.modules[key]
+
+        # Re-import which will re-execute decorators and register indicators
+        importlib.import_module(module_name)
+
+        # Also ensure namespace helpers are registered
+        from laakhay.ta.api.namespace import ensure_namespace_registered
+
+        ensure_namespace_registered()
+    else:
+        # Indicators exist - just ensure namespace helpers are registered
+        from laakhay.ta.api.namespace import ensure_namespace_registered
+
+        ensure_namespace_registered()
 
     yield
 

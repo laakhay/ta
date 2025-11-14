@@ -21,14 +21,35 @@ def _ensure_indicators_loaded() -> None:
 
     This is idempotent - importing an already-imported module is safe.
     Python's import cache ensures the module is only executed once.
+
+    If the registry has been cleared (e.g., in tests), this will attempt to
+    re-register indicators by importing the module, which should trigger
+    the registration decorators again. However, since decorators only run
+    once per import, we need to explicitly call the registration functions.
     """
     import importlib
+    from ..registry.registry import get_global_registry
 
-    try:
-        importlib.import_module("laakhay.ta.indicators")
-    except Exception:
-        # If import fails, silently fail - will be caught later with better error message
-        pass
+    registry = get_global_registry()
+
+    # Check if registry is empty or missing common indicators
+    # If so, we need to re-register
+    common_indicators = ["sma", "ema", "rsi", "select"]
+    has_indicators = any(name in registry._indicators for name in common_indicators)
+
+    if not has_indicators:
+        # Registry might have been cleared - try to re-import indicators
+        # This will only work if modules haven't been imported yet
+        try:
+            importlib.import_module("laakhay.ta.indicators")
+            # Also ensure namespace helpers are registered
+            ensure_namespace_registered()
+        except Exception:
+            # If import fails, silently fail - will be caught later with better error message
+            pass
+    else:
+        # Registry has indicators, but ensure namespace helpers are registered
+        ensure_namespace_registered()
 
 
 _TIMEFRAME_MULTIPLIERS: dict[str, int] = {
