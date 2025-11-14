@@ -5,16 +5,9 @@ from typing import Any
 
 from ..core import Bar, Price, Qty, Rate, Series, Timestamp
 from ..core.dataset import dataset
-from ..engine import Engine
-from ..expressions import (
-    BinaryOp,
-    Expression,
-    ExpressionNode,
-    Literal,
-    UnaryOp,
-    as_expression,
-)
-from ..io.csv import from_csv, to_csv
+from ..data.csv import from_csv, to_csv
+
+# Expression types imported lazily to avoid circular imports
 from ..registry import (
     IndicatorSchema,
     OutputSchema,
@@ -199,6 +192,38 @@ def vwap(*args: Any, **kwargs: Any):
 # Trigger indicator registrations
 from .. import indicators  # noqa: F401,E402
 
+
+def __getattr__(name: str) -> Any:
+    """Lazy import for Engine and expression types to avoid circular imports."""
+    if name == "Engine":
+        from ..expr.runtime.engine import Engine
+
+        return Engine
+    elif name in ("Expression", "BinaryOp", "ExpressionNode", "Literal", "UnaryOp", "as_expression"):
+        from ..expr.algebra import (
+            BinaryOp,
+            Expression,
+            ExpressionNode,
+            Literal,
+            UnaryOp,
+            as_expression,
+        )
+
+        if name == "Expression":
+            return Expression
+        elif name == "BinaryOp":
+            return BinaryOp
+        elif name == "ExpressionNode":
+            return ExpressionNode
+        elif name == "Literal":
+            return Literal
+        elif name == "UnaryOp":
+            return UnaryOp
+        elif name == "as_expression":
+            return as_expression
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
+
 __all__ = [
     "Bar",
     "Price",
@@ -230,7 +255,7 @@ __all__ = [
     "UnaryOp",
     "Literal",
     "as_expression",
-    "Engine",
+    "Engine",  # Imported lazily
     "ta",
     "IndicatorHandle",
     "TASeries",

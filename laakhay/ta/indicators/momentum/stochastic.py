@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from ...core import Series
 from ...core.types import Price
-from ...expressions.models import Literal
-from ...expressions.operators import Expression
+from ...expr.algebra.models import Literal
+from ...expr.algebra.operators import Expression
 from ...primitives import rolling_max, rolling_mean, rolling_min
 from ...registry.models import SeriesContext
 from ...registry.registry import register
