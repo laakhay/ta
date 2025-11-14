@@ -28,6 +28,7 @@ def _ensure_indicators_loaded() -> None:
     once per import, we need to explicitly call the registration functions.
     """
     import importlib
+
     from ..registry.registry import get_global_registry
 
     registry = get_global_registry()
