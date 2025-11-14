@@ -7,15 +7,15 @@ from typing import Any
 
 from ..core import Dataset, Series
 from ..core.types import Price
-from ..expressions import Expression, as_expression
-from ..expressions.models import (
+from ..expr.algebra import Expression, as_expression
+from ..expr.algebra.models import (
     BinaryOp,
     ExpressionNode,
     Literal,
     OperatorType,
     UnaryOp,
 )
-from ..graph.types import SignalRequirements
+from ..expr.planner.types import SignalRequirements
 from ..registry.models import SeriesContext
 from ..registry.registry import get_global_registry
 

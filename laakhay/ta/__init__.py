@@ -4,7 +4,7 @@ from .api import *  # noqa: F401,F403
 from .api import __all__ as _api_all
 from .core.dataset import dataset as _dataset_builder
 
-_dataset_module = importlib.import_module(".dataset", __name__)
+_dataset_module = importlib.import_module(".data.dataset", __name__)
 
 
 class _DatasetAccessor:

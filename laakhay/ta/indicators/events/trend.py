@@ -8,7 +8,7 @@ from ...api.handle import IndicatorNode as TAIndicatorNode
 from ...core import Series
 from ...core.series import align_series
 from ...core.types import Price
-from ...expressions.operators import Expression
+from ...expr.algebra.operators import Expression
 from ...primitives import _select
 from ...registry.models import SeriesContext
 from ...registry.registry import register

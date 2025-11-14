@@ -8,7 +8,7 @@ import pytest
 from laakhay.ta import Bar, Engine, dataset, indicator
 from laakhay.ta.core import OHLCV, Series
 from laakhay.ta.core.types import Price
-from laakhay.ta.expressions import BinaryOp, Literal, OperatorType
+from laakhay.ta.expr.algebra import BinaryOp, Literal, OperatorType
 
 
 class TestEndToEnd:

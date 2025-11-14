@@ -106,7 +106,7 @@ class TestIndicatorsFunctional:
         sma_2 = indicator("sma", period=2)
 
         # Test that indicator handle can be used as expression
-        from laakhay.ta.expressions import BinaryOp, Literal, OperatorType
+        from laakhay.ta.expr.algebra import BinaryOp, Literal, OperatorType
 
         # Create expression: sma + 10
         literal_10 = Literal(10)

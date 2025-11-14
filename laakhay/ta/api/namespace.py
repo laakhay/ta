@@ -7,8 +7,8 @@ from typing import Any, Tuple
 
 from ..core import Dataset, Series
 from ..core.types import Price
-from ..expressions import Expression, as_expression
-from ..expressions.models import Literal
+from ..expr.algebra import Expression, as_expression
+from ..expr.algebra.models import Literal
 from ..primitives import _select_field  # Import the function that handles derived fields
 from ..registry import register
 from ..registry.models import SeriesContext
