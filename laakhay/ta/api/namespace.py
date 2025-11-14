@@ -15,6 +15,22 @@ from ..registry.models import SeriesContext
 from ..registry.registry import get_global_registry
 from .handle import IndicatorHandle
 
+
+def _ensure_indicators_loaded() -> None:
+    """Ensure indicators module is imported, registering all indicators.
+
+    This is idempotent - importing an already-imported module is safe.
+    Python's import cache ensures the module is only executed once.
+    """
+    import importlib
+
+    try:
+        importlib.import_module("laakhay.ta.indicators")
+    except Exception:
+        # If import fails, silently fail - will be caught later with better error message
+        pass
+
+
 _TIMEFRAME_MULTIPLIERS: dict[str, int] = {
     "m": 1,
     "h": 60,
@@ -188,21 +204,12 @@ class TANamespace:
             from ..registry.registry import register as _register  # avoid cycle
 
             return _register
+
+        # Ensure indicators are loaded
+        _ensure_indicators_loaded()
+
         registry = get_global_registry()
         handle = registry.get(name) if hasattr(registry, "get") else None
-
-        if handle is None:
-            import importlib
-            import sys
-
-            try:
-                importlib.import_module("laakhay.ta.indicators")
-            except Exception:
-                pass
-            for module_name in list(sys.modules.keys()):
-                if module_name.startswith("laakhay.ta.indicators.") and module_name != "laakhay.ta.indicators.__init__":
-                    importlib.reload(sys.modules[module_name])
-            handle = registry.get(name) if hasattr(registry, "get") else None
 
         if handle is not None:
 
@@ -211,7 +218,19 @@ class TANamespace:
 
             return factory
 
-        raise AttributeError(f"Indicator '{name}' not found")
+        # Provide better error message with available indicators
+        available = sorted(registry.list_all_names()) if hasattr(registry, "list_all_names") else []
+        msg = f"Indicator '{name}' not found"
+        if available:
+            # Find similar names
+            similar = [n for n in available if name.lower() in n.lower() or n.lower() in name.lower()][:3]
+            if similar:
+                msg += f". Did you mean: {', '.join(similar)}?"
+            else:
+                msg += f". Available indicators: {', '.join(available[:10])}"
+                if len(available) > 10:
+                    msg += f", ... ({len(available) - 10} more)"
+        raise AttributeError(msg)
 
 
 class TASeries:
@@ -224,13 +243,8 @@ class TASeries:
         self._registry = get_global_registry()
 
     def __getattr__(self, name: str) -> Any:
-        if name not in self._registry._indicators:
-            import importlib
-            import sys
-
-            for module_name in list(sys.modules.keys()):
-                if module_name.startswith("laakhay.ta.indicators.") and module_name != "laakhay.ta.indicators.__init__":
-                    importlib.reload(sys.modules[module_name])
+        # Ensure indicators are loaded
+        _ensure_indicators_loaded()
 
         if name in self._registry._indicators:
             indicator_func = self._registry._indicators[name]
@@ -241,7 +255,18 @@ class TASeries:
 
             return indicator_wrapper
 
-        raise AttributeError(f"Indicator '{name}' not found")
+        # Provide better error message with available indicators
+        available = sorted(self._registry.list_all_names()) if hasattr(self._registry, "list_all_names") else []
+        msg = f"Indicator '{name}' not found"
+        if available:
+            similar = [n for n in available if name.lower() in n.lower() or n.lower() in name.lower()][:3]
+            if similar:
+                msg += f". Did you mean: {', '.join(similar)}?"
+            else:
+                msg += f". Available indicators: {', '.join(available[:10])}"
+                if len(available) > 10:
+                    msg += f", ... ({len(available) - 10} more)"
+        raise AttributeError(msg)
 
     # Arithmetic/logical proxy methods
     def __add__(self, other: Any) -> Expression:

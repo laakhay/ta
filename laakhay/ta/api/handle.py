@@ -57,25 +57,33 @@ class IndicatorHandle:
         self._registry = get_global_registry()
 
         if name not in self._registry._indicators:
+            # Ensure indicators are loaded
             import importlib
-            import sys
 
-            for module_name in list(sys.modules.keys()):
-                if module_name.startswith("laakhay.ta.indicators.") and module_name != "laakhay.ta.indicators.__init__":
-                    importlib.reload(sys.modules[module_name])
+            try:
+                importlib.import_module("laakhay.ta.indicators")
+            except Exception:
+                pass
 
-            # Ensure namespace helpers (e.g., select/source) are registered even if the
-            # registry was cleared mid-test. This avoids reloading the module, which
-            # would create new class objects and break isinstance checks.
-            namespace_module = sys.modules.get("laakhay.ta.api.namespace")
-            if namespace_module is None:
-                namespace_module = importlib.import_module("laakhay.ta.api.namespace")
+            # Ensure namespace helpers (e.g., select/source) are registered
+            namespace_module = importlib.import_module("laakhay.ta.api.namespace")
             ensure_func = getattr(namespace_module, "ensure_namespace_registered", None)
             if callable(ensure_func):
                 ensure_func()
 
             if name not in self._registry._indicators:
-                raise ValueError(f"Indicator '{name}' not found in registry")
+                # Provide better error message with available indicators
+                available = sorted(self._registry.list_all_names()) if hasattr(self._registry, "list_all_names") else []
+                msg = f"Indicator '{name}' not found in registry"
+                if available:
+                    similar = [n for n in available if name.lower() in n.lower() or n.lower() in name.lower()][:3]
+                    if similar:
+                        msg += f". Did you mean: {', '.join(similar)}?"
+                    else:
+                        msg += f". Available indicators: {', '.join(available[:10])}"
+                        if len(available) > 10:
+                            msg += f", ... ({len(available) - 10} more)"
+                raise ValueError(msg)
 
         self._registry_handle = self._registry._indicators[name]
         self._schema = self._get_schema()
