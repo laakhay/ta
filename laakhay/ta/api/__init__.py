@@ -3,7 +3,8 @@ from __future__ import annotations
 from collections.abc import Iterable
 from typing import Any
 
-from ..core import Bar, Price, Qty, Rate, Series, Timestamp, dataset
+from ..core import Bar, Price, Qty, Rate, Series, Timestamp
+from ..core.dataset import dataset
 from ..engine import Engine
 from ..expressions import (
     BinaryOp,

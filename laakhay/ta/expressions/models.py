@@ -124,42 +124,50 @@ def _broadcast_scalar_series(scalar: Series[Any], reference: Series[Any]) -> Ser
 
 
 def _align_series(
-    left: Series[Any],
-    right: Series[Any],
+    left: Series[Any] | Any,
+    right: Series[Any] | Any,
     *,
     operator: OperatorType,
 ) -> tuple[Series[Any], Series[Any]]:
-    orig_left, orig_right = left, right
-    left_scalar = _is_scalar_series(orig_left)
-    right_scalar = _is_scalar_series(orig_right)
+    if not isinstance(left, Series):
+        left_series = _make_scalar_series(left)
+        orig_left = None
+    else:
+        left_series = left
+        orig_left = left
+
+    if not isinstance(right, Series):
+        right_series = _make_scalar_series(right)
+        orig_right = None
+    else:
+        right_series = right
+        orig_right = right
+
+    left_scalar = _is_scalar_series(left_series)
+    right_scalar = _is_scalar_series(right_series)
     # Broadcast scalars to match series meta (shape, symbol, timeframe)
-    if _is_scalar_series(left) and not _is_scalar_series(right):
-        left = _broadcast_scalar_series(left, right)
-    elif _is_scalar_series(right) and not _is_scalar_series(left):
-        right = _broadcast_scalar_series(right, left)
+    if left_scalar and not right_scalar:
+        left_series = _broadcast_scalar_series(left_series, right_series)
+    elif right_scalar and not left_scalar:
+        right_series = _broadcast_scalar_series(right_series, left_series)
     # Ensure symbols/timeframes now match
-    if left.symbol != right.symbol or left.timeframe != right.timeframe:
+    if left_series.symbol != right_series.symbol or left_series.timeframe != right_series.timeframe:
         raise ValueError("mismatched metadata")
-    # Check original lengths before alignment (for non-scalar series)
-    if not left_scalar and not right_scalar and len(orig_left) != len(orig_right):
-        raise ValueError(f"Cannot perform {operator.value} on series of different lengths")
+    # Note: We allow series of different lengths - they will be aligned by timestamp
+    # The align_series function handles this by matching timestamps
     how = "inner"
     fill = "none"
     try:
         aligned_left, aligned_right = align_series(
-            left,
-            right,
+            left_series,
+            right_series,
             how=how,
             fill=fill,
             left_fill_value=None,
             right_fill_value=None,
-            symbol=left.symbol,
-            timeframe=left.timeframe,
+            symbol=left_series.symbol,
+            timeframe=left_series.timeframe,
         )
-        # Check if alignment resulted in fewer points than original (misaligned timestamps)
-        if not left_scalar and not right_scalar:
-            if len(aligned_left) < len(orig_left) or len(aligned_right) < len(orig_right):
-                raise ValueError(f"Cannot perform {operator.value} on series of different lengths")
         # align_series should always return series of the same length with how="inner"
         # If lengths don't match, it's a bug or the series have incompatible timestamps
         if len(aligned_left) != len(aligned_right):
@@ -197,9 +205,9 @@ def _align_series(
             raise ValueError("timestamp alignment")
         raise
     # Preserve identity if unchanged
-    if aligned_left == orig_left:
+    if orig_left is not None and aligned_left == orig_left:
         aligned_left = orig_left
-    if aligned_right == orig_right:
+    if orig_right is not None and aligned_right == orig_right:
         aligned_right = orig_right
     return aligned_left, aligned_right
 
@@ -211,6 +219,12 @@ def _comparison_series(
     operator: OperatorType,
     compare: Callable[[Any, Any], bool],
 ) -> Series[bool]:
+    # Ensure both operands are Series objects (convert scalars if needed)
+    if not isinstance(left, Series):
+        left = _make_scalar_series(left)
+    if not isinstance(right, Series):
+        right = _make_scalar_series(right)
+
     left_aligned, right_aligned = _align_series(left, right, operator=operator)
     result_values = tuple(
         bool(compare(lv, rv)) for lv, rv in zip(left_aligned.values, right_aligned.values, strict=False)
@@ -355,6 +369,13 @@ class BinaryOp(ExpressionNode):
         op_type = _resolve_operator(self.operator)
         left_result = self.left.evaluate(context)
         right_result = self.right.evaluate(context)
+
+        # Ensure both operands are Series objects (convert scalars if needed)
+        if not isinstance(left_result, Series):
+            left_result = _make_scalar_series(left_result)
+        if not isinstance(right_result, Series):
+            right_result = _make_scalar_series(right_result)
+
         result = None
         if op_type in {
             OperatorType.ADD,
@@ -453,15 +474,28 @@ class BinaryOp(ExpressionNode):
         op_type = _resolve_operator(self.operator)
 
         def _ensure_alignment() -> tuple[Series[Any], Series[Any]]:
+            # Handle case where one operand might be a scalar (Decimal, int, float) instead of a Series
+            # This can happen when the library receives raw numeric values during evaluation
+            # Convert scalars to Series objects before alignment
+            if not isinstance(left, Series):
+                left_series = _make_scalar_series(left)
+            else:
+                left_series = left
+
+            if not isinstance(right, Series):
+                right_series = _make_scalar_series(right)
+            else:
+                right_series = right
+
             aligned_meta = (
-                left.symbol == right.symbol
-                and left.timeframe == right.timeframe
-                and left.timestamps == right.timestamps
-                and len(left.values) == len(right.values)
+                left_series.symbol == right_series.symbol
+                and left_series.timeframe == right_series.timeframe
+                and left_series.timestamps == right_series.timestamps
+                and len(left_series.values) == len(right_series.values)
             )
             if aligned_meta:
-                return left, right
-            return _align_series(left, right, operator=op_type)
+                return left_series, right_series
+            return _align_series(left_series, right_series, operator=op_type)
 
         left_aligned, right_aligned = _ensure_alignment()
 

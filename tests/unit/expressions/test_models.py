@@ -182,9 +182,13 @@ class TestBinaryOp:
             symbol="TEST",
             tf="1s",
         )
+        # Series with different lengths but overlapping timestamps should align
+        # The intersection is timestamp 0:0:0, so result should have 1 value
         op = BinaryOp(OperatorType.ADD, Literal(s2), Literal(s3))
-        with pytest.raises(ValueError, match=r"Cannot perform \+ on series of different lengths"):
-            op.evaluate({})
+        result = op.evaluate({})
+        assert isinstance(result, Series)
+        assert len(result) == 1  # Intersection of timestamps
+        assert result.values[0] == Price(150.0)  # 100.0 + 50.0
 
     def test_unsupported_operator_raises(self):
         # AND is supported: truthy AND truthy -> True
@@ -359,6 +363,22 @@ class TestExpressionMetadataInheritance:
         with pytest.raises(ValueError, match="mismatched metadata"):
             _align_series(literal_series, series, operator=OperatorType.ADD)
 
+    def test_align_accepts_plain_scalars(self):
+        series = mk_series(
+            [100.0, 200.0],
+            stamps=(
+                datetime(2024, 1, 1, 10, 0, 0, tzinfo=UTC),
+                datetime(2024, 1, 1, 11, 0, 0, tzinfo=UTC),
+            ),
+            symbol="BTC",
+            tf="1h",
+        )
+        aligned_scalar, aligned_series = _align_series(Decimal("5"), series, operator=OperatorType.ADD)
+        assert aligned_series is series
+        assert aligned_scalar.symbol == series.symbol
+        assert aligned_scalar.timeframe == series.timeframe
+        assert aligned_scalar.values == (Price(Decimal("5")), Price(Decimal("5")))
+
 
 class TestExpressionBroadcasting:
     def test_broadcast_scalar_to_series(self):
@@ -430,8 +450,12 @@ class TestElementWiseComparison:
             symbol="BTC",
             tf="1h",
         )
-        with pytest.raises(ValueError, match="different lengths"):
-            _comparison_series(s1, s2, OperatorType.EQ, lambda a, b: a == b)
+        # Series with different lengths but overlapping timestamps should align
+        # The intersection is timestamp 10:00, so result should have 1 value
+        result = _comparison_series(s1, s2, OperatorType.EQ, lambda a, b: a == b)
+        assert isinstance(result, Series)
+        assert len(result) == 1  # Intersection of timestamps
+        assert result.values[0] is True  # 100.0 == 100.0
 
 
 # ---------------------------------------------------------------------
