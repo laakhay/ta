@@ -8,6 +8,10 @@ from decimal import Decimal
 
 import pytest
 
+from laakhay.ta.api.namespace import ta
+from laakhay.ta.core.bar import Bar
+from laakhay.ta.core.dataset import Dataset
+from laakhay.ta.core.ohlcv import OHLCV
 from laakhay.ta.core.series import Series
 from laakhay.ta.core.types import Price
 from laakhay.ta.expressions.models import BinaryOp, Literal, OperatorType, UnaryOp
@@ -193,11 +197,49 @@ class TestExpression:
             symbol=multi_point_series.symbol,
             timeframe=multi_point_series.timeframe,
         )
-        with pytest.raises(ValueError, match="different lengths"):
-            (as_expression(multi_point_series) + as_expression(shifted)).evaluate({})
+        # Series with different lengths but overlapping timestamps should align
+        # The intersection is the first timestamp, so result should have 1 value
+        result = (as_expression(multi_point_series) + as_expression(shifted)).evaluate({})
+        assert isinstance(result, Series)
+        assert len(result) == 1  # Intersection of timestamps
+        assert result.values[0] == Price(Decimal("101"))  # 100 + 1
 
 
 # ---------------------------------------------------------------------
+# Integration coverage
+# ---------------------------------------------------------------------
+
+
+class TestExpressionIntegration:
+    def test_indicator_expression_with_scalar_thresholds(self):
+        start = datetime(2024, 1, 1, tzinfo=UTC)
+        bars = [
+            Bar.from_raw(
+                ts=start + timedelta(hours=i),
+                open=100 + i,
+                high=101 + i,
+                low=99 + i,
+                close=100 + i,
+                volume=1_000 + i,
+            )
+            for i in range(60)
+        ]
+        data = Dataset()
+        data.add_series("BTCUSDT", "1h", OHLCV.from_bars(bars, symbol="BTCUSDT", timeframe="1h"))
+
+        expr = (ta.sma(period=5) > ta.sma(period=8)) & (ta.rsi(period=6) < 70)
+        result = expr.run(data)
+
+        assert isinstance(result, dict)
+        series = result.get(("BTCUSDT", "1h", "default"))
+        assert series is not None
+        assert isinstance(series, Series)
+        # SMA(5) produces 56 values, SMA(8) produces 53 values, RSI(6) produces 55 values
+        # After alignment (intersection), we get 53 values (the minimum)
+        assert len(series) == 53
+        assert all(isinstance(value, bool) for value in series.values)
+
+
 # as_expression
 # ---------------------------------------------------------------------
 

@@ -110,6 +110,14 @@ class Evaluator:
             # If operator is a Series operation, align both children before passing to op logic
             if n.operator in arithmetic_ops | comparison_ops:
                 left, right = children_outputs[0], children_outputs[1]
+                # Ensure both operands are Series objects (convert scalars if needed)
+                from ..expressions.models import _make_scalar_series
+
+                if not isinstance(left, Series):
+                    left = _make_scalar_series(left)
+                if not isinstance(right, Series):
+                    right = _make_scalar_series(right)
+
                 if isinstance(left, Series) and isinstance(right, Series):
                     left_is_scalar = left.symbol == SCALAR_SYMBOL
                     right_is_scalar = right.symbol == SCALAR_SYMBOL
