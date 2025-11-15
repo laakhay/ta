@@ -12,6 +12,7 @@ from typing import Any
 from ...core import Series
 from ...core.dataset import Dataset, DatasetKey
 from ...core.series import align_series
+from ...exceptions import MissingDataError, UnsupportedSourceError
 from ...registry.models import SeriesContext
 from ..algebra.models import (
     SCALAR_SYMBOL,
@@ -321,10 +322,12 @@ class RuntimeEvaluator:
                 if isinstance(series, Series):
                     return series
 
-        raise ValueError(
-            f"SourceExpression not found in context: {expr.source}.{expr.field} "
-            f"(symbol={expr.symbol or symbol}, timeframe={expr.timeframe or timeframe}). "
-            f"Available keys: {sorted(context.keys())}"
+        raise MissingDataError(
+            f"SourceExpression not found in context: {expr.source}.{expr.field}",
+            source=expr.source,
+            field=expr.field,
+            symbol=expr.symbol or symbol,
+            timeframe=expr.timeframe or timeframe,
         )
 
     def _eval_filter_expression(

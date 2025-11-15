@@ -7,6 +7,7 @@ from typing import Any
 from ...core import Series
 from ...core.dataset import Dataset
 from ...core.series import align_series
+from ...exceptions import MissingDataError, AlignmentError
 from ...registry.models import SeriesContext
 from ..algebra.models import (
     SCALAR_SYMBOL,
@@ -270,12 +271,13 @@ class Evaluator:
                 if isinstance(series, Series):
                     return series
 
-        # If not found, try to get from dataset if available
-        # This would require passing dataset to the evaluator, which we'll handle later
-        raise ValueError(
-            f"SourceExpression not found in context: {expr.source}.{expr.field} "
-            f"(symbol={expr.symbol}, timeframe={expr.timeframe}). "
-            f"Available keys: {list(context.keys())}"
+        # If not found, raise MissingDataError with context
+        raise MissingDataError(
+            f"SourceExpression not found in context: {expr.source}.{expr.field}",
+            source=expr.source,
+            field=expr.field,
+            symbol=expr.symbol,
+            timeframe=expr.timeframe,
         )
 
     def _evaluate_filter_expression(self, series: Series[Any], condition: Series[bool]) -> Series[Any]:
