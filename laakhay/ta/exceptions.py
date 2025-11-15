@@ -195,4 +195,3 @@ class AlignmentError(TAError):
         if self.reason:
             parts.append(f"reason={self.reason}")
         return " | ".join(parts)
-

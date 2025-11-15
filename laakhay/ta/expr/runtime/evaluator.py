@@ -10,18 +10,16 @@ from __future__ import annotations
 from typing import Any
 
 from ...core import Series
-from ...core.dataset import Dataset, DatasetKey
+from ...core.dataset import Dataset
 from ...core.series import align_series
-from ...exceptions import MissingDataError, UnsupportedSourceError
+from ...exceptions import MissingDataError
 from ...registry.models import SeriesContext
 from ..algebra.models import (
     SCALAR_SYMBOL,
     AggregateExpression,
     BinaryOp,
-    ExpressionNode,
     FilterExpression,
     Literal,
-    OperatorType,
     SourceExpression,
     TimeShiftExpression,
     UnaryOp,
@@ -65,8 +63,10 @@ class RuntimeEvaluator:
             (symbol, timeframe, source) tuples to Series results
         """
         if dataset.is_empty:
-            return {} if symbol is None else Series[Any](
-                timestamps=(), values=(), symbol=symbol or "", timeframe=timeframe or ""
+            return (
+                {}
+                if symbol is None
+                else Series[Any](timestamps=(), values=(), symbol=symbol or "", timeframe=timeframe or "")
             )
 
         if symbol is not None and timeframe is not None:
@@ -478,4 +478,3 @@ class RuntimeEvaluator:
             "cache_size": len(self._cache),
             "cache_keys": list(self._cache.keys())[:10],  # First 10 keys as sample
         }
-

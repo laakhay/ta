@@ -10,7 +10,13 @@ from laakhay.ta.core.dataset import Dataset
 from laakhay.ta.core.ohlcv import OHLCV
 from laakhay.ta.core.series import Series
 from laakhay.ta.core.types import Price
-from laakhay.ta.expr.algebra.models import AggregateExpression, FilterExpression, Literal, SourceExpression, TimeShiftExpression
+from laakhay.ta.expr.algebra.models import (
+    AggregateExpression,
+    FilterExpression,
+    Literal,
+    SourceExpression,
+    TimeShiftExpression,
+)
 from laakhay.ta.expr.dsl import compile_expression
 from laakhay.ta.expr.planner import plan_expression
 from laakhay.ta.expr.runtime.evaluator import RuntimeEvaluator
@@ -20,8 +26,7 @@ def create_test_dataset() -> Dataset:
     """Create a test dataset with OHLCV data."""
     base = datetime(2024, 1, 1, tzinfo=UTC)
     bars = [
-        Bar.from_raw(base + timedelta(hours=i), 100 + i, 101 + i, 99 + i, 100 + i, 1000 + i, True)
-        for i in range(10)
+        Bar.from_raw(base + timedelta(hours=i), 100 + i, 101 + i, 99 + i, 100 + i, 1000 + i, True) for i in range(10)
     ]
     ds = Dataset()
     ds.add_series("BTCUSDT", "1h", OHLCV.from_bars(bars, symbol="BTCUSDT", timeframe="1h"))
@@ -325,4 +330,3 @@ class TestRuntimeEvaluator:
 
         assert isinstance(result, Series)
         assert len(result.values) > 0
-

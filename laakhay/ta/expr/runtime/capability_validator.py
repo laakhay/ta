@@ -8,7 +8,6 @@ from __future__ import annotations
 
 from typing import Any
 
-from ...exceptions import UnsupportedSourceError, UnsupportedIndicatorError
 from ..planner.manifest import generate_capability_manifest
 from ..planner.types import PlanResult, SignalRequirements
 
@@ -54,8 +53,7 @@ class CapabilityValidator:
             # Check if source is supported
             if source not in self._sources:
                 warnings.append(
-                    f"Source '{source}' is not available. "
-                    f"Available sources: {', '.join(self._sources.keys())}"
+                    f"Source '{source}' is not available. Available sources: {', '.join(self._sources.keys())}"
                 )
                 continue
 
@@ -74,16 +72,14 @@ class CapabilityValidator:
                     support = exchange_sources[source]
                     if not support.get("rest", False) and not support.get("ws", False):
                         warnings.append(
-                            f"Source '{source}' is not supported by exchange '{exchange}'. "
-                            f"Required for field '{field}'"
+                            f"Source '{source}' is not supported by exchange '{exchange}'. Required for field '{field}'"
                         )
 
         # Check required sources
         for source in requirements.required_sources:
             if source not in self._sources:
                 warnings.append(
-                    f"Source '{source}' is not available. "
-                    f"Available sources: {', '.join(self._sources.keys())}"
+                    f"Source '{source}' is not available. Available sources: {', '.join(self._sources.keys())}"
                 )
 
         # Check required exchanges
@@ -180,4 +176,3 @@ class CapabilityValidator:
         # For now, most indicators work with any numeric series
         # In the future, we could add indicator-specific source/field restrictions
         return True, None
-
