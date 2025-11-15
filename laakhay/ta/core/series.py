@@ -406,6 +406,7 @@ class Series(Generic[T]):
         else:
             # For empty series, we need a timestamp - use a default
             from datetime import UTC, datetime
+
             timestamp = datetime.now(UTC)
         return Series[int](
             timestamps=(timestamp,),
@@ -434,7 +435,7 @@ class Series(Generic[T]):
             total = sum(
                 float(Decimal(str(v))) if not isinstance(v, int | float | Decimal) else float(v) for v in self.values
             )
-        
+
         # Always return a series with a single value
         # Use first timestamp if available, otherwise create a placeholder
         if self.timestamps:
@@ -442,8 +443,9 @@ class Series(Generic[T]):
         else:
             # For empty series, we need a timestamp - use a default
             from datetime import UTC, datetime
+
             timestamp = datetime.now(UTC)
-        
+
         return Series[float](
             timestamps=(timestamp,),
             values=(total,),
