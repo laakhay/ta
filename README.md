@@ -1,11 +1,14 @@
 # Laakhay TA
 
-Laakhay TA is a stateless technical analysis toolkit built on immutable data structures, explicit indicator metadata, and algebraic composition.
+Laakhay TA is a stateless technical analysis toolkit built on immutable data structures, explicit indicator metadata, and algebraic composition. It provides a domain-specific language (DSL) for expressing trading strategies with support for multi-source data (OHLCV, trades, orderbook, liquidations), filtering, aggregation, and time-shifted queries.
 
 ## Highlights
 - Immutable primitives: `Bar`, `OHLCV`, `Series`, and `Dataset` keep timezone-aware timestamps and Decimal precision for reproducible analytics.
 - Registry-driven indicators: `ta.indicator("sma", ...)` exposes schemas, enforces parameters, and can be extended at runtime with `@ta.register`.
+- Multi-source expressions: Access data from OHLCV, trades, orderbook, and liquidation sources with attribute chains like `BTC/USDT.trades.volume` or `binance.BTC.orderbook.imbalance`.
+- DSL for strategies: Write Python-like expressions with filtering (`trades.filter(amount > 1_000_000).count`), aggregation (`trades.sum(amount)`), and time-shifts (`price.24h_ago`).
 - Algebraic composition: indicator handles, literals, and sources build expression DAGs that support dependency inspection and streaming updates.
+- Requirement planning: Expression planner computes data requirements, lookbacks, and serializes them for backend ingestion services.
 - Deterministic alignment: `align_series` and availability masks make lookback requirements explicit and guard against silent truncation.
 - I/O and streaming utilities: `ta.from_csv`/`ta.to_csv` bridge datasets, while `Stream` tracks expression readiness for live feeds.
 
@@ -76,6 +79,64 @@ print(signal.describe())
 requirements = signal.requirements()
 ```
 
+## Multi-Source Expressions
+
+Access data from multiple sources using attribute chains:
+
+```python
+from laakhay.ta.expr.dsl import parse_expression_text, compile_expression
+from laakhay.ta.expr.runtime import preview, validate
+
+# OHLCV data
+expr = parse_expression_text("BTC/USDT.price > 50000")
+expr = parse_expression_text("BTC/USDT.1h.volume > 1000000")
+
+# Trade aggregations
+expr = parse_expression_text("BTC/USDT.trades.volume > 1000000")
+expr = parse_expression_text("BTC/USDT.trades.filter(amount > 1000000).count > 10")
+expr = parse_expression_text("BTC/USDT.trades.sum(amount) > 50000000")
+
+# Orderbook data
+expr = parse_expression_text("BTC/USDT.orderbook.imbalance > 0.5")
+expr = parse_expression_text("binance.BTC.orderbook.spread_bps < 10")
+
+# Time-shifted queries
+expr = parse_expression_text("BTC/USDT.price.24h_ago < BTC/USDT.price")
+expr = parse_expression_text("BTC/USDT.volume.change_pct_24h > 10")
+
+# Validate and preview expressions
+result = validate(expr)
+if result.valid:
+    preview_result = preview(expr, bars=your_bars, symbol="BTC/USDT", timeframe="1h")
+    print(preview_result.triggers)
+```
+
+## Expression Planning and Requirements
+
+The planner computes data requirements for expressions:
+
+```python
+from laakhay.ta.expr.planner import plan_expression, generate_capability_manifest
+from laakhay.ta.expr.dsl import compile_expression
+
+expr = compile_expression("BTC/USDT.trades.filter(amount > 1000000).count > 10")
+plan = plan_expression(expr.root)
+
+# Access requirements
+print(plan.requirements.data_requirements)  # Data sources needed
+print(plan.requirements.required_sources)    # ['trades']
+print(plan.requirements.required_exchanges)  # ['binance'] if specified
+
+# Serialize for backend
+plan_dict = plan.to_dict()
+
+# Generate capability manifest for API
+manifest = generate_capability_manifest()
+print(manifest["sources"])      # Available sources and fields
+print(manifest["indicators"])   # Available indicators
+print(manifest["operators"])    # Available operators
+```
+
 Inspect indicator metadata or register custom logic:
 
 ```python
@@ -125,7 +186,8 @@ ta.to_csv(ohlcv, "btc_out.csv")
 git clone https://github.com/laakhay/ta
 cd ta
 uv sync --extra dev
-uv run ruff check laakhay/
+uv run ruff format laakhay/
+uv run ruff check --fix laakhay/
 PYTHONPATH=$PWD uv run pytest tests/ -v --tb=short
 ```
 

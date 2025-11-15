@@ -1,6 +1,7 @@
 """Graph/planner package centralizing DAG planning and evaluation."""
 
 from .evaluator import Evaluator
+from .manifest import generate_capability_manifest
 from .planner import (
     AlignmentPolicy,
     alignment,
@@ -19,4 +20,5 @@ __all__ = [
     "SignalRequirements",
     "PlanResult",
     "Evaluator",
+    "generate_capability_manifest",
 ]
