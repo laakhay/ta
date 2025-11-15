@@ -7,6 +7,7 @@ from typing import Any
 from ...core import Series
 from ...core.dataset import Dataset
 from ...core.series import align_series
+from ...registry.models import SeriesContext
 from ..algebra.models import (
     SCALAR_SYMBOL,
     AggregateExpression,
@@ -214,7 +215,19 @@ class Evaluator:
                 series_expr = n.series.evaluate(context)
             return self._evaluate_time_shift_expression(series_expr, n.shift, n.operation)
         elif hasattr(n, "__class__") and n.__class__.__name__ == "IndicatorNode":
-            # For now, simply invoke .run(context) if present (stub; to be improved)
+            # If indicator has input_series and it was evaluated as a child, use that result
+            if hasattr(n, "input_series") and n.input_series is not None and len(children_outputs) >= 1:
+                # Use the pre-evaluated input_series from children
+                input_series_result = children_outputs[0]
+                # Create context with the input series as 'close'
+                ctx = {"close": input_series_result}
+                # Evaluate the indicator with this context
+                if n.name not in n._registry._indicators:
+                    raise ValueError(f"Indicator '{n.name}' not found in registry")
+                indicator_func = n._registry._indicators[n.name]
+                params_without_input = {k: v for k, v in n.params.items() if k != "input_series"}
+                return indicator_func(SeriesContext(**ctx), **params_without_input)
+            # Otherwise, use standard evaluation (which will evaluate input_series if present)
             return n.run(context)
         else:
             raise NotImplementedError(f"Unsupported node type: {type(n)}")
