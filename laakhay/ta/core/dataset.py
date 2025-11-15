@@ -398,8 +398,8 @@ class Dataset:
         Raises:
             ValueError: If required fields for a specific context type are missing
         """
-        from .context import create_context
         from ..registry.models import SeriesContext
+        from .context import create_context
 
         # Filter series based on provided filters
         filtered_series: dict[DatasetKey, OHLCV | Series[Any]] = {}

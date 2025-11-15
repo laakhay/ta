@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-
 from typing import Any
 
 from ..registry.models import SeriesContext
@@ -313,4 +312,3 @@ def create_context(source: str, **series: Series[Any]) -> SeriesContext:
     else:
         # Fallback to generic SeriesContext for unknown sources
         return SeriesContext(**series)
-
