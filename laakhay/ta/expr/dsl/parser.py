@@ -9,11 +9,15 @@ from ... import indicators as _indicators  # noqa: F401
 from ...api.namespace import ensure_namespace_registered
 from ...registry.registry import get_global_registry
 from .nodes import (
+    AggregateNode,
+    AttributeNode,
     BinaryNode,
+    FilterNode,
     IndicatorNode,
     LiteralNode,
     StrategyError,
     StrategyExpression,
+    TimeShiftNode,
     UnaryNode,
 )
 
@@ -78,6 +82,8 @@ class ExpressionParser:
             return self._convert_constant(node)
         if isinstance(node, ast.Name):
             return self._convert_name(node)
+        if isinstance(node, ast.Attribute):
+            return self._convert_attribute(node)
         raise StrategyError(f"Unsupported expression element '{ast.dump(node)}'")
 
     def _convert_bool_op(self, node: ast.BoolOp) -> StrategyExpression:
@@ -122,6 +128,40 @@ class ExpressionParser:
         return UnaryNode(operator=operator, operand=self._convert_node(node.operand))
 
     def _convert_indicator_call(self, node: ast.Call) -> StrategyExpression:
+        # Check if this is a method call on an attribute (e.g., trades.filter(...), trades.sum(...))
+        if isinstance(node.func, ast.Attribute):
+            method_name = node.func.attr.lower()
+            
+            # Handle filter() calls: trades.filter(amount > 1000000)
+            if method_name == "filter":
+                if len(node.args) != 1:
+                    raise StrategyError("filter() requires exactly one argument (the condition)")
+                series_expr = self._convert_node(node.func.value)
+                condition_expr = self._convert_node(node.args[0])
+                return FilterNode(series=series_expr, condition=condition_expr)
+            
+            # Handle aggregation method calls: trades.sum(amount), trades.avg(price)
+            if method_name in {"sum", "avg", "max", "min"}:
+                series_expr = self._convert_node(node.func.value)
+                field: str | None = None
+                
+                if len(node.args) == 1:
+                    # Extract field name from argument
+                    arg = node.args[0]
+                    if isinstance(arg, ast.Name):
+                        field = arg.id
+                    elif isinstance(arg, ast.Constant) and isinstance(arg.value, str):
+                        field = arg.value
+                    else:
+                        raise StrategyError(f"{method_name}() requires a field name as argument")
+                elif len(node.args) > 1:
+                    raise StrategyError(f"{method_name}() accepts at most one argument (field name)")
+                
+                return AggregateNode(series=series_expr, operation=method_name, field=field)
+            
+            # If it's not a recognized method, fall through to error
+        
+        # Handle regular indicator calls
         if not isinstance(node.func, ast.Name):
             raise StrategyError("Only simple indicator function calls are allowed")
         name = node.func.id.lower()
@@ -218,6 +258,226 @@ class ExpressionParser:
         if lowered in valid_fields:
             return IndicatorNode(name="select", params={"field": lowered})
         raise StrategyError(f"Unknown identifier '{node.id}'")
+
+    def _convert_attribute(self, node: ast.Attribute) -> StrategyExpression:
+        """Convert attribute access like BTC.trades.volume or binance.BTC.orderbook.imbalance"""
+        # Check if this might be an aggregation property (e.g., trades.count)
+        # Aggregation properties: count
+        aggregation_properties = {"count"}
+        
+        # Check if this is a time-shift suffix (e.g., price.24h_ago, volume.change_pct_24h)
+        last_attr = node.attr.lower()
+        time_shift_pattern = self._parse_time_shift_suffix(last_attr)
+        
+        if time_shift_pattern:
+            # This is a time-shift operation
+            shift, operation = time_shift_pattern
+            series_expr = self._convert_node(node.value)
+            return TimeShiftNode(series=series_expr, shift=shift, operation=operation)
+        
+        # If the last attribute is an aggregation property, treat it as an aggregation
+        if last_attr in aggregation_properties:
+            # Get the series expression (everything before the aggregation property)
+            series_expr = self._convert_node(node.value)
+            return AggregateNode(series=series_expr, operation=last_attr, field=None)
+        
+        # Otherwise, treat as regular attribute access
+        # Build chain: [binance, BTC, 1h, trades, volume] or [BTC, trades, volume]
+        chain = []
+        current = node
+        while isinstance(current, ast.Attribute):
+            chain.insert(0, current.attr)
+            current = current.value
+        if isinstance(current, ast.Name):
+            chain.insert(0, current.id)
+        else:
+            raise StrategyError(f"Unsupported attribute chain base: {ast.dump(current)}")
+
+        # Parse chain into components
+        exchange, symbol, timeframe, source, field = self._parse_attribute_chain(chain)
+        
+        # Validate the combination
+        self._validate_attribute_combination(exchange, symbol, timeframe, source, field)
+        
+        return AttributeNode(
+            exchange=exchange,
+            symbol=symbol,
+            timeframe=timeframe,
+            source=source,
+            field=field,
+        )
+
+    def _parse_attribute_chain(self, chain: list[str]) -> tuple[str | None, str, str | None, str, str]:
+        """
+        Parse attribute chain into (exchange, symbol, timeframe, source, field).
+        
+        Examples:
+        - [BTC, trades, volume] -> (None, BTC, None, trades, volume)
+        - [binance, BTC, price] -> (binance, BTC, None, ohlcv, price)
+        - [binance, BTC, 1h, orderbook, imbalance] -> (binance, BTC, 1h, orderbook, imbalance)
+        - [BTC, 1h, price] -> (None, BTC, 1h, ohlcv, price)
+        - [BTC, price] -> (None, BTC, None, ohlcv, price)
+        """
+        if len(chain) < 2:
+            raise StrategyError(f"Attribute chain too short: {'.'.join(chain)}")
+
+        # Known exchanges (can be extended)
+        known_exchanges = {"binance", "bybit", "okx", "coinbase", "kraken", "kucoin"}
+        # Known sources
+        known_sources = {"ohlcv", "trades", "orderbook", "liquidation"}
+        # Known timeframes (common patterns)
+        timeframe_patterns = {"1m", "5m", "15m", "30m", "1h", "4h", "1d", "1w", "1mo"}
+        
+        exchange: str | None = None
+        symbol: str | None = None
+        timeframe: str | None = None
+        source: str = "ohlcv"
+        field: str | None = None
+
+        # Check if first element is an exchange
+        if chain[0].lower() in known_exchanges:
+            exchange = chain[0].lower()
+            chain = chain[1:]
+            if len(chain) < 1:
+                raise StrategyError(f"Missing symbol after exchange")
+
+        if len(chain) < 1:
+            raise StrategyError(f"Missing symbol in attribute chain")
+
+        # Symbol is typically the first element (or second if exchange was present)
+        # Symbol can be uppercase (BTC, ETH) or mixed case
+        symbol = chain[0]
+        chain = chain[1:]
+
+        if len(chain) == 0:
+            raise StrategyError(f"Missing field in attribute chain: {symbol}")
+
+        # Try to identify timeframe, source, and field
+        # We need at least one element (the field), and optionally timeframe and source
+        
+        # If we have 2+ elements, check if second-to-last is a source
+        # If we have 3+ elements, check if second is timeframe and third is source
+        if len(chain) == 1:
+            # Simple case: [field] -> default to ohlcv
+            field = chain[0]
+        elif len(chain) == 2:
+            # Two possibilities:
+            # 1. [timeframe, field] -> default to ohlcv
+            # 2. [source, field]
+            if chain[0] in timeframe_patterns:
+                timeframe = chain[0]
+                field = chain[1]
+            elif chain[0].lower() in known_sources:
+                source = chain[0].lower()
+                field = chain[1]
+            else:
+                # Assume it's [source, field] even if source not recognized
+                # This allows for flexibility
+                source = chain[0].lower()
+                field = chain[1]
+        elif len(chain) == 3:
+            # Three elements: [timeframe, source, field]
+            if chain[0] in timeframe_patterns and chain[1].lower() in known_sources:
+                timeframe = chain[0]
+                source = chain[1].lower()
+                field = chain[2]
+            else:
+                raise StrategyError(
+                    f"Invalid attribute chain format. Expected: symbol.timeframe.source.field "
+                    f"or symbol.source.field, got: {'.'.join(chain)}"
+                )
+        else:
+            raise StrategyError(f"Attribute chain too long: {'.'.join(chain)}")
+
+        return exchange, symbol, timeframe, source, field
+
+    def _validate_attribute_combination(
+        self,
+        exchange: str | None,
+        symbol: str,
+        timeframe: str | None,
+        source: str,
+        field: str,
+    ) -> None:
+        """Validate that the attribute combination is valid."""
+        # Known sources and their allowed fields
+        source_fields = {
+            "ohlcv": {
+                "price", "close", "open", "high", "low", "volume",
+                "hlc3", "ohlc4", "hl2", "typical_price", "weighted_close",
+                "median_price", "range", "upper_wick", "lower_wick",
+            },
+            "trades": {
+                "volume", "count", "buy_volume", "sell_volume",
+                "large_count", "whale_count", "avg_price", "vwap", "amount",
+            },
+            "orderbook": {
+                "best_bid", "best_ask", "spread", "spread_bps", "mid_price",
+                "bid_depth", "ask_depth", "imbalance", "pressure",
+            },
+            "liquidation": {
+                "count", "volume", "value", "long_count", "short_count",
+                "long_value", "short_value", "large_count", "large_value",
+            },
+        }
+
+        # Validate source
+        if source not in source_fields:
+            raise StrategyError(
+                f"Unknown source '{source}'. Valid sources: {', '.join(source_fields.keys())}"
+            )
+
+        # Validate field for source
+        if field.lower() not in source_fields[source]:
+            valid_fields = ", ".join(sorted(source_fields[source]))
+            raise StrategyError(
+                f"Field '{field}' not valid for source '{source}'. "
+                f"Valid fields for {source}: {valid_fields}"
+            )
+
+    def _parse_time_shift_suffix(self, attr: str) -> tuple[str, str | None] | None:
+        """
+        Parse time-shift suffix from attribute name.
+        
+        Returns (shift, operation) if it's a time-shift suffix, None otherwise.
+        
+        Examples:
+        - "24h_ago" -> ("24h_ago", None)
+        - "1h_ago" -> ("1h_ago", None)
+        - "change_pct_24h" -> ("24h", "change_pct")
+        - "change_24h" -> ("24h", "change")
+        - "roc_24" -> ("24", "roc")  # Rate of change with period
+        """
+        import re
+        
+        # Pattern for time periods: number followed by unit (h, m, d, w, mo)
+        time_pattern = r"(\d+)([hmdw]|mo)"
+        
+        # Check for simple time-shift suffixes: Xh_ago, Xm_ago, Xd_ago, etc.
+        if attr.endswith("_ago"):
+            time_part = attr[:-4]  # Remove "_ago"
+            if re.match(rf"^{time_pattern}$", time_part):
+                return (attr, None)
+        
+        # Check for operation-based time shifts: change_pct_24h, change_1h, roc_24
+        # Pattern: operation_timeperiod
+        operation_patterns = {
+            "change_pct": r"change_pct_(\d+[hmdw]|mo)",
+            "change": r"change_(\d+[hmdw]|mo)",
+            "roc": r"roc_(\d+)",  # Rate of change with period (no unit, just number)
+        }
+        
+        for operation, pattern in operation_patterns.items():
+            match = re.match(rf"^{pattern}$", attr)
+            if match:
+                shift = match.group(1)
+                return (shift, operation)
+        
+        # Check for simple time period without operation: 24h, 1h, etc.
+        if re.match(rf"^{time_pattern}$", attr):
+            return (attr, None)
+        
+        return None
 
     # Helpers -----------------------------------------------------------
     def _literal_value(self, node: ast.AST) -> Any:
