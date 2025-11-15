@@ -359,6 +359,318 @@ class Series(Generic[T]):
             timeframe=self.timeframe,
         )
 
+    def filter(self, condition: Series[bool]) -> Series[T]:
+        """Filter series based on boolean condition.
+
+        Args:
+            condition: Boolean series indicating which elements to keep (True = keep).
+
+        Returns:
+            New series containing only elements where condition is True.
+
+        Raises:
+            ValueError: If condition series is not aligned with this series.
+        """
+        self._validate_series_alignment(condition, operation="filter")
+        filtered_timestamps: list[Timestamp] = []
+        filtered_values: list[T] = []
+        filtered_mask: list[bool] | None = None if self.availability_mask is None else []
+
+        for i, (ts, val, cond_val) in enumerate(zip(self.timestamps, self.values, condition.values, strict=False)):
+            if cond_val:  # Keep elements where condition is True
+                filtered_timestamps.append(ts)
+                filtered_values.append(val)
+                if filtered_mask is not None:
+                    filtered_mask.append(self.availability_mask[i] if self.availability_mask is not None else True)
+
+        return Series[T](
+            timestamps=tuple(filtered_timestamps),
+            values=tuple(filtered_values),
+            symbol=self.symbol,
+            timeframe=self.timeframe,
+            availability_mask=tuple(filtered_mask) if filtered_mask is not None else None,
+        )
+
+    def count(self) -> Series[int]:
+        """Count elements in series.
+
+        Returns:
+            Series with a single value representing the count of elements.
+            For empty series, returns a series with a single value of 0.
+        """
+        count_value = len(self.values)
+        # Always return a series with a single value, even for empty input
+        # Use first timestamp if available, otherwise create a placeholder
+        if self.timestamps:
+            timestamp = self.timestamps[0]
+        else:
+            # For empty series, we need a timestamp - use a default
+            from datetime import UTC, datetime
+            timestamp = datetime.now(UTC)
+        return Series[int](
+            timestamps=(timestamp,),
+            values=(count_value,),
+            symbol=self.symbol,
+            timeframe=self.timeframe,
+        )
+
+    def sum(self, field: str | None = None) -> Series[float]:
+        """Sum values in series.
+
+        Args:
+            field: Optional field name (for future use with structured data).
+
+        Returns:
+            Series with a single value representing the sum.
+            For empty series, returns a series with a single value of 0.0.
+        """
+        from decimal import Decimal
+
+        # For now, sum the values directly
+        # In the future, if values are structured objects, field can be used
+        if len(self.values) == 0:
+            total = 0.0
+        else:
+            total = sum(
+                float(Decimal(str(v))) if not isinstance(v, int | float | Decimal) else float(v) for v in self.values
+            )
+        
+        # Always return a series with a single value
+        # Use first timestamp if available, otherwise create a placeholder
+        if self.timestamps:
+            timestamp = self.timestamps[0]
+        else:
+            # For empty series, we need a timestamp - use a default
+            from datetime import UTC, datetime
+            timestamp = datetime.now(UTC)
+        
+        return Series[float](
+            timestamps=(timestamp,),
+            values=(total,),
+            symbol=self.symbol,
+            timeframe=self.timeframe,
+        )
+
+    def avg(self, field: str | None = None) -> Series[float]:
+        """Average values in series.
+
+        Args:
+            field: Optional field name (for future use with structured data).
+
+        Returns:
+            Series with a single value representing the average.
+        """
+        from decimal import Decimal
+
+        if len(self.values) == 0:
+            return Series[float](
+                timestamps=(),
+                values=(),
+                symbol=self.symbol,
+                timeframe=self.timeframe,
+            )
+
+        total = sum(
+            float(Decimal(str(v))) if not isinstance(v, int | float | Decimal) else float(v) for v in self.values
+        )
+        avg_value = total / len(self.values)
+        return Series[float](
+            timestamps=(self.timestamps[0],) if self.timestamps else (),
+            values=(avg_value,),
+            symbol=self.symbol,
+            timeframe=self.timeframe,
+        )
+
+    def max(self, field: str | None = None) -> Series[T]:
+        """Maximum value in series.
+
+        Args:
+            field: Optional field name (for future use with structured data).
+
+        Returns:
+            Series with a single value representing the maximum.
+        """
+        if len(self.values) == 0:
+            return Series[T](
+                timestamps=(),
+                values=(),
+                symbol=self.symbol,
+                timeframe=self.timeframe,
+            )
+
+        max_value = max(self.values)
+        return Series[T](
+            timestamps=(self.timestamps[0],) if self.timestamps else (),
+            values=(max_value,),
+            symbol=self.symbol,
+            timeframe=self.timeframe,
+        )
+
+    def min(self, field: str | None = None) -> Series[T]:
+        """Minimum value in series.
+
+        Args:
+            field: Optional field name (for future use with structured data).
+
+        Returns:
+            Series with a single value representing the minimum.
+        """
+        if len(self.values) == 0:
+            return Series[T](
+                timestamps=(),
+                values=(),
+                symbol=self.symbol,
+                timeframe=self.timeframe,
+            )
+
+        min_value = min(self.values)
+        return Series[T](
+            timestamps=(self.timestamps[0],) if self.timestamps else (),
+            values=(min_value,),
+            symbol=self.symbol,
+            timeframe=self.timeframe,
+        )
+
+    def shift(self, periods: int) -> Series[T]:
+        """Shift series values by a number of periods.
+
+        Args:
+            periods: Number of periods to shift (positive = forward, negative = backward).
+
+        Returns:
+            New series with shifted values. For forward shifts, earlier positions are filled
+            with the first value. For backward shifts, later positions are filled with the last value.
+        """
+        if periods == 0:
+            return Series[T](
+                timestamps=self.timestamps,
+                values=self.values,
+                symbol=self.symbol,
+                timeframe=self.timeframe,
+                availability_mask=self.availability_mask,
+            )
+
+        if len(self.values) == 0:
+            return Series[T](
+                timestamps=self.timestamps,
+                values=self.values,
+                symbol=self.symbol,
+                timeframe=self.timeframe,
+                availability_mask=self.availability_mask,
+            )
+
+        shifted_values: list[T] = list(self.values)
+        if periods > 0:
+            # Shift forward: move values to later timestamps
+            if periods < len(shifted_values):
+                shifted_values = [shifted_values[0]] * periods + shifted_values[:-periods]
+            else:
+                shifted_values = [shifted_values[0]] * len(shifted_values)
+        else:
+            # Shift backward: move values to earlier timestamps
+            periods_abs = abs(periods)
+            if periods_abs < len(shifted_values):
+                shifted_values = shifted_values[periods_abs:] + [shifted_values[-1]] * periods_abs
+            else:
+                shifted_values = [shifted_values[-1]] * len(shifted_values)
+
+        return Series[T](
+            timestamps=self.timestamps,
+            values=tuple(shifted_values),
+            symbol=self.symbol,
+            timeframe=self.timeframe,
+            availability_mask=self.availability_mask,
+        )
+
+    def change(self, periods: int = 1) -> Series[float]:
+        """Calculate absolute change from previous period(s).
+
+        Args:
+            periods: Number of periods to look back (default: 1).
+
+        Returns:
+            Series with change values. First 'periods' values will be None/NaN.
+        """
+        from decimal import Decimal
+
+        if len(self.values) < periods + 1:
+            return Series[float](
+                timestamps=self.timestamps,
+                values=tuple([float("nan")] * len(self.values)),
+                symbol=self.symbol,
+                timeframe=self.timeframe,
+            )
+
+        change_values: list[float] = []
+        for i in range(len(self.values)):
+            if i < periods:
+                change_values.append(float("nan"))
+            else:
+                current = (
+                    float(Decimal(str(self.values[i])))
+                    if not isinstance(self.values[i], int | float | Decimal)
+                    else float(self.values[i])
+                )
+                previous = (
+                    float(Decimal(str(self.values[i - periods])))
+                    if not isinstance(self.values[i - periods], int | float | Decimal)
+                    else float(self.values[i - periods])
+                )
+                change_values.append(current - previous)
+
+        return Series[float](
+            timestamps=self.timestamps,
+            values=tuple(change_values),
+            symbol=self.symbol,
+            timeframe=self.timeframe,
+        )
+
+    def change_pct(self, periods: int = 1) -> Series[float]:
+        """Calculate percentage change from previous period(s).
+
+        Args:
+            periods: Number of periods to look back (default: 1).
+
+        Returns:
+            Series with percentage change values. First 'periods' values will be None/NaN.
+        """
+        from decimal import Decimal
+
+        if len(self.values) < periods + 1:
+            return Series[float](
+                timestamps=self.timestamps,
+                values=tuple([float("nan")] * len(self.values)),
+                symbol=self.symbol,
+                timeframe=self.timeframe,
+            )
+
+        change_pct_values: list[float] = []
+        for i in range(len(self.values)):
+            if i < periods:
+                change_pct_values.append(float("nan"))
+            else:
+                current = (
+                    float(Decimal(str(self.values[i])))
+                    if not isinstance(self.values[i], int | float | Decimal)
+                    else float(self.values[i])
+                )
+                previous = (
+                    float(Decimal(str(self.values[i - periods])))
+                    if not isinstance(self.values[i - periods], int | float | Decimal)
+                    else float(self.values[i - periods])
+                )
+                if previous == 0:
+                    change_pct_values.append(float("nan"))
+                else:
+                    change_pct_values.append((current - previous) / previous * 100.0)
+
+        return Series[float](
+            timestamps=self.timestamps,
+            values=tuple(change_pct_values),
+            symbol=self.symbol,
+            timeframe=self.timeframe,
+        )
+
     def to_dict(self) -> dict[str, Any]:
         """Convert series to dictionary format."""
         return {

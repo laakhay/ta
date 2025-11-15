@@ -5,7 +5,16 @@ from __future__ import annotations
 import hashlib
 from typing import Any, Dict, Tuple
 
-from ..algebra.models import BinaryOp, ExpressionNode, Literal, UnaryOp
+from ..algebra.models import (
+    AggregateExpression,
+    BinaryOp,
+    ExpressionNode,
+    FilterExpression,
+    Literal,
+    SourceExpression,
+    TimeShiftExpression,
+    UnaryOp,
+)
 from .types import Graph, GraphNode
 
 
@@ -39,6 +48,22 @@ def build_graph(root: ExpressionNode) -> Graph:
             operand_id, operand_sig = visit(node.operand)
             signature = ("UnaryOp", node.operator.value, operand_sig)
             children = (operand_id,)
+        elif isinstance(node, FilterExpression):
+            series_id, series_sig = visit(node.series)
+            condition_id, condition_sig = visit(node.condition)
+            signature = ("FilterExpression", series_sig, condition_sig)
+            children = (series_id, condition_id)
+        elif isinstance(node, AggregateExpression):
+            series_id, series_sig = visit(node.series)
+            signature = ("AggregateExpression", node.operation, node.field, series_sig)
+            children = (series_id,)
+        elif isinstance(node, TimeShiftExpression):
+            series_id, series_sig = visit(node.series)
+            signature = ("TimeShiftExpression", node.shift, node.operation, series_sig)
+            children = (series_id,)
+        elif isinstance(node, SourceExpression):
+            signature = ("SourceExpression", node.symbol, node.field, node.exchange, node.timeframe, node.source)
+            children = ()
         elif isinstance(node, Literal):
             if isinstance(node.value, list):
                 literal_repr = tuple(node.value)

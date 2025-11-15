@@ -369,3 +369,218 @@ def test_align_series_empty_inner_result_raises():
     s2 = mk_series([200], ts((2024, 1, 1, 11)))
     with pytest.raises(ValueError, match="empty timestamp set"):
         align_series(s1, s2, how="inner")
+
+
+# ---------------------------------------------------------------------
+# Filter, aggregation, and time-shift methods
+# ---------------------------------------------------------------------
+
+
+def test_filter_basic(multi_series):
+    """Test basic filtering functionality."""
+    # Create a boolean condition series
+    condition_stamps = multi_series.timestamps
+    condition_values = (True, False)
+    condition = Series[bool](
+        timestamps=condition_stamps,
+        values=condition_values,
+        symbol=multi_series.symbol,
+        timeframe=multi_series.timeframe,
+    )
+    filtered = multi_series.filter(condition)
+    assert len(filtered) == 1
+    assert filtered.values[0] == multi_series.values[0]
+    assert filtered.timestamps[0] == multi_series.timestamps[0]
+
+
+def test_filter_all_true(multi_series):
+    """Test filtering when all conditions are True."""
+    condition = Series[bool](
+        timestamps=multi_series.timestamps,
+        values=(True, True),
+        symbol=multi_series.symbol,
+        timeframe=multi_series.timeframe,
+    )
+    filtered = multi_series.filter(condition)
+    assert len(filtered) == 2
+    assert filtered.values == multi_series.values
+
+
+def test_filter_all_false(multi_series):
+    """Test filtering when all conditions are False."""
+    condition = Series[bool](
+        timestamps=multi_series.timestamps,
+        values=(False, False),
+        symbol=multi_series.symbol,
+        timeframe=multi_series.timeframe,
+    )
+    filtered = multi_series.filter(condition)
+    assert len(filtered) == 0
+
+
+def test_filter_misaligned_raises(multi_series):
+    """Test that filtering with misaligned series raises error."""
+    other_stamps = ts((2024, 1, 1, 12), (2024, 1, 1, 13))
+    condition = Series[bool](
+        timestamps=other_stamps,
+        values=(True, True),
+        symbol=multi_series.symbol,
+        timeframe=multi_series.timeframe,
+    )
+    with pytest.raises(ValueError):
+        multi_series.filter(condition)
+
+
+def test_count(multi_series):
+    """Test count aggregation."""
+    result = multi_series.count()
+    assert len(result) == 1
+    assert result.values[0] == 2
+    assert result.symbol == multi_series.symbol
+    assert result.timeframe == multi_series.timeframe
+
+
+def test_count_empty():
+    """Test count on empty series."""
+    empty = mk_series([], ())
+    result = empty.count()
+    assert len(result) == 1
+    assert result.values[0] == 0
+
+
+def test_sum(multi_series):
+    """Test sum aggregation."""
+    result = multi_series.sum()
+    assert len(result) == 1
+    # 100 + 200 = 300
+    assert result.values[0] == 300.0
+    assert result.symbol == multi_series.symbol
+    assert result.timeframe == multi_series.timeframe
+
+
+def test_sum_empty():
+    """Test sum on empty series."""
+    empty = mk_series([], ())
+    result = empty.sum()
+    assert len(result) == 1
+    assert result.values[0] == 0.0
+
+
+def test_avg(multi_series):
+    """Test average aggregation."""
+    result = multi_series.avg()
+    assert len(result) == 1
+    # (100 + 200) / 2 = 150
+    assert result.values[0] == 150.0
+    assert result.symbol == multi_series.symbol
+    assert result.timeframe == multi_series.timeframe
+
+
+def test_avg_empty():
+    """Test average on empty series."""
+    empty = mk_series([], ())
+    result = empty.avg()
+    assert len(result) == 0
+
+
+def test_max(multi_series):
+    """Test max aggregation."""
+    result = multi_series.max()
+    assert len(result) == 1
+    assert result.values[0] == Price(Decimal("200"))
+    assert result.symbol == multi_series.symbol
+    assert result.timeframe == multi_series.timeframe
+
+
+def test_max_empty():
+    """Test max on empty series."""
+    empty = mk_series([], ())
+    result = empty.max()
+    assert len(result) == 0
+
+
+def test_min(multi_series):
+    """Test min aggregation."""
+    result = multi_series.min()
+    assert len(result) == 1
+    assert result.values[0] == Price(Decimal("100"))
+    assert result.symbol == multi_series.symbol
+    assert result.timeframe == multi_series.timeframe
+
+
+def test_min_empty():
+    """Test min on empty series."""
+    empty = mk_series([], ())
+    result = empty.min()
+    assert len(result) == 0
+
+
+def test_shift_forward(multi_series):
+    """Test forward shift (positive periods)."""
+    result = multi_series.shift(1)
+    assert len(result) == 2
+    # First value should be repeated, second should be first original value
+    assert result.values[0] == multi_series.values[0]
+    assert result.values[1] == multi_series.values[0]
+    assert result.timestamps == multi_series.timestamps
+
+
+def test_shift_backward(multi_series):
+    """Test backward shift (negative periods)."""
+    result = multi_series.shift(-1)
+    assert len(result) == 2
+    # First should be second original, second should be repeated
+    assert result.values[0] == multi_series.values[1]
+    assert result.values[1] == multi_series.values[1]
+    assert result.timestamps == multi_series.timestamps
+
+
+def test_shift_zero(multi_series):
+    """Test zero shift returns original."""
+    result = multi_series.shift(0)
+    assert result.values == multi_series.values
+    assert result.timestamps == multi_series.timestamps
+
+
+def test_change_basic():
+    """Test change calculation."""
+    stamps = ts((2024, 1, 1, 10), (2024, 1, 1, 11), (2024, 1, 1, 12))
+    s = mk_series([100, 110, 105], stamps)
+    result = s.change(1)
+    assert len(result) == 3
+    assert result.values[0] != result.values[0]  # NaN check (first value)
+    assert result.values[1] == 10.0  # 110 - 100
+    assert result.values[2] == -5.0  # 105 - 110
+
+
+def test_change_periods():
+    """Test change with multiple periods."""
+    stamps = ts((2024, 1, 1, 10), (2024, 1, 1, 11), (2024, 1, 1, 12), (2024, 1, 1, 13))
+    s = mk_series([100, 110, 120, 130], stamps)
+    result = s.change(2)
+    assert len(result) == 4
+    assert result.values[0] != result.values[0]  # NaN
+    assert result.values[1] != result.values[1]  # NaN
+    assert result.values[2] == 20.0  # 120 - 100
+    assert result.values[3] == 20.0  # 130 - 110
+
+
+def test_change_pct_basic():
+    """Test percentage change calculation."""
+    stamps = ts((2024, 1, 1, 10), (2024, 1, 1, 11), (2024, 1, 1, 12))
+    s = mk_series([100, 110, 105], stamps)
+    result = s.change_pct(1)
+    assert len(result) == 3
+    assert result.values[0] != result.values[0]  # NaN check (first value)
+    assert result.values[1] == 10.0  # (110 - 100) / 100 * 100
+    assert abs(result.values[2] - (-4.545454545454545)) < 0.01  # (105 - 110) / 110 * 100
+
+
+def test_change_pct_zero_previous():
+    """Test percentage change when previous value is zero."""
+    stamps = ts((2024, 1, 1, 10), (2024, 1, 1, 11))
+    s = mk_series([0, 100], stamps)
+    result = s.change_pct(1)
+    assert len(result) == 2
+    assert result.values[0] != result.values[0]  # NaN
+    assert result.values[1] != result.values[1]  # NaN (division by zero)

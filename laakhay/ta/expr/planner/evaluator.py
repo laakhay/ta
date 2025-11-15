@@ -7,7 +7,17 @@ from typing import Any
 from ...core import Series
 from ...core.dataset import Dataset
 from ...core.series import align_series
-from ..algebra.models import SCALAR_SYMBOL, BinaryOp, Literal, OperatorType, UnaryOp
+from ..algebra.models import (
+    SCALAR_SYMBOL,
+    AggregateExpression,
+    BinaryOp,
+    FilterExpression,
+    Literal,
+    OperatorType,
+    SourceExpression,
+    TimeShiftExpression,
+    UnaryOp,
+)
 from .types import PlanResult, SignalRequirements
 
 
@@ -46,8 +56,42 @@ class Evaluator:
                 # Only retrieve the root node if all subnodes already cached
                 results[(symbol, timeframe, "default")] = self._cache[node_cache_key]
                 continue
-            context = dataset.build_context(symbol, timeframe, required_fields)
-            context_dict = {name: getattr(context, name) for name in context.available_series}
+            # Build context - try multi-source context first, fall back to standard
+            try:
+                # Try to build multi-source context for better support
+                context = dataset.to_multisource_context(symbol=symbol, timeframe=timeframe)
+                context_dict = {name: getattr(context, name) for name in context.available_series}
+            except (ValueError, AttributeError):
+                # Fall back to standard context building
+                context = dataset.build_context(symbol, timeframe, required_fields)
+                context_dict = {name: getattr(context, name) for name in context.available_series}
+
+            # Also add source-specific keys for SourceExpression resolution
+            # Add keys in format "source.field" for each series in the dataset
+            for key, series_obj in dataset:
+                if key.symbol == symbol and key.timeframe == timeframe:
+                    if hasattr(series_obj, "to_series"):  # OHLCV
+                        # Map "price" to "close" for OHLCV
+                        field_mapping = {
+                            "open": "open",
+                            "high": "high",
+                            "low": "low",
+                            "close": "close",
+                            "volume": "volume",
+                            "price": "close",  # Map price to close
+                        }
+                        for field, ohlcv_field in field_mapping.items():
+                            try:
+                                field_series = series_obj.to_series(ohlcv_field)
+                                context_dict[f"{key.source}.{field}"] = field_series
+                                context_dict[field] = field_series  # Also add without source prefix
+                            except (KeyError, AttributeError, ValueError):
+                                pass
+                    else:
+                        # Regular series - use source as field name or add with source prefix
+                        context_dict[f"{key.source}.{key.source}"] = series_obj
+                        context_dict[key.source] = series_obj
+
             output = self._evaluate_graph(plan, context_dict, symbol, timeframe)
             results[(symbol, timeframe, "default")] = output
         return results
@@ -140,11 +184,193 @@ class Evaluator:
             if isinstance(result, Series) and result.symbol == SCALAR_SYMBOL and len(result) == 1:
                 return result.values[0]
             return result
+        elif isinstance(n, SourceExpression):
+            return self._evaluate_source_expression(n, context)
+        elif isinstance(n, FilterExpression):
+            # Evaluate child expressions (series and condition)
+            # Children should be in children_outputs if graph was built correctly
+            if len(children_outputs) >= 2:
+                series_expr = children_outputs[0]
+                condition_expr = children_outputs[1]
+            else:
+                # Fallback: evaluate directly from node
+                series_expr = n.series.evaluate(context)
+                condition_expr = n.condition.evaluate(context)
+            return self._evaluate_filter_expression(series_expr, condition_expr)
+        elif isinstance(n, AggregateExpression):
+            # Evaluate child expression (series)
+            if len(children_outputs) >= 1:
+                series_expr = children_outputs[0]
+            else:
+                # Fallback: evaluate directly from node
+                series_expr = n.series.evaluate(context)
+            return self._evaluate_aggregate_expression(series_expr, n.operation, n.field)
+        elif isinstance(n, TimeShiftExpression):
+            # Evaluate child expression (series)
+            if len(children_outputs) >= 1:
+                series_expr = children_outputs[0]
+            else:
+                # Fallback: evaluate directly from node
+                series_expr = n.series.evaluate(context)
+            return self._evaluate_time_shift_expression(series_expr, n.shift, n.operation)
         elif hasattr(n, "__class__") and n.__class__.__name__ == "IndicatorNode":
             # For now, simply invoke .run(context) if present (stub; to be improved)
             return n.run(context)
         else:
             raise NotImplementedError(f"Unsupported node type: {type(n)}")
+
+    def _evaluate_source_expression(self, expr: SourceExpression, context: dict[str, Any]) -> Series[Any]:
+        """Evaluate SourceExpression by resolving series from context.
+
+        Args:
+            expr: SourceExpression to evaluate
+            context: Context dictionary containing series
+
+        Returns:
+            Series from the context
+
+        Raises:
+            ValueError: If the required series is not found in context
+        """
+        # Build context key based on source expression attributes
+        # Try multiple key formats for flexibility
+        possible_keys = []
+
+        # Format: source.field (e.g., "trades.volume")
+        possible_keys.append(f"{expr.source}.{expr.field}")
+
+        # Format: source_symbol_timeframe_field (e.g., "trades_BTC_1h_volume")
+        if expr.symbol and expr.timeframe:
+            possible_keys.append(f"{expr.source}_{expr.symbol}_{expr.timeframe}_{expr.field}")
+
+        # Format: symbol_source_field (e.g., "BTC_trades_volume")
+        if expr.symbol:
+            possible_keys.append(f"{expr.symbol}_{expr.source}_{expr.field}")
+
+        # Format: just the field name (e.g., "volume")
+        possible_keys.append(expr.field)
+
+        # Try each possible key
+        for key in possible_keys:
+            if key in context:
+                series = context[key]
+                if isinstance(series, Series):
+                    return series
+
+        # If not found, try to get from dataset if available
+        # This would require passing dataset to the evaluator, which we'll handle later
+        raise ValueError(
+            f"SourceExpression not found in context: {expr.source}.{expr.field} "
+            f"(symbol={expr.symbol}, timeframe={expr.timeframe}). "
+            f"Available keys: {list(context.keys())}"
+        )
+
+    def _evaluate_filter_expression(self, series: Series[Any], condition: Series[bool]) -> Series[Any]:
+        """Evaluate FilterExpression by filtering series based on condition.
+
+        Args:
+            series: Series to filter
+            condition: Boolean series indicating which elements to keep
+
+        Returns:
+            Filtered series
+        """
+        if not isinstance(series, Series):
+            raise TypeError(f"Expected Series, got {type(series)}")
+        if not isinstance(condition, Series):
+            raise TypeError(f"Expected Series[bool], got {type(condition)}")
+
+        return series.filter(condition)
+
+    def _evaluate_aggregate_expression(self, series: Series[Any], operation: str, field: str | None) -> Series[Any]:
+        """Evaluate AggregateExpression by applying aggregation operation.
+
+        Args:
+            series: Series to aggregate
+            operation: Aggregation operation ('count', 'sum', 'avg', 'max', 'min')
+            field: Optional field name (for future use with structured data)
+
+        Returns:
+            Aggregated series (typically single value)
+
+        Raises:
+            ValueError: If operation is not supported
+        """
+        if not isinstance(series, Series):
+            raise TypeError(f"Expected Series, got {type(series)}")
+
+        if operation == "count":
+            return series.count()
+        elif operation == "sum":
+            return series.sum(field)
+        elif operation == "avg":
+            return series.avg(field)
+        elif operation == "max":
+            return series.max(field)
+        elif operation == "min":
+            return series.min(field)
+        else:
+            raise ValueError(f"Unknown aggregation operation: {operation}")
+
+    def _evaluate_time_shift_expression(self, series: Series[Any], shift: str, operation: str | None) -> Series[Any]:
+        """Evaluate TimeShiftExpression by applying time shift and optional operation.
+
+        Args:
+            series: Base series to shift
+            shift: Shift specification (e.g., "24h_ago", "1h", "1")
+            operation: Optional operation ('change', 'change_pct', None for just shift)
+
+        Returns:
+            Shifted or transformed series
+
+        Raises:
+            ValueError: If shift format is invalid
+        """
+        if not isinstance(series, Series):
+            raise TypeError(f"Expected Series, got {type(series)}")
+
+        # Parse shift string to extract periods
+        # Support formats: "24h_ago", "1h", "1", "24h"
+        periods = 1  # default
+        if shift.endswith("_ago"):
+            # Format: "24h_ago" -> extract number and convert to periods
+            shift_part = shift[:-4]  # Remove "_ago"
+            if shift_part.endswith("h"):
+                hours = int(shift_part[:-1])
+                # For now, assume 1 period per hour (this should be based on timeframe)
+                periods = hours
+            elif shift_part.endswith("m"):
+                minutes = int(shift_part[:-1])
+                periods = minutes // 60  # Convert to hours (rough approximation)
+            else:
+                try:
+                    periods = int(shift_part)
+                except ValueError:
+                    raise ValueError(f"Invalid shift format: {shift}")
+        elif shift.endswith("h"):
+            hours = int(shift[:-1])
+            periods = hours
+        elif shift.endswith("m"):
+            minutes = int(shift[:-1])
+            periods = minutes // 60
+        else:
+            try:
+                periods = int(shift)
+            except ValueError:
+                raise ValueError(f"Invalid shift format: {shift}")
+
+        # Apply shift
+        shifted = series.shift(-periods)  # Negative for "ago" (looking back)
+
+        # Apply operation if specified
+        if operation == "change":
+            return series.change(periods)
+        elif operation == "change_pct":
+            return series.change_pct(periods)
+        elif operation is None:
+            return shifted
+        else:
+            raise ValueError(f"Unknown time shift operation: {operation}")
 
 
 def _collect_required_field_names(requirements: SignalRequirements) -> list[str]:
