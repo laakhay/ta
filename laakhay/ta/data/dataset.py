@@ -310,9 +310,7 @@ def dataset_from_multisource(
         optional_orderbook_fields = ["large_liquidity"]
 
         # Create series for primary field (imbalance is commonly used)
-        imbalance_series = _series_from_aggregations(
-            orderbooks, symbol=symbol, timeframe=timeframe, field="imbalance"
-        )
+        imbalance_series = _series_from_aggregations(orderbooks, symbol=symbol, timeframe=timeframe, field="imbalance")
         dataset_obj.add_orderbook_series(symbol, timeframe, imbalance_series, exchange=exchange)
 
         # Store other fields as separate series
@@ -320,9 +318,7 @@ def dataset_from_multisource(
             if field == "imbalance":
                 continue  # Already added
             try:
-                field_series = _series_from_aggregations(
-                    orderbooks, symbol=symbol, timeframe=timeframe, field=field
-                )
+                field_series = _series_from_aggregations(orderbooks, symbol=symbol, timeframe=timeframe, field=field)
                 source = f"{SOURCE_ORDERBOOK}_{field}" if not exchange else f"{SOURCE_ORDERBOOK}_{exchange}_{field}"
                 dataset_obj.add_series(symbol, timeframe, field_series, source=source)
             except (ValueError, KeyError):
@@ -331,9 +327,7 @@ def dataset_from_multisource(
         # Optional fields
         for field in optional_orderbook_fields:
             try:
-                field_series = _series_from_aggregations(
-                    orderbooks, symbol=symbol, timeframe=timeframe, field=field
-                )
+                field_series = _series_from_aggregations(orderbooks, symbol=symbol, timeframe=timeframe, field=field)
                 source = f"{SOURCE_ORDERBOOK}_{field}" if not exchange else f"{SOURCE_ORDERBOOK}_{exchange}_{field}"
                 dataset_obj.add_series(symbol, timeframe, field_series, source=source)
             except (ValueError, KeyError):
@@ -362,12 +356,8 @@ def dataset_from_multisource(
             if field == "value":
                 continue  # Already added
             try:
-                field_series = _series_from_aggregations(
-                    liquidations, symbol=symbol, timeframe=timeframe, field=field
-                )
-                source = (
-                    f"{SOURCE_LIQUIDATION}_{field}" if not exchange else f"{SOURCE_LIQUIDATION}_{exchange}_{field}"
-                )
+                field_series = _series_from_aggregations(liquidations, symbol=symbol, timeframe=timeframe, field=field)
+                source = f"{SOURCE_LIQUIDATION}_{field}" if not exchange else f"{SOURCE_LIQUIDATION}_{exchange}_{field}"
                 dataset_obj.add_series(symbol, timeframe, field_series, source=source)
             except (ValueError, KeyError):
                 raise
