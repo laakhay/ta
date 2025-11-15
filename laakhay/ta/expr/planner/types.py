@@ -53,9 +53,26 @@ class DerivedRequirement:
 
 
 @dataclass(frozen=True)
+class DataRequirement:
+    """Requirement for a specific data source."""
+
+    source: str  # 'ohlcv', 'trades', 'orderbook', 'liquidation'
+    field: str  # 'price', 'volume', 'count', 'imbalance', etc.
+    symbol: str | None = None  # None means "any symbol in scope"
+    exchange: str | None = None  # None means "any exchange"
+    timeframe: str | None = None  # None means "default timeframe"
+    min_lookback: int = 1
+    aggregation_params: dict[str, Any] | None = None  # For filters/aggregations
+
+
+@dataclass(frozen=True)
 class SignalRequirements:
     fields: tuple[FieldRequirement, ...]
     derived: tuple[DerivedRequirement, ...] = ()
+    data_requirements: tuple[DataRequirement, ...] = ()
+    required_sources: tuple[str, ...] = ()
+    required_exchanges: tuple[str, ...] = ()
+    time_based_queries: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
