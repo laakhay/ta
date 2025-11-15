@@ -56,7 +56,46 @@ class UnaryNode:
     operand: StrategyExpression
 
 
-StrategyExpression = Union[LiteralNode, IndicatorNode, BinaryNode, UnaryNode]
+@dataclass(slots=True)
+class AttributeNode:
+    """Attribute access: BTC.trades.volume, binance.BTC.price"""
+
+    symbol: str  # BTC, ETH, etc.
+    field: str  # price, volume, count, imbalance, etc.
+    exchange: str | None = None  # binance, bybit, etc.
+    timeframe: str | None = None  # 1h, 15m, etc.
+    source: str = "ohlcv"  # ohlcv, trades, orderbook, liquidation
+
+
+@dataclass(slots=True)
+class FilterNode:
+    """Filter operation: trades.filter(amount > 1000000)"""
+
+    series: StrategyExpression  # The series to filter (e.g., trades)
+    condition: StrategyExpression  # The filter condition (e.g., amount > 1000000)
+
+
+@dataclass(slots=True)
+class AggregateNode:
+    """Aggregation: trades.count, trades.sum(amount)"""
+
+    series: StrategyExpression  # The series to aggregate
+    operation: str  # 'count', 'sum', 'avg', 'max', 'min'
+    field: str | None = None  # Field to aggregate (for sum/avg/max/min)
+
+
+@dataclass(slots=True)
+class TimeShiftNode:
+    """Time-based query: price.24h_ago, liquidation.24h"""
+
+    series: StrategyExpression  # The base series
+    shift: str  # '24h_ago', '1h_ago', '24h', '1h', etc.
+    operation: str | None = None  # 'change', 'change_pct', 'spike', etc.
+
+
+StrategyExpression = Union[
+    LiteralNode, IndicatorNode, BinaryNode, UnaryNode, AttributeNode, FilterNode, AggregateNode, TimeShiftNode
+]
 
 
 def expression_from_dict(data: dict[str, Any]) -> StrategyExpression:
@@ -77,6 +116,31 @@ def expression_from_dict(data: dict[str, Any]) -> StrategyExpression:
         return UnaryNode(
             operator=cast(UnaryOperator, data["operator"]),
             operand=expression_from_dict(cast(dict[str, Any], data["operand"])),
+        )
+    if node_type == "attribute":
+        return AttributeNode(
+            symbol=str(data["symbol"]),
+            field=str(data["field"]),
+            exchange=data.get("exchange"),
+            timeframe=data.get("timeframe"),
+            source=str(data.get("source", "ohlcv")),
+        )
+    if node_type == "filter":
+        return FilterNode(
+            series=expression_from_dict(cast(dict[str, Any], data["series"])),
+            condition=expression_from_dict(cast(dict[str, Any], data["condition"])),
+        )
+    if node_type == "aggregate":
+        return AggregateNode(
+            series=expression_from_dict(cast(dict[str, Any], data["series"])),
+            operation=str(data["operation"]),
+            field=data.get("field"),
+        )
+    if node_type == "timeshift":
+        return TimeShiftNode(
+            series=expression_from_dict(cast(dict[str, Any], data["series"])),
+            shift=str(data["shift"]),
+            operation=data.get("operation"),
         )
     raise StrategyError(f"Unsupported node type '{node_type}'")
 
@@ -100,4 +164,40 @@ def expression_to_dict(expression: StrategyExpression) -> dict[str, Any]:
             "operator": expression.operator,
             "operand": expression_to_dict(expression.operand),
         }
+    if isinstance(expression, AttributeNode):
+        result = {
+            "type": "attribute",
+            "symbol": expression.symbol,
+            "source": expression.source,
+            "field": expression.field,
+        }
+        if expression.exchange is not None:
+            result["exchange"] = expression.exchange
+        if expression.timeframe is not None:
+            result["timeframe"] = expression.timeframe
+        return result
+    if isinstance(expression, FilterNode):
+        return {
+            "type": "filter",
+            "series": expression_to_dict(expression.series),
+            "condition": expression_to_dict(expression.condition),
+        }
+    if isinstance(expression, AggregateNode):
+        result = {
+            "type": "aggregate",
+            "series": expression_to_dict(expression.series),
+            "operation": expression.operation,
+        }
+        if expression.field is not None:
+            result["field"] = expression.field
+        return result
+    if isinstance(expression, TimeShiftNode):
+        result = {
+            "type": "timeshift",
+            "series": expression_to_dict(expression.series),
+            "shift": expression.shift,
+        }
+        if expression.operation is not None:
+            result["operation"] = expression.operation
+        return result
     raise StrategyError(f"Cannot serialize node of type {type(expression).__name__}")
