@@ -17,13 +17,29 @@ if TYPE_CHECKING:
 T = TypeVar("T")
 
 
+# Standard source identifiers for multi-source datasets
+SOURCE_OHLCV = "ohlcv"
+SOURCE_TRADES = "trades"
+SOURCE_ORDERBOOK = "orderbook"
+SOURCE_LIQUIDATION = "liquidation"
+SOURCE_DEFAULT = "default"
+
+
 @dataclass(frozen=True)
 class DatasetKey:
-    """Immutable key for dataset series identification."""
+    """Immutable key for dataset series identification.
+
+    Standard source values:
+    - 'ohlcv': OHLCV (candlestick) data
+    - 'trades': Trade aggregation data
+    - 'orderbook': Order book snapshot data
+    - 'liquidation': Liquidation aggregation data
+    - 'default': Default/legacy source (typically OHLCV)
+    """
 
     symbol: Symbol
     timeframe: str
-    source: str = "default"
+    source: str = SOURCE_DEFAULT
 
     def __str__(self) -> str:  # type: ignore[override]
         """String representation of the key using structured format."""
@@ -104,6 +120,63 @@ class Dataset:
     def add(self, symbol: Symbol, timeframe: str, source: str, series: OHLCV | Series[Any]) -> None:
         """Add a series to the dataset (alias for add_series with different parameter order)."""
         self.add_series(symbol, timeframe, series, source)
+
+    def add_trade_series(
+        self,
+        symbol: Symbol,
+        timeframe: str,
+        series: Series[Any],
+        exchange: str | None = None,
+    ) -> None:
+        """Add trade aggregation series to the dataset.
+
+        Args:
+            symbol: Trading pair symbol (e.g., 'BTCUSDT')
+            timeframe: Aggregation window (e.g., '1m', '5m', '15m', '1h')
+            series: Trade aggregation series
+            exchange: Optional exchange identifier (e.g., 'binance', 'bybit')
+                     If provided, source will be 'trades_{exchange}', otherwise 'trades'
+        """
+        source = f"{SOURCE_TRADES}_{exchange}" if exchange else SOURCE_TRADES
+        self.add_series(symbol, timeframe, series, source=source)
+
+    def add_orderbook_series(
+        self,
+        symbol: Symbol,
+        timeframe: str,
+        series: Series[Any],
+        exchange: str | None = None,
+    ) -> None:
+        """Add order book snapshot series to the dataset.
+
+        Args:
+            symbol: Trading pair symbol (e.g., 'BTCUSDT')
+            timeframe: Snapshot frequency (e.g., '1m', '5m')
+            series: Order book snapshot series
+            exchange: Optional exchange identifier (e.g., 'binance', 'bybit')
+                     If provided, source will be 'orderbook_{exchange}', otherwise 'orderbook'
+        """
+        source = f"{SOURCE_ORDERBOOK}_{exchange}" if exchange else SOURCE_ORDERBOOK
+        self.add_series(symbol, timeframe, series, source=source)
+
+    def add_liquidation_series(
+        self,
+        symbol: Symbol,
+        timeframe: str,
+        series: Series[Any],
+        exchange: str | None = None,
+    ) -> None:
+        """Add liquidation aggregation series to the dataset.
+
+        Args:
+            symbol: Trading pair symbol (e.g., 'BTCUSDT')
+            timeframe: Aggregation window (e.g., '15m', '1h', '4h', '24h')
+            series: Liquidation aggregation series
+            exchange: Optional exchange identifier (e.g., 'binance', 'bybit')
+                     If provided, source will be 'liquidation_{exchange}', otherwise 'liquidation'
+        """
+        source = f"{SOURCE_LIQUIDATION}_{exchange}" if exchange else SOURCE_LIQUIDATION
+        self.add_series(symbol, timeframe, series, source=source)
 
     def to_context(self) -> SeriesContext:
         """Convert dataset to SeriesContext for indicator evaluation.
@@ -299,6 +372,97 @@ class Dataset:
                         found = True
                         break
         return SeriesContext(**ctx)
+
+    def to_multisource_context(
+        self,
+        symbol: Symbol | None = None,
+        timeframe: str | None = None,
+        source: str | None = None,
+    ) -> SeriesContext:
+        """Convert dataset to source-specific context classes.
+
+        This method extracts series from the dataset and creates appropriate
+        context classes (OHLCVContext, TradeContext, OrderBookContext, LiquidationContext)
+        based on the source type.
+
+        Args:
+            symbol: Optional symbol filter. If provided, only series for this symbol are used.
+            timeframe: Optional timeframe filter. If provided, only series for this timeframe are used.
+            source: Optional source filter. If provided, only series for this source are used.
+                   If not provided and multiple sources exist, returns a generic SeriesContext.
+
+        Returns:
+            Appropriate context class instance based on source type, or generic SeriesContext
+            if source cannot be determined or multiple sources are present.
+
+        Raises:
+            ValueError: If required fields for a specific context type are missing
+        """
+        from ..registry.models import SeriesContext
+        from .context import create_context
+
+        # Filter series based on provided filters
+        filtered_series: dict[DatasetKey, OHLCV | Series[Any]] = {}
+        for key, series in self._series.items():
+            if symbol and key.symbol != symbol:
+                continue
+            if timeframe and key.timeframe != timeframe:
+                continue
+            if source and key.source != source:
+                continue
+            filtered_series[key] = series
+
+        if not filtered_series:
+            return SeriesContext()
+
+        # Group series by source
+        series_by_source: dict[str, dict[str, Series[Any]]] = {}
+        for key, series_obj in filtered_series.items():
+            # Determine source (strip exchange suffix if present)
+            source_name = key.source
+            if "_" in source_name:
+                # Handle exchange-qualified sources like "trades_binance"
+                base_source = source_name.split("_")[0]
+            else:
+                base_source = source_name
+
+            # Handle OHLCV data
+            if hasattr(series_obj, "to_series"):  # It's an OHLCV
+                if base_source not in series_by_source:
+                    series_by_source[base_source] = {}
+                ohlcv = series_obj  # type: ignore[assignment]
+                series_by_source[base_source]["price"] = ohlcv.to_series("close")
+                series_by_source[base_source]["close"] = ohlcv.to_series("close")
+                series_by_source[base_source]["open"] = ohlcv.to_series("open")
+                series_by_source[base_source]["high"] = ohlcv.to_series("high")
+                series_by_source[base_source]["low"] = ohlcv.to_series("low")
+                series_by_source[base_source]["volume"] = ohlcv.to_series("volume")
+            else:
+                # Handle regular Series - need to map to context fields
+                if base_source not in series_by_source:
+                    series_by_source[base_source] = {}
+                # For now, store by field name from source
+                # This assumes the series has metadata or we use the source name
+                field_name = key.source.split("_")[-1] if "_" in key.source else key.source
+                series_by_source[base_source][field_name] = series_obj
+
+        # If we have a single source, try to create appropriate context
+        if len(series_by_source) == 1:
+            source_name = next(iter(series_by_source.keys()))
+            series_dict = series_by_source[source_name]
+            try:
+                return create_context(source_name, **series_dict)
+            except (ValueError, KeyError):
+                # If context creation fails, fall back to generic
+                return SeriesContext(**series_dict)
+
+        # Multiple sources or unknown source - return generic context
+        # Merge all series into a single context
+        all_series: dict[str, Series[Any]] = {}
+        for source_dict in series_by_source.values():
+            all_series.update(source_dict)
+
+        return SeriesContext(**all_series)
 
     def to_dict(self) -> dict[str, Any]:
         """Convert dataset to dictionary format."""

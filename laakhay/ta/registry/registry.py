@@ -7,7 +7,7 @@ import threading
 from collections.abc import Callable
 from typing import Any, Union
 
-from ..core import Series
+from ..core.series import Series
 from .models import IndicatorHandle, SeriesContext
 from .schemas import IndicatorMetadata, IndicatorSchema, OutputSchema, ParamSchema
 

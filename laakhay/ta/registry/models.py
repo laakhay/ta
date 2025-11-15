@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from inspect import Signature
 from typing import Any
 
-from ..core import Series
+from ..core.series import Series
 from .schemas import IndicatorSchema
 
 
