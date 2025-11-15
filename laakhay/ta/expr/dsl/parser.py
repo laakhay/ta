@@ -180,6 +180,7 @@ class ExpressionParser:
             param for param in descriptor.schema.parameters.values() if param.name.lower() not in {"ctx", "context"}
         ]
         params: dict[str, Any] = {}
+        input_expr: StrategyExpression | None = None
 
         supports_nested = name in {
             "crossup",
@@ -196,21 +197,82 @@ class ExpressionParser:
             "exit",
         }
 
-        if len(node.args) > len(param_defs):
-            raise StrategyError(f"Indicator '{name}' accepts at most {len(param_defs)} positional arguments")
+        # Check if first positional argument is an expression (for explicit source input)
+        # This affects how we count arguments
+        # This allows patterns like sma(BTC.price, period=20) or sma(trades.volume, period=20)
+        if len(node.args) > 0:
+            first_arg = node.args[0]
+            # Try to convert as expression first - if it fails, fall back to literal
+            try:
+                # Check if this looks like an expression (attribute access, etc.)
+                if isinstance(
+                    first_arg, (ast.Attribute | ast.Call | ast.BinOp | ast.UnaryOp | ast.Compare | ast.BoolOp)
+                ):
+                    # This is an expression - store it as input_expr
+                    input_expr = self._convert_node(first_arg)
+                    # Skip adding it to params - it's handled separately
+                else:
+                    # Try as literal first
+                    try:
+                        literal_val = self._literal_value(first_arg)
+                        if len(param_defs) > 0:
+                            param_name = param_defs[0].name
+                            params[param_name] = literal_val
+                    except StrategyError:
+                        # If literal fails, try as expression
+                        input_expr = self._convert_node(first_arg)
+            except StrategyError:
+                # If expression conversion fails, try as literal
+                try:
+                    literal_val = self._literal_value(first_arg)
+                    if len(param_defs) > 0:
+                        param_name = param_defs[0].name
+                        params[param_name] = literal_val
+                except StrategyError:
+                    raise StrategyError(
+                        f"Indicator '{name}' first argument must be a literal value or valid expression"
+                    ) from None
 
-        for index, arg in enumerate(node.args):
-            param_name = param_defs[index].name
-            params[param_name] = self._literal_or_expression(arg, supports_nested, name, param_name)
+            # Process remaining positional arguments (starting from index 1)
+            # If input_expr was set: args[0] is expression (stored separately), args[1..] map to param_defs[0..]
+            # If input_expr was not set: args[0] was assigned to param_defs[0], args[1..] map to param_defs[1..]
+            for arg_index in range(1, len(node.args)):
+                # Map arg_index to param_index
+                # If input_expr: args[1] -> param_defs[0], args[2] -> param_defs[1], etc.
+                # If no input_expr: args[1] -> param_defs[1], args[2] -> param_defs[2], etc.
+                param_index = (arg_index - 1) if input_expr is not None else arg_index
+                if param_index >= len(param_defs):
+                    break
+                param_name = param_defs[param_index].name
+                params[param_name] = self._literal_or_expression(
+                    node.args[arg_index], supports_nested, name, param_name
+                )
+
+            # Validate argument count
+            # If input_expr is present, we allow one extra positional arg (the expression)
+            max_allowed = len(param_defs) + (1 if input_expr is not None else 0)
+            if len(node.args) > max_allowed:
+                raise StrategyError(
+                    f"Indicator '{name}' accepts at most {len(param_defs)} positional arguments"
+                    + (" (plus one expression as input)" if input_expr is not None else "")
+                )
+        else:
+            # No positional args - process keyword args normally
+            pass
 
         for keyword in node.keywords:
             if keyword.arg is None:
                 raise StrategyError("Keyword arguments must specify parameter names")
             if keyword.arg.lower() in {"ctx", "context"}:
                 raise StrategyError("Context argument is managed automatically and cannot be overridden")
+            # Check if this parameter was already set from a positional argument
+            if keyword.arg in params:
+                raise StrategyError(
+                    f"Indicator '{name}' parameter '{keyword.arg}' cannot be specified both as positional and keyword argument"
+                )
             params[keyword.arg] = self._literal_or_expression(keyword.value, supports_nested, name, keyword.arg)
 
-        return IndicatorNode(name=name, params=params)
+        return IndicatorNode(name=name, params=params, input_expr=input_expr)
 
     def _convert_select_call(self, node: ast.Call) -> IndicatorNode:
         params: dict[str, Any] = {}
@@ -283,11 +345,25 @@ class ExpressionParser:
 
         # Otherwise, treat as regular attribute access
         # Build chain: [binance, BTC, 1h, trades, volume] or [BTC, trades, volume]
+        # Support both Attribute chains and Subscript (bracket notation) for symbols with /
         chain = []
         current = node
         while isinstance(current, ast.Attribute):
             chain.insert(0, current.attr)
             current = current.value
+
+        # Handle Subscript nodes (bracket notation like binance["BTC/USDT"])
+        if isinstance(current, ast.Subscript):
+            # Extract the subscript value (the symbol in brackets)
+            if isinstance(current.slice, ast.Constant):
+                symbol = current.slice.value
+                if not isinstance(symbol, str):
+                    raise StrategyError(f"Subscript must be a string, got {type(symbol).__name__}")
+                chain.insert(0, symbol)
+                current = current.value
+            else:
+                raise StrategyError(f"Unsupported subscript slice type: {ast.dump(current.slice)}")
+
         if isinstance(current, ast.Name):
             chain.insert(0, current.id)
         else:

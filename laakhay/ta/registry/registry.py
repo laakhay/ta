@@ -51,8 +51,18 @@ _METADATA_HINTS: dict[str, IndicatorMetadata] = {
     "sync_timeframe": IndicatorMetadata(required_fields=("close",), optional_fields=("reference",), default_lookback=1),
     "select": IndicatorMetadata(required_fields=("close",), optional_fields=("field",), default_lookback=1),
     # Trend indicators
-    "sma": IndicatorMetadata(required_fields=("close",), lookback_params=("period",)),
-    "ema": IndicatorMetadata(required_fields=("close",), lookback_params=("period",)),
+    "sma": IndicatorMetadata(
+        required_fields=("close",),
+        lookback_params=("period",),
+        input_field="close",
+        input_series_param="input_series",
+    ),
+    "ema": IndicatorMetadata(
+        required_fields=("close",),
+        lookback_params=("period",),
+        input_field="close",
+        input_series_param="input_series",
+    ),
     "macd": IndicatorMetadata(
         required_fields=("close",),
         lookback_params=("fast_period", "slow_period", "signal_period"),
@@ -60,7 +70,12 @@ _METADATA_HINTS: dict[str, IndicatorMetadata] = {
     ),
     "bbands": IndicatorMetadata(required_fields=("close",), lookback_params=("period",)),
     # Momentum
-    "rsi": IndicatorMetadata(required_fields=("close",), lookback_params=("period",)),
+    "rsi": IndicatorMetadata(
+        required_fields=("close",),
+        lookback_params=("period",),
+        input_field="close",
+        input_series_param="input_series",
+    ),
     "stochastic": IndicatorMetadata(
         required_fields=("high", "low", "close"),
         lookback_params=("k_period", "d_period"),

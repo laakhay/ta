@@ -135,6 +135,9 @@ def _collect_requirements(graph: Graph) -> SignalRequirements:
 
             params = expr_node.params if hasattr(expr_node, "params") else {}
 
+            # Check if this indicator has an explicit input_series
+            has_input_series = hasattr(expr_node, "input_series") and expr_node.input_series is not None
+
             if name == "select" and "field" in params:
                 required_fields = (params["field"],)
             else:
@@ -151,14 +154,16 @@ def _collect_requirements(graph: Graph) -> SignalRequirements:
                 if collected:
                     lookback = max(collected)
 
-            for field_name in required_fields:
-                merge_field(field_name, None, max(lookback, 1))
+            # If indicator has explicit input_series, don't require default fields
+            # The input_series will be processed as a child node and its dependencies tracked
+            if not has_input_series:
+                for field_name in required_fields:
+                    merge_field(field_name, None, max(lookback, 1))
 
-            # If this indicator uses a SourceExpression, increase its lookback
-            # We need to find SourceExpression nodes in children
-            # For now, we'll increase lookback for all data requirements
-            # A more sophisticated approach would track which SourceExpression
-            # is used by which indicator
+            # If this indicator uses a SourceExpression (either directly or via input_series),
+            # increase its lookback. The input_series will be processed as a child, so we
+            # need to increase lookback for data requirements that match the indicator's needs.
+            # For indicators with input_series, the lookback applies to the input_series source.
             for key in list(data_lookbacks.keys()):
                 source, field, symbol, exchange, timeframe = key
                 # If this indicator requires the field we're tracking, increase lookback

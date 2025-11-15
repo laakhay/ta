@@ -55,6 +55,14 @@ class ExpressionCompiler:
 
         if isinstance(node, IndicatorNode):
             params = self._compile_params(node.params)
+
+            # If input_expr is present, compile it and pass as input_series parameter
+            if node.input_expr is not None:
+                input_expr_compiled = self._compile_node(node.input_expr)
+                # Pass the compiled expression node as input_series
+                # The evaluator will resolve this to a Series at runtime
+                params["input_series"] = input_expr_compiled._node
+
             handle = ta_namespace.indicator(node.name, **params)
             expr = handle._to_expression()
             if node.output:

@@ -147,6 +147,8 @@ class IndicatorMetadata:
     optional_fields: tuple[str, ...] = ()
     lookback_params: tuple[str, ...] = ()
     default_lookback: int | None = None
+    input_field: str | None = None  # Default input field (e.g., 'close', 'volume')
+    input_series_param: str | None = None  # Parameter name that can override input (e.g., 'input_series')
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -154,6 +156,8 @@ class IndicatorMetadata:
             "optional_fields": list(self.optional_fields),
             "lookback_params": list(self.lookback_params),
             "default_lookback": self.default_lookback,
+            "input_field": self.input_field,
+            "input_series_param": self.input_series_param,
         }
 
     @classmethod
@@ -165,4 +169,6 @@ class IndicatorMetadata:
             optional_fields=tuple(data.get("optional_fields", ())),
             lookback_params=tuple(data.get("lookback_params", ())),
             default_lookback=data.get("default_lookback"),
+            input_field=data.get("input_field"),
+            input_series_param=data.get("input_series_param"),
         )
