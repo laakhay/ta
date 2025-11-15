@@ -26,15 +26,19 @@ class PreviewResult:
         series: The resulting Series from evaluating the expression.
                If evaluating against Dataset, this is the first series.
         triggers: List of trigger points where boolean expressions are True.
-                 Each trigger is a dict with 'timestamp' and 'value' keys.
+                 Each trigger is a dict with 'timestamp', 'value', and 'index' keys.
         indicators: List of indicator nodes used in the expression.
         trim: Number of bars to trim due to indicator lookback requirements.
+        requirements: Optional SignalRequirements from expression planning.
+        plan: Optional PlanResult if planning was performed.
     """
 
     series: Series[Any]
     triggers: list[dict[str, Any]]
     indicators: list[Any]
     trim: int
+    requirements: Any | None = None  # SignalRequirements from planner
+    plan: Any | None = None  # PlanResult if available
 
 
 def preview(
@@ -115,11 +119,23 @@ def preview(
     # Extract triggers (boolean True values)
     triggers = _extract_triggers(series)
 
+    # Get requirements if available
+    try:
+        from ..planner import plan_expression
+
+        plan = plan_expression(compiled_expr._node)
+        requirements = plan.requirements
+    except Exception:
+        plan = None
+        requirements = None
+
     return PreviewResult(
         series=series,
         triggers=triggers,
         indicators=indicator_nodes,
         trim=trim,
+        requirements=requirements,
+        plan=plan,
     )
 
 
