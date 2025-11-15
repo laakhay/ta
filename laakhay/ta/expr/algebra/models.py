@@ -601,11 +601,11 @@ class UnaryOp(ExpressionNode):
 class SourceExpression(ExpressionNode):
     """Expression that references a data source field."""
 
-    exchange: str | None
     symbol: str
-    timeframe: str | None
-    source: str  # 'ohlcv', 'trades', 'orderbook', 'liquidation'
     field: str  # 'price', 'volume', 'count', 'imbalance', etc.
+    exchange: str | None = None
+    timeframe: str | None = None
+    source: str = "ohlcv"  # 'ohlcv', 'trades', 'orderbook', 'liquidation'
 
     def evaluate(self, context: dict[str, Series[Any]]) -> Series[Any]:  # type: ignore[override]
         """Evaluate source expression - resolved at evaluation time."""

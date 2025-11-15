@@ -59,37 +59,43 @@ class UnaryNode:
 @dataclass(slots=True)
 class AttributeNode:
     """Attribute access: BTC.trades.volume, binance.BTC.price"""
+
+    symbol: str  # BTC, ETH, etc.
+    field: str  # price, volume, count, imbalance, etc.
     exchange: str | None = None  # binance, bybit, etc.
-    symbol: str                  # BTC, ETH, etc.
-    timeframe: str | None = None # 1h, 15m, etc.
-    source: str = "ohlcv"        # ohlcv, trades, orderbook, liquidation
-    field: str                   # price, volume, count, imbalance, etc.
+    timeframe: str | None = None  # 1h, 15m, etc.
+    source: str = "ohlcv"  # ohlcv, trades, orderbook, liquidation
 
 
 @dataclass(slots=True)
 class FilterNode:
     """Filter operation: trades.filter(amount > 1000000)"""
-    series: StrategyExpression   # The series to filter (e.g., trades)
-    condition: StrategyExpression # The filter condition (e.g., amount > 1000000)
+
+    series: StrategyExpression  # The series to filter (e.g., trades)
+    condition: StrategyExpression  # The filter condition (e.g., amount > 1000000)
 
 
 @dataclass(slots=True)
 class AggregateNode:
     """Aggregation: trades.count, trades.sum(amount)"""
-    series: StrategyExpression   # The series to aggregate
-    operation: str               # 'count', 'sum', 'avg', 'max', 'min'
-    field: str | None = None     # Field to aggregate (for sum/avg/max/min)
+
+    series: StrategyExpression  # The series to aggregate
+    operation: str  # 'count', 'sum', 'avg', 'max', 'min'
+    field: str | None = None  # Field to aggregate (for sum/avg/max/min)
 
 
 @dataclass(slots=True)
 class TimeShiftNode:
     """Time-based query: price.24h_ago, liquidation.24h"""
-    series: StrategyExpression   # The base series
-    shift: str                   # '24h_ago', '1h_ago', '24h', '1h', etc.
-    operation: str | None = None # 'change', 'change_pct', 'spike', etc.
+
+    series: StrategyExpression  # The base series
+    shift: str  # '24h_ago', '1h_ago', '24h', '1h', etc.
+    operation: str | None = None  # 'change', 'change_pct', 'spike', etc.
 
 
-StrategyExpression = Union[LiteralNode, IndicatorNode, BinaryNode, UnaryNode, AttributeNode, FilterNode, AggregateNode, TimeShiftNode]
+StrategyExpression = Union[
+    LiteralNode, IndicatorNode, BinaryNode, UnaryNode, AttributeNode, FilterNode, AggregateNode, TimeShiftNode
+]
 
 
 def expression_from_dict(data: dict[str, Any]) -> StrategyExpression:
@@ -113,11 +119,11 @@ def expression_from_dict(data: dict[str, Any]) -> StrategyExpression:
         )
     if node_type == "attribute":
         return AttributeNode(
-            exchange=data.get("exchange"),
             symbol=str(data["symbol"]),
+            field=str(data["field"]),
+            exchange=data.get("exchange"),
             timeframe=data.get("timeframe"),
             source=str(data.get("source", "ohlcv")),
-            field=str(data["field"]),
         )
     if node_type == "filter":
         return FilterNode(

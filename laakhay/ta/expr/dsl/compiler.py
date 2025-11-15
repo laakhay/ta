@@ -132,17 +132,19 @@ class ExpressionCompiler:
         # Use defaults if not specified
         symbol = node.symbol or self.default_symbol
         if not symbol:
-            raise StrategyError("Symbol is required for attribute access (provide default_symbol or specify in expression)")
-        
+            raise StrategyError(
+                "Symbol is required for attribute access (provide default_symbol or specify in expression)"
+            )
+
         timeframe = node.timeframe or self.default_timeframe
         exchange = node.exchange or self.default_exchange
-        
+
         source_expr = SourceExpression(
-            exchange=exchange,
             symbol=symbol,
+            field=node.field,
+            exchange=exchange,
             timeframe=timeframe,
             source=node.source,
-            field=node.field,
         )
         return Expression(source_expr)
 
@@ -150,14 +152,14 @@ class ExpressionCompiler:
         """Compile filter operation to FilterExpression."""
         series_expr = self._compile_node(node.series)
         condition_expr = self._compile_node(node.condition)
-        
+
         filter_expr = FilterExpression(series=series_expr._node, condition=condition_expr._node)
         return Expression(filter_expr)
 
     def _compile_aggregate_node(self, node: AggregateNode) -> Expression:
         """Compile aggregation operation to AggregateExpression."""
         series_expr = self._compile_node(node.series)
-        
+
         aggregate_expr = AggregateExpression(
             series=series_expr._node,
             operation=node.operation,
@@ -168,7 +170,7 @@ class ExpressionCompiler:
     def _compile_time_shift_node(self, node: TimeShiftNode) -> Expression:
         """Compile time-based query to TimeShiftExpression."""
         series_expr = self._compile_node(node.series)
-        
+
         time_shift_expr = TimeShiftExpression(
             series=series_expr._node,
             shift=node.shift,
