@@ -73,8 +73,14 @@ def build_graph(root: ExpressionNode) -> Graph:
             children = ()
         elif _is_indicator_node(node):
             params_sig = tuple(sorted(node.params.items()))
-            signature = ("Indicator", node.name, params_sig)
-            children = ()
+            # If input_series is present, treat it as a child dependency
+            if hasattr(node, "input_series") and node.input_series is not None:
+                input_id, input_sig = visit(node.input_series)
+                signature = ("Indicator", node.name, params_sig, input_sig)
+                children = (input_id,)
+            else:
+                signature = ("Indicator", node.name, params_sig)
+                children = ()
         else:
             # Fallback for unknown node types: use object id to keep determinism per instance
             signature = (type(node).__name__, id(node))
