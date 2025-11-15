@@ -26,15 +26,28 @@ _ = get_global_registry()
 class IndicatorNode(ExpressionNode):
     """Expression node representing an indicator handle for DAG composition."""
 
-    def __init__(self, name: str, params: dict[str, Any]):
+    def __init__(self, name: str, params: dict[str, Any], input_series: ExpressionNode | None = None):
         self.name = name
         self.params = params
+        self.input_series = input_series  # Optional input series expression node
         self._registry = get_global_registry()
 
     def evaluate(self, context: dict[str, Series[Any]]) -> Series[Any]:
         if self.name not in self._registry._indicators:
             raise ValueError(f"Indicator '{self.name}' not found in registry")
         indicator_func = self._registry._indicators[self.name]
+
+        # If input_series is provided, evaluate it first and use it to build context
+        if self.input_series is not None:
+            # Evaluate the input series expression
+            input_series_result = self.input_series.evaluate(context)
+            # Create context with the input series as 'close' (or appropriate field)
+            # Most indicators expect 'close' by default
+            ctx = SeriesContext(close=input_series_result)
+            # Remove input_series from params before calling indicator
+            params_without_input = {k: v for k, v in self.params.items() if k != "input_series"}
+            return indicator_func(ctx, **params_without_input)
+
         return indicator_func(SeriesContext(**context), **self.params)
 
     def dependencies(self) -> list[str]:
@@ -110,6 +123,12 @@ class IndicatorHandle:
         return expr.run(data)
 
     def _to_expression(self) -> Expression:
+        # Extract input_series if present in params (don't mutate self.params)
+        input_series = self.params.get("input_series")
+        if isinstance(input_series, ExpressionNode):
+            # Remove it from params copy
+            params_without_input = {k: v for k, v in self.params.items() if k != "input_series"}
+            return Expression(IndicatorNode(self.name, params_without_input, input_series=input_series))
         return Expression(IndicatorNode(self.name, self.params))
 
     # ExpressionNode compatibility ----------------------------------------------------------
