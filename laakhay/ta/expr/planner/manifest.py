@@ -25,6 +25,7 @@ def generate_capability_manifest() -> dict[str, Any]:
     - Available indicators
     - Available operators
     - Expression syntax examples
+    - Exchange-specific source support (merged with laakhay-data metadata)
 
     Returns:
         Dictionary with capability information for frontend/backend consumption.
@@ -59,6 +60,9 @@ def generate_capability_manifest() -> dict[str, Any]:
     # Extract operators from parser
     operators = _extract_operators_from_parser()
 
+    # Merge with laakhay-data exchange metadata to filter unsupported combos
+    exchange_source_support = _merge_exchange_metadata(sources)
+
     # Define expression syntax examples
     examples = {
         "basic": [
@@ -86,10 +90,11 @@ def generate_capability_manifest() -> dict[str, Any]:
 
     return {
         "sources": sources,
+        "exchange_source_support": exchange_source_support,
         "indicators": sorted(indicators, key=lambda x: x["name"]),
         "operators": operators,
         "examples": examples,
-        "version": "1.0.0",
+        "version": "1.1.0",  # Bump version for exchange metadata merge
     }
 
 
@@ -235,3 +240,58 @@ def _extract_operators_from_parser() -> dict[str, list[str]]:
         "comparison": sorted(set(comparison_ops)),
         "logical": logical_ops,
     }
+
+
+def _merge_exchange_metadata(sources: dict[str, dict[str, Any]]) -> dict[str, dict[str, dict[str, bool]]]:
+    """
+    Merge TA source definitions with laakhay-data exchange metadata.
+
+    This filters out unsupported source/exchange combinations (e.g., Coinbase doesn't
+    support liquidations since it's spot-only).
+
+    Args:
+        sources: Dictionary of source definitions from TA parser
+
+    Returns:
+        Dictionary mapping exchange -> source -> support flags
+        Example: {"binance": {"ohlcv": {"rest": True, "ws": True}, ...}, ...}
+    """
+    try:
+        from laakhay.data import get_all_capabilities
+    except ImportError:
+        # If laakhay-data is not available, return empty dict
+        return {}
+
+    # Map TA source names to laakhay-data data_type names
+    source_to_datatype = {
+        "ohlcv": "ohlcv",
+        "trades": "trades",
+        "orderbook": "order_book",
+        "liquidation": "liquidations",
+    }
+
+    all_capabilities = get_all_capabilities()
+    exchange_support: dict[str, dict[str, dict[str, bool]]] = {}
+
+    for exchange_name, capability in all_capabilities.items():
+        exchange_support[exchange_name] = {}
+        data_types = capability.get("data_types", {})
+
+        for source_name in sources.keys():
+            # Map source to data type
+            data_type = source_to_datatype.get(source_name)
+            if data_type and data_type in data_types:
+                # Get REST/WS support from exchange metadata
+                support = data_types[data_type]
+                exchange_support[exchange_name][source_name] = {
+                    "rest": support.get("rest", False),
+                    "ws": support.get("ws", False),
+                }
+            else:
+                # Source not supported by this exchange
+                exchange_support[exchange_name][source_name] = {
+                    "rest": False,
+                    "ws": False,
+                }
+
+    return exchange_support
