@@ -3,7 +3,17 @@
 from . import alignment
 from .alignment import alignment as alignment_func
 from .alignment import get_policy
-from .models import BinaryOp, ExpressionNode, Literal, OperatorType, UnaryOp
+from .models import (
+    AggregateExpression,
+    BinaryOp,
+    ExpressionNode,
+    FilterExpression,
+    Literal,
+    OperatorType,
+    SourceExpression,
+    TimeShiftExpression,
+    UnaryOp,
+)
 from .operators import Expression, as_expression
 
 __all__ = [
@@ -12,6 +22,10 @@ __all__ = [
     "UnaryOp",
     "Literal",
     "OperatorType",
+    "SourceExpression",
+    "FilterExpression",
+    "AggregateExpression",
+    "TimeShiftExpression",
     "Expression",
     "as_expression",
     "alignment",

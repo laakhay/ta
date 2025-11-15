@@ -597,6 +597,110 @@ class UnaryOp(ExpressionNode):
         return hash((type(self).__name__, self.operator, self.operand))
 
 
+@dataclass(eq=False)
+class SourceExpression(ExpressionNode):
+    """Expression that references a data source field."""
+
+    exchange: str | None
+    symbol: str
+    timeframe: str | None
+    source: str  # 'ohlcv', 'trades', 'orderbook', 'liquidation'
+    field: str  # 'price', 'volume', 'count', 'imbalance', etc.
+
+    def evaluate(self, context: dict[str, Series[Any]]) -> Series[Any]:  # type: ignore[override]
+        """Evaluate source expression - resolved at evaluation time."""
+        # This will be implemented in the evaluator
+        raise NotImplementedError("SourceExpression evaluation is handled by the evaluator")
+
+    def dependencies(self) -> list[str]:  # type: ignore[override]
+        """Get dependencies for source expression."""
+        key_parts = [self.source, self.symbol]
+        if self.timeframe:
+            key_parts.append(self.timeframe)
+        if self.exchange:
+            key_parts.append(self.exchange)
+        key_parts.append(self.field)
+        return [".".join(key_parts)]
+
+    def describe(self) -> str:  # type: ignore[override]
+        """Describe source expression."""
+        parts = []
+        if self.exchange:
+            parts.append(self.exchange)
+        parts.append(self.symbol)
+        if self.timeframe:
+            parts.append(self.timeframe)
+        parts.append(self.source)
+        parts.append(self.field)
+        return ".".join(parts)
+
+
+@dataclass(eq=False)
+class FilterExpression(ExpressionNode):
+    """Expression that filters a series."""
+
+    series: ExpressionNode
+    condition: ExpressionNode
+
+    def evaluate(self, context: dict[str, Series[Any]]) -> Series[Any]:  # type: ignore[override]
+        """Evaluate filter expression - implemented in evaluator."""
+        raise NotImplementedError("FilterExpression evaluation is handled by the evaluator")
+
+    def dependencies(self) -> list[str]:  # type: ignore[override]
+        """Get dependencies from series and condition."""
+        return list(set(self.series.dependencies() + self.condition.dependencies()))
+
+    def describe(self) -> str:  # type: ignore[override]
+        """Describe filter expression."""
+        return f"{self.series.describe()}.filter({self.condition.describe()})"
+
+
+@dataclass(eq=False)
+class AggregateExpression(ExpressionNode):
+    """Expression that aggregates a series."""
+
+    series: ExpressionNode
+    operation: str  # 'count', 'sum', 'avg', 'max', 'min'
+    field: str | None
+
+    def evaluate(self, context: dict[str, Series[Any]]) -> Series[Any]:  # type: ignore[override]
+        """Evaluate aggregate expression - implemented in evaluator."""
+        raise NotImplementedError("AggregateExpression evaluation is handled by the evaluator")
+
+    def dependencies(self) -> list[str]:  # type: ignore[override]
+        """Get dependencies from series."""
+        return self.series.dependencies()
+
+    def describe(self) -> str:  # type: ignore[override]
+        """Describe aggregate expression."""
+        if self.field:
+            return f"{self.series.describe()}.{self.operation}({self.field})"
+        return f"{self.series.describe()}.{self.operation}"
+
+
+@dataclass(eq=False)
+class TimeShiftExpression(ExpressionNode):
+    """Expression that queries historical data."""
+
+    series: ExpressionNode
+    shift: str  # '24h_ago', '1h', etc.
+    operation: str | None  # 'change', 'change_pct', 'spike', etc.
+
+    def evaluate(self, context: dict[str, Series[Any]]) -> Series[Any]:  # type: ignore[override]
+        """Evaluate time-shift expression - implemented in evaluator."""
+        raise NotImplementedError("TimeShiftExpression evaluation is handled by the evaluator")
+
+    def dependencies(self) -> list[str]:  # type: ignore[override]
+        """Get dependencies from series."""
+        return self.series.dependencies()
+
+    def describe(self) -> str:  # type: ignore[override]
+        """Describe time-shift expression."""
+        if self.operation:
+            return f"{self.series.describe()}.{self.operation}_{self.shift}"
+        return f"{self.series.describe()}.{self.shift}"
+
+
 def _wrap_literal(value: ExpressionNode | Series[Any] | float | int) -> ExpressionNode:
     """Wrap a value in a Literal node if it's not already an ExpressionNode."""
     if isinstance(value, ExpressionNode):
