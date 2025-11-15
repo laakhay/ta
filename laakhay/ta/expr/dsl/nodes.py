@@ -20,6 +20,7 @@ class IndicatorNode:
     name: str
     params: dict[str, Any] = field(default_factory=dict)
     output: str | None = None
+    input_expr: StrategyExpression | None = None  # Optional input expression (e.g., BTC.price, trades.volume)
 
 
 BinaryOperator = Literal[
@@ -105,7 +106,11 @@ def expression_from_dict(data: dict[str, Any]) -> StrategyExpression:
         return LiteralNode(value=float(data["value"]))
     if node_type == "indicator":
         params = cast(dict[str, Any], data.get("params") or {})
-        return IndicatorNode(name=str(data["name"]).lower(), params=params, output=data.get("output"))
+        input_expr_data = data.get("input_expr")
+        input_expr = expression_from_dict(cast(dict[str, Any], input_expr_data)) if input_expr_data else None
+        return IndicatorNode(
+            name=str(data["name"]).lower(), params=params, output=data.get("output"), input_expr=input_expr
+        )
     if node_type == "binary":
         return BinaryNode(
             operator=cast(BinaryOperator, data["operator"]),
@@ -150,7 +155,15 @@ def expression_to_dict(expression: StrategyExpression) -> dict[str, Any]:
     if isinstance(expression, LiteralNode):
         return {"type": "literal", "value": expression.value}
     if isinstance(expression, IndicatorNode):
-        return {"type": "indicator", "name": expression.name, "params": expression.params, "output": expression.output}
+        result = {
+            "type": "indicator",
+            "name": expression.name,
+            "params": expression.params,
+            "output": expression.output,
+        }
+        if expression.input_expr is not None:
+            result["input_expr"] = expression_to_dict(expression.input_expr)
+        return result
     if isinstance(expression, BinaryNode):
         return {
             "type": "binary",
