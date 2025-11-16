@@ -303,7 +303,9 @@ class TestRuntimeEvaluator:
         assert evaluator._parse_shift_periods("1h") == 1
         assert evaluator._parse_shift_periods("1") == 1
 
-        with pytest.raises(ValueError):
+        from laakhay.ta.exceptions import EvaluationError
+
+        with pytest.raises(EvaluationError, match="Invalid shift format"):
             evaluator._parse_shift_periods("invalid")
 
     def test_evaluate_with_trades_source(self):
