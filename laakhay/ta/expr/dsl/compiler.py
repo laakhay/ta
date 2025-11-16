@@ -153,6 +153,9 @@ class ExpressionCompiler:
             exchange=exchange,
             timeframe=timeframe,
             source=node.source,
+            base=node.base,
+            quote=node.quote,
+            instrument_type=node.instrument_type,
         )
         return Expression(source_expr)
 

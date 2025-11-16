@@ -59,13 +59,16 @@ class UnaryNode:
 
 @dataclass(slots=True)
 class AttributeNode:
-    """Attribute access: BTC.trades.volume, binance.BTC.price"""
+    """Attribute access: BTC.trades.volume, binance.BTC.price, BTC/USDT.price, BTC/USDT.perp.price"""
 
-    symbol: str  # BTC, ETH, etc.
+    symbol: str  # BTC, ETH, BTC/USDT, etc. (kept for backward compatibility)
     field: str  # price, volume, count, imbalance, etc.
     exchange: str | None = None  # binance, bybit, etc.
     timeframe: str | None = None  # 1h, 15m, etc.
     source: str = "ohlcv"  # ohlcv, trades, orderbook, liquidation
+    base: str | None = None  # BTC (from BTC/USDT)
+    quote: str | None = None  # USDT (from BTC/USDT)
+    instrument_type: str | None = None  # spot, perp, perpetual, futures, future, option
 
 
 @dataclass(slots=True)
@@ -129,6 +132,9 @@ def expression_from_dict(data: dict[str, Any]) -> StrategyExpression:
             exchange=data.get("exchange"),
             timeframe=data.get("timeframe"),
             source=str(data.get("source", "ohlcv")),
+            base=data.get("base"),
+            quote=data.get("quote"),
+            instrument_type=data.get("instrument_type"),
         )
     if node_type == "filter":
         return FilterNode(
@@ -188,6 +194,12 @@ def expression_to_dict(expression: StrategyExpression) -> dict[str, Any]:
             result["exchange"] = expression.exchange
         if expression.timeframe is not None:
             result["timeframe"] = expression.timeframe
+        if expression.base is not None:
+            result["base"] = expression.base
+        if expression.quote is not None:
+            result["quote"] = expression.quote
+        if expression.instrument_type is not None:
+            result["instrument_type"] = expression.instrument_type
         return result
     if isinstance(expression, FilterNode):
         return {

@@ -40,7 +40,19 @@ class IndicatorNode(ExpressionNode):
         # If input_series is provided, evaluate it first and use it to build context
         if self.input_series is not None:
             # Evaluate the input series expression
-            input_series_result = self.input_series.evaluate(context)
+            # If it's a SourceExpression, we need to use the evaluator's method
+            from ..expr.algebra.models import SourceExpression
+
+            if isinstance(self.input_series, SourceExpression):
+                # Use the evaluator's method to resolve SourceExpression
+                from ..expr.planner.evaluator import Evaluator
+
+                evaluator = Evaluator()
+                # The method only needs expr and context - it extracts symbol/timeframe from expr itself
+                input_series_result = evaluator._evaluate_source_expression(self.input_series, context)
+            else:
+                # For other expression types, evaluate normally
+                input_series_result = self.input_series.evaluate(context)
             # Create context with the input series as 'close' (or appropriate field)
             # Most indicators expect 'close' by default
             ctx = SeriesContext(close=input_series_result)

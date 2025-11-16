@@ -203,35 +203,44 @@ class ExpressionParser:
         if len(node.args) > 0:
             first_arg = node.args[0]
             # Try to convert as expression first - if it fails, fall back to literal
-            try:
-                # Check if this looks like an expression (attribute access, etc.)
-                if isinstance(
-                    first_arg, (ast.Attribute | ast.Call | ast.BinOp | ast.UnaryOp | ast.Compare | ast.BoolOp)
-                ):
-                    # This is an expression - store it as input_expr
+            # Check if this looks like an expression (attribute access, binary op, etc.)
+            # Note: ast.Constant is NOT included - constants should be treated as literals first
+            is_expression_type = isinstance(
+                first_arg,
+                (ast.Attribute | ast.Call | ast.BinOp | ast.UnaryOp | ast.Compare | ast.BoolOp),
+            )
+
+            if is_expression_type:
+                # This is an expression - try to convert it
+                try:
                     input_expr = self._convert_node(first_arg)
-                    # Skip adding it to params - it's handled separately
-                else:
-                    # Try as literal first
+                    # Successfully converted as expression - skip adding it to params
+                except StrategyError:
+                    # Expression conversion failed - try as literal as fallback
                     try:
                         literal_val = self._literal_value(first_arg)
                         if len(param_defs) > 0:
                             param_name = param_defs[0].name
                             params[param_name] = literal_val
                     except StrategyError:
-                        # If literal fails, try as expression
-                        input_expr = self._convert_node(first_arg)
-            except StrategyError:
-                # If expression conversion fails, try as literal
+                        raise StrategyError(
+                            f"Indicator '{name}' first argument must be a literal value or valid expression"
+                        ) from None
+            else:
+                # Not an expression type - try as literal first
                 try:
                     literal_val = self._literal_value(first_arg)
                     if len(param_defs) > 0:
                         param_name = param_defs[0].name
                         params[param_name] = literal_val
                 except StrategyError:
-                    raise StrategyError(
-                        f"Indicator '{name}' first argument must be a literal value or valid expression"
-                    ) from None
+                    # Literal failed - try as expression as fallback
+                    try:
+                        input_expr = self._convert_node(first_arg)
+                    except StrategyError:
+                        raise StrategyError(
+                            f"Indicator '{name}' first argument must be a literal value or valid expression"
+                        ) from None
 
             # Process remaining positional arguments (starting from index 1)
             # If input_expr was set: args[0] is expression (stored separately), args[1..] map to param_defs[0..]
@@ -345,32 +354,20 @@ class ExpressionParser:
 
         # Otherwise, treat as regular attribute access
         # Build chain: [binance, BTC, 1h, trades, volume] or [BTC, trades, volume]
-        # Support both Attribute chains and Subscript (bracket notation) for symbols with /
+        # Only support attribute chain format (no bracket notation)
         chain = []
         current = node
         while isinstance(current, ast.Attribute):
             chain.insert(0, current.attr)
             current = current.value
 
-        # Handle Subscript nodes (bracket notation like binance["BTC/USDT"])
-        if isinstance(current, ast.Subscript):
-            # Extract the subscript value (the symbol in brackets)
-            if isinstance(current.slice, ast.Constant):
-                symbol = current.slice.value
-                if not isinstance(symbol, str):
-                    raise StrategyError(f"Subscript must be a string, got {type(symbol).__name__}")
-                chain.insert(0, symbol)
-                current = current.value
-            else:
-                raise StrategyError(f"Unsupported subscript slice type: {ast.dump(current.slice)}")
-
         if isinstance(current, ast.Name):
             chain.insert(0, current.id)
         else:
             raise StrategyError(f"Unsupported attribute chain base: {ast.dump(current)}")
 
-        # Parse chain into components
-        exchange, symbol, timeframe, source, field = self._parse_attribute_chain(chain)
+        # Parse chain into components (now includes base, quote, instrument_type)
+        exchange, symbol, timeframe, source, field, base, quote, instrument_type = self._parse_attribute_chain(chain)
 
         # Validate the combination
         self._validate_attribute_combination(exchange, symbol, timeframe, source, field)
@@ -381,18 +378,24 @@ class ExpressionParser:
             exchange=exchange,
             timeframe=timeframe,
             source=source,
+            base=base,
+            quote=quote,
+            instrument_type=instrument_type,
         )
 
-    def _parse_attribute_chain(self, chain: list[str]) -> tuple[str | None, str, str | None, str, str]:
+    def _parse_attribute_chain(
+        self, chain: list[str]
+    ) -> tuple[str | None, str, str | None, str, str, str | None, str | None, str | None]:
         """
-        Parse attribute chain into (exchange, symbol, timeframe, source, field).
+        Parse attribute chain into (exchange, symbol, timeframe, source, field, base, quote, instrument_type).
 
         Examples:
-        - [BTC, trades, volume] -> (None, BTC, None, trades, volume)
-        - [binance, BTC, price] -> (binance, BTC, None, ohlcv, price)
-        - [binance, BTC, 1h, orderbook, imbalance] -> (binance, BTC, 1h, orderbook, imbalance)
-        - [BTC, 1h, price] -> (None, BTC, 1h, ohlcv, price)
-        - [BTC, price] -> (None, BTC, None, ohlcv, price)
+        - [BTC, trades, volume] -> (None, BTC, None, trades, volume, None, None, None)
+        - [binance, BTC, price] -> (binance, BTC, None, ohlcv, price, None, None, None)
+        - [BTC, USDT, perp, price] -> (None, BTC/USDT, None, ohlcv, price, BTC, USDT, perp)
+        - [BTC, USDT, spot, price] -> (None, BTC/USDT, None, ohlcv, price, BTC, USDT, spot)
+        - [binance, BTC, USDT, perp, 1h, price] -> (binance, BTC/USDT, 1h, ohlcv, price, BTC, USDT, perp)
+        - [BTC, USDT, perp, trades, volume] -> (None, BTC/USDT, None, trades, volume, BTC, USDT, perp)
         """
         if len(chain) < 2:
             raise StrategyError(f"Attribute chain too short: {'.'.join(chain)}")
@@ -402,13 +405,48 @@ class ExpressionParser:
         # Known sources
         known_sources = {"ohlcv", "trades", "orderbook", "liquidation"}
         # Known timeframes (common patterns)
-        timeframe_patterns = {"1m", "5m", "15m", "30m", "1h", "4h", "1d", "1w", "1mo"}
+        # Note: Python AST can't parse numeric identifiers like "1h", so we support alternative formats:
+        # - "h1" for "1h", "m15" for "15m", "d1" for "1d", etc.
+        # - Also support original format "1h", "15m" if they appear in bracket notation (not supported now)
+        timeframe_patterns = {
+            # Alternative format (Python-valid identifiers)
+            "m1",
+            "m3",
+            "m5",
+            "m15",
+            "m30",
+            "h1",
+            "h2",
+            "h4",
+            "h6",
+            "h8",
+            "h12",
+            "d1",
+            "d3",
+            "w1",
+            "mo1",
+            # Original format (for reference, but can't be used in attribute chains)
+            "1m",
+            "5m",
+            "15m",
+            "30m",
+            "1h",
+            "4h",
+            "1d",
+            "1w",
+            "1mo",
+        }
+        # Known instrument types
+        instrument_types = {"spot", "perp", "perpetual", "futures", "future", "option"}
 
         exchange: str | None = None
         symbol: str | None = None
         timeframe: str | None = None
         source: str = "ohlcv"
         field: str | None = None
+        base: str | None = None
+        quote: str | None = None
+        instrument_type: str | None = None
 
         # Check if first element is an exchange
         if chain[0].lower() in known_exchanges:
@@ -420,31 +458,121 @@ class ExpressionParser:
         if len(chain) < 1:
             raise StrategyError("Missing symbol in attribute chain")
 
-        # Symbol is typically the first element (or second if exchange was present)
-        # Symbol can be uppercase (BTC, ETH) or mixed case
-        symbol = chain[0]
-        chain = chain[1:]
+        # Known field names (check these before treating as quote)
+        known_fields = {
+            "close",
+            "high",
+            "low",
+            "open",
+            "volume",
+            "hlc3",
+            "ohlc4",
+            "typical_price",
+            "weighted_close",
+            "median_price",
+            "range",
+            "upper_wick",
+            "lower_wick",
+            "price",
+            "amount",
+            "count",
+            "bid",
+            "ask",
+            "bid_size",
+            "ask_size",
+            "imbalance",
+            "liquidation",
+        }
+
+        # Check if we have Base/Quote pattern in chain: [BASE, QUOTE, instrument_type?, ...]
+        # Look ahead to see if next element could be a quote
+        if len(chain) >= 2:
+            potential_base = chain[0]
+            potential_quote = chain[1]
+            # Check if potential_quote looks like a quote asset (3-4 chars, case-insensitive)
+            # and is not a known source, timeframe, instrument type, or field name
+            potential_quote_lower = potential_quote.lower()
+            if (
+                len(potential_quote) >= 3
+                and len(potential_quote) <= 4
+                and potential_quote_lower not in known_sources
+                and potential_quote_lower not in timeframe_patterns
+                and potential_quote_lower not in instrument_types
+                and potential_quote_lower not in known_fields
+                and potential_quote.isalnum()  # Quote assets are alphanumeric (USDT, USDC, USD, etc.)
+            ):
+                # This looks like Base/Quote format (case-insensitive)
+                base = potential_base.upper()
+                quote = potential_quote.upper()
+                symbol = f"{base}/{quote}"
+                chain = chain[2:]  # Consume BASE and QUOTE
+
+                # Check if next element is an instrument type
+                if len(chain) > 0 and chain[0].lower() in instrument_types:
+                    instrument_type = chain[0].lower()
+                    # Normalize instrument type
+                    if instrument_type in {"perp", "perpetual"}:
+                        instrument_type = "perp"
+                    elif instrument_type in {"futures", "future"}:
+                        instrument_type = "futures"
+                    chain = chain[1:]  # Consume instrument type
+            else:
+                # Not Base/Quote format, use simple symbol
+                symbol = chain[0]
+                chain = chain[1:]
+        else:
+            # Not enough elements for Base/Quote, use simple symbol
+            symbol = chain[0]
+            chain = chain[1:]
 
         if len(chain) == 0:
             raise StrategyError(f"Missing field in attribute chain: {symbol}")
 
         # Try to identify timeframe, source, and field
         # We need at least one element (the field), and optionally timeframe and source
+        # Timeframes use alternative format: h1 (1h), m15 (15m), d1 (1d), etc.
+
+        # Helper function to normalize timeframe format
+        def normalize_timeframe(tf: str) -> str:
+            """Convert alternative format (h1, m15) to standard format (1h, 15m)."""
+            if len(tf) >= 2 and tf[0].isalpha() and tf[1:].isdigit():
+                # Format: h1, m15, d1, etc. -> convert to 1h, 15m, 1d
+                unit = tf[0]
+                value = tf[1:]
+                return f"{value}{unit}"
+            return tf  # Return as-is if already in standard format
 
         # If we have 2+ elements, check if second-to-last is a source
         # If we have 3+ elements, check if second is timeframe and third is source
         if len(chain) == 1:
-            # Simple case: [field] -> default to ohlcv
-            field = chain[0]
+            # Single element: could be a field (default ohlcv) or a source (if it's a known source)
+            # Check if it's a known source - if so, treat as source with no field (for aggregation)
+            if chain[0].lower() in known_sources:
+                source = chain[0].lower()
+                field = None  # No field yet - will be set by aggregation
+            else:
+                # Simple case: [field] -> default to ohlcv
+                field = chain[0]
         elif len(chain) == 2:
             # Two possibilities:
             # 1. [timeframe, field] -> default to ohlcv
             # 2. [source, field]
+            # 3. [instrument_type, field] -> if instrument_type wasn't consumed yet
             if chain[0] in timeframe_patterns:
-                timeframe = chain[0]
+                timeframe = normalize_timeframe(chain[0])
                 field = chain[1]
             elif chain[0].lower() in known_sources:
                 source = chain[0].lower()
+                field = chain[1]
+            elif chain[0].lower() in instrument_types:
+                # Instrument type after base/quote (if not already consumed)
+                inst_type = chain[0].lower()
+                if inst_type in {"perp", "perpetual"}:
+                    instrument_type = "perp"
+                elif inst_type in {"futures", "future"}:
+                    instrument_type = "futures"
+                else:
+                    instrument_type = inst_type
                 field = chain[1]
             else:
                 # Assume it's [source, field] even if source not recognized
@@ -452,20 +580,134 @@ class ExpressionParser:
                 source = chain[0].lower()
                 field = chain[1]
         elif len(chain) == 3:
-            # Three elements: [timeframe, source, field]
-            if chain[0] in timeframe_patterns and chain[1].lower() in known_sources:
-                timeframe = chain[0]
-                source = chain[1].lower()
-                field = chain[2]
+            # Three elements: multiple possibilities
+            # 1. [timeframe, source, field]
+            # 2. [timeframe, instrument_type, field]
+            # 3. [instrument_type, timeframe, field] (less common)
+            if chain[0] in timeframe_patterns:
+                timeframe = normalize_timeframe(chain[0])
+                # Check if second element is source or instrument_type
+                if chain[1].lower() in known_sources:
+                    source = chain[1].lower()
+                    field = chain[2]
+                elif chain[1].lower() in instrument_types:
+                    # [timeframe, instrument_type, field]
+                    inst_type = chain[1].lower()
+                    if inst_type in {"perp", "perpetual"}:
+                        instrument_type = "perp"
+                    elif inst_type in {"futures", "future"}:
+                        instrument_type = "futures"
+                    else:
+                        instrument_type = inst_type
+                    field = chain[2]
+                else:
+                    raise StrategyError(
+                        f"Invalid attribute chain format. After timeframe '{chain[0]}', expected source or instrument_type, "
+                        f"got '{chain[1]}'. Chain: {'.'.join(chain)}"
+                    )
+            elif chain[0].lower() in instrument_types:
+                # [instrument_type, timeframe, field] or [instrument_type, source, field]
+                inst_type = chain[0].lower()
+                if inst_type in {"perp", "perpetual"}:
+                    instrument_type = "perp"
+                elif inst_type in {"futures", "future"}:
+                    instrument_type = "futures"
+                else:
+                    instrument_type = inst_type
+                if chain[1] in timeframe_patterns:
+                    timeframe = normalize_timeframe(chain[1])
+                    field = chain[2]
+                elif chain[1].lower() in known_sources:
+                    source = chain[1].lower()
+                    field = chain[2]
+                else:
+                    raise StrategyError(
+                        f"Invalid attribute chain format. After instrument_type '{chain[0]}', expected timeframe or source, "
+                        f"got '{chain[1]}'. Chain: {'.'.join(chain)}"
+                    )
+            elif chain[0].lower() in known_sources:
+                # [source, timeframe, field] or [source, instrument_type, field]
+                source = chain[0].lower()
+                if chain[1] in timeframe_patterns:
+                    timeframe = normalize_timeframe(chain[1])
+                    field = chain[2]
+                elif chain[1].lower() in instrument_types:
+                    inst_type = chain[1].lower()
+                    if inst_type in {"perp", "perpetual"}:
+                        instrument_type = "perp"
+                    elif inst_type in {"futures", "future"}:
+                        instrument_type = "futures"
+                    else:
+                        instrument_type = inst_type
+                    field = chain[2]
+                else:
+                    raise StrategyError(
+                        f"Invalid attribute chain format. After source '{chain[0]}', expected timeframe or instrument_type, "
+                        f"got '{chain[1]}'. Chain: {'.'.join(chain)}"
+                    )
             else:
                 raise StrategyError(
-                    f"Invalid attribute chain format. Expected: symbol.timeframe.source.field "
-                    f"or symbol.source.field, got: {'.'.join(chain)}"
+                    f"Invalid attribute chain format. Expected: symbol.timeframe.source.field, "
+                    f"symbol.timeframe.instrument_type.field, symbol.source.field, or symbol.instrument_type.field, "
+                    f"got: {'.'.join(chain)}"
+                )
+        elif len(chain) == 4:
+            # Four elements: [timeframe, instrument_type, source, field] or [instrument_type, timeframe, source, field]
+            if chain[0] in timeframe_patterns:
+                timeframe = normalize_timeframe(chain[0])
+                if chain[1].lower() in instrument_types:
+                    inst_type = chain[1].lower()
+                    if inst_type in {"perp", "perpetual"}:
+                        instrument_type = "perp"
+                    elif inst_type in {"futures", "future"}:
+                        instrument_type = "futures"
+                    else:
+                        instrument_type = inst_type
+                    if chain[2].lower() in known_sources:
+                        source = chain[2].lower()
+                        field = chain[3]
+                    else:
+                        raise StrategyError(
+                            f"Invalid attribute chain format. Expected source after timeframe and instrument_type, "
+                            f"got '{chain[2]}'. Chain: {'.'.join(chain)}"
+                        )
+                else:
+                    raise StrategyError(
+                        f"Invalid attribute chain format. Expected instrument_type after timeframe, "
+                        f"got '{chain[1]}'. Chain: {'.'.join(chain)}"
+                    )
+            elif chain[0].lower() in instrument_types:
+                inst_type = chain[0].lower()
+                if inst_type in {"perp", "perpetual"}:
+                    instrument_type = "perp"
+                elif inst_type in {"futures", "future"}:
+                    instrument_type = "futures"
+                else:
+                    instrument_type = inst_type
+                if chain[1] in timeframe_patterns:
+                    timeframe = normalize_timeframe(chain[1])
+                    if chain[2].lower() in known_sources:
+                        source = chain[2].lower()
+                        field = chain[3]
+                    else:
+                        raise StrategyError(
+                            f"Invalid attribute chain format. Expected source after instrument_type and timeframe, "
+                            f"got '{chain[2]}'. Chain: {'.'.join(chain)}"
+                        )
+                else:
+                    raise StrategyError(
+                        f"Invalid attribute chain format. Expected timeframe after instrument_type, "
+                        f"got '{chain[1]}'. Chain: {'.'.join(chain)}"
+                    )
+            else:
+                raise StrategyError(
+                    f"Invalid attribute chain format. Expected timeframe or instrument_type at start, "
+                    f"got '{chain[0]}'. Chain: {'.'.join(chain)}"
                 )
         else:
             raise StrategyError(f"Attribute chain too long: {'.'.join(chain)}")
 
-        return exchange, symbol, timeframe, source, field
+        return exchange, symbol, timeframe, source, field, base, quote, instrument_type
 
     def _validate_attribute_combination(
         self,
@@ -534,12 +776,15 @@ class ExpressionParser:
         if source not in source_fields:
             raise StrategyError(f"Unknown source '{source}'. Valid sources: {', '.join(source_fields.keys())}")
 
-        # Validate field for source
-        if field.lower() not in source_fields[source]:
-            valid_fields = ", ".join(sorted(source_fields[source]))
-            raise StrategyError(
-                f"Field '{field}' not valid for source '{source}'. Valid fields for {source}: {valid_fields}"
-            )
+        # Validate field for source (if field is provided)
+        if field is not None:
+            if field.lower() not in source_fields[source]:
+                valid_fields = ", ".join(sorted(source_fields[source]))
+                raise StrategyError(
+                    f"Field '{field}' not valid for source '{source}'. Valid fields for {source}: {valid_fields}"
+                )
+        # If field is None, it's likely being used in an aggregation context (e.g., liquidation.count)
+        # This is valid - the aggregation will handle the field selection
 
     def _parse_time_shift_suffix(self, attr: str) -> tuple[str, str | None] | None:
         """

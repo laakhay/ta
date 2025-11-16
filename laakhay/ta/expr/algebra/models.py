@@ -606,6 +606,9 @@ class SourceExpression(ExpressionNode):
     exchange: str | None = None
     timeframe: str | None = None
     source: str = "ohlcv"  # 'ohlcv', 'trades', 'orderbook', 'liquidation'
+    base: str | None = None  # BTC (from BTC/USDT)
+    quote: str | None = None  # USDT (from BTC/USDT)
+    instrument_type: str | None = None  # spot, perp, perpetual, futures, future, option
 
     def evaluate(self, context: dict[str, Series[Any]]) -> Series[Any]:  # type: ignore[override]
         """Evaluate source expression - resolved at evaluation time."""
@@ -628,6 +631,8 @@ class SourceExpression(ExpressionNode):
         if self.exchange:
             parts.append(self.exchange)
         parts.append(self.symbol)
+        if self.instrument_type:
+            parts.append(self.instrument_type)
         if self.timeframe:
             parts.append(self.timeframe)
         parts.append(self.source)
