@@ -10,12 +10,22 @@ __all__ = [
     "validate",
     "ValidationResult",
     "ExprValidationError",
+    "analyze",
+    "AnalysisResult",
 ]
 
 
 def __getattr__(name: str) -> Any:
     """Lazy import from runtime to avoid circular imports."""
-    if name in ("preview", "PreviewResult", "validate", "ValidationResult", "ExprValidationError"):
+    if name in (
+        "preview",
+        "PreviewResult",
+        "validate",
+        "ValidationResult",
+        "ExprValidationError",
+        "analyze",
+        "AnalysisResult",
+    ):
         from .runtime import (
             ExprValidationError,
             PreviewResult,
@@ -23,6 +33,7 @@ def __getattr__(name: str) -> Any:
             preview,
             validate,
         )
+        from .runtime.analyze import AnalysisResult, analyze
 
         if name == "preview":
             return preview
@@ -34,4 +45,8 @@ def __getattr__(name: str) -> Any:
             return ValidationResult
         elif name == "ExprValidationError":
             return ExprValidationError
+        elif name == "analyze":
+            return analyze
+        elif name == "AnalysisResult":
+            return AnalysisResult
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

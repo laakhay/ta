@@ -341,3 +341,82 @@ def unsorted_timestamps() -> tuple[datetime, ...]:
         base_time,
         base_time + timedelta(hours=1),
     )
+
+
+@pytest.fixture
+def multi_source_dataset() -> Any:
+    """Create a comprehensive multi-source dataset fixture for testing."""
+    from datetime import UTC, datetime, timedelta
+    from decimal import Decimal
+
+    from laakhay.ta.core.bar import Bar
+    from laakhay.ta.core.dataset import Dataset
+    from laakhay.ta.core.ohlcv import OHLCV
+    from laakhay.ta.core.series import Series
+    from laakhay.ta.core.types import Price
+
+    base = datetime(2024, 1, 1, tzinfo=UTC)
+
+    # OHLCV data
+    bars = [
+        Bar.from_raw(base + timedelta(hours=i), 100 + i, 101 + i, 99 + i, 100 + i, 1000 + i * 100, True)
+        for i in range(50)
+    ]
+    ohlcv = OHLCV.from_bars(bars, symbol="BTCUSDT", timeframe="1h")
+
+    # Trades aggregation data
+    trades_volume = Series[Price](
+        timestamps=tuple(base + timedelta(hours=i) for i in range(50)),
+        values=tuple(Price(Decimal(5000 + i * 100)) for i in range(50)),
+        symbol="BTCUSDT",
+        timeframe="1h",
+    )
+
+    trades_count = Series[int](
+        timestamps=tuple(base + timedelta(hours=i) for i in range(50)),
+        values=tuple(100 + i * 10 for i in range(50)),
+        symbol="BTCUSDT",
+        timeframe="1h",
+    )
+
+    # Orderbook data
+    orderbook_imbalance = Series[Price](
+        timestamps=tuple(base + timedelta(hours=i) for i in range(50)),
+        values=tuple(Price(Decimal(0.4 + (i % 10) * 0.02)) for i in range(50)),
+        symbol="BTCUSDT",
+        timeframe="1h",
+    )
+
+    orderbook_spread = Series[Price](
+        timestamps=tuple(base + timedelta(hours=i) for i in range(50)),
+        values=tuple(Price(Decimal(0.5 + i * 0.01)) for i in range(50)),
+        symbol="BTCUSDT",
+        timeframe="1h",
+    )
+
+    # Liquidation data
+    liquidation_volume = Series[Price](
+        timestamps=tuple(base + timedelta(hours=i) for i in range(50)),
+        values=tuple(Price(Decimal(100 + i * 10)) for i in range(50)),
+        symbol="BTCUSDT",
+        timeframe="1h",
+    )
+
+    liquidation_count = Series[int](
+        timestamps=tuple(base + timedelta(hours=i) for i in range(50)),
+        values=tuple(5 + i for i in range(50)),
+        symbol="BTCUSDT",
+        timeframe="1h",
+    )
+
+    # Build dataset
+    ds = Dataset()
+    ds.add_series("BTCUSDT", "1h", ohlcv, source="ohlcv")
+    ds.add_trade_series("BTCUSDT", "1h", trades_volume)
+    ds.add_series("BTCUSDT", "1h", orderbook_imbalance, source="orderbook_imbalance")
+    ds.add_liquidation_series("BTCUSDT", "1h", liquidation_volume)
+    ds.add_series("BTCUSDT", "1h", trades_count, source="trades")
+    ds.add_series("BTCUSDT", "1h", orderbook_spread, source="orderbook_spread")
+    ds.add_series("BTCUSDT", "1h", liquidation_count, source="liquidation")
+
+    return ds

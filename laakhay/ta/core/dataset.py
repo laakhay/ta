@@ -105,6 +105,8 @@ class Dataset:
         """Initialize dataset with optional metadata."""
         self._series: dict[DatasetKey, OHLCV | Series[Any]] = {}
         self.metadata = metadata or DatasetMetadata()
+        # Cache for multisource contexts per (symbol, timeframe, source) tuple
+        self._context_cache: dict[tuple[Symbol | None, str | None, str | None], SeriesContext] = {}
 
     def add_series(
         self,
@@ -238,6 +240,106 @@ class Dataset:
         """Retrieve a series from the dataset."""
         key = DatasetKey(symbol=symbol, timeframe=timeframe, source=source)
         return self._series.get(key)
+
+    def resolve(
+        self,
+        source: str,
+        field: str,
+        symbol: Symbol | None = None,
+        timeframe: str | None = None,
+    ) -> Series[Any]:
+        """
+        Resolve a source expression to a Series.
+
+        This method centralizes source resolution logic, replacing the heuristic
+        string key lookups used in evaluators. It tries multiple strategies to find
+        the requested series based on source, field, symbol, and timeframe.
+
+        Args:
+            source: Data source type (e.g., 'ohlcv', 'trades', 'orderbook', 'liquidation')
+            field: Field name within the source (e.g., 'close', 'volume', 'price')
+            symbol: Optional symbol filter. If None, uses first available symbol.
+            timeframe: Optional timeframe filter. If None, uses first available timeframe.
+
+        Returns:
+            Series matching the requested source and field
+
+        Raises:
+            MissingDataError: If the requested series cannot be found
+        """
+        from ..exceptions import MissingDataError
+
+        # Strategy 1: Direct lookup with exact source
+        if symbol and timeframe:
+            key = DatasetKey(symbol=symbol, timeframe=timeframe, source=source)
+            series_obj = self._series.get(key)
+            if series_obj:
+                if hasattr(series_obj, "to_series"):  # OHLCV
+                    return series_obj.to_series(field)
+                elif isinstance(series_obj, Series):
+                    return series_obj
+                else:
+                    # Try to extract field from OHLCV
+                    if hasattr(series_obj, "to_series"):
+                        return series_obj.to_series(field)
+
+        # Strategy 2: Try with base source (strip exchange suffix)
+        base_source = source.split("_")[0] if "_" in source else source
+        if symbol and timeframe:
+            key = DatasetKey(symbol=symbol, timeframe=timeframe, source=base_source)
+            series_obj = self._series.get(key)
+            if series_obj:
+                if hasattr(series_obj, "to_series"):  # OHLCV
+                    return series_obj.to_series(field)
+                elif isinstance(series_obj, Series):
+                    return series_obj
+
+        # Strategy 3: Search across all series matching symbol/timeframe
+        if symbol and timeframe:
+            for key, series_obj in self._series.items():
+                if key.symbol == symbol and key.timeframe == timeframe:
+                    # Check if source matches (exact or base)
+                    if key.source == source or key.source == base_source:
+                        if hasattr(series_obj, "to_series"):  # OHLCV
+                            try:
+                                return series_obj.to_series(field)
+                            except (KeyError, AttributeError):
+                                continue
+                        elif isinstance(series_obj, Series):
+                            # For non-OHLCV series, check if field matches source
+                            if field == key.source or field in key.source:
+                                return series_obj
+
+        # Strategy 4: If field is a standard OHLCV field, try to find any OHLCV series
+        if field in ("open", "high", "low", "close", "volume", "price"):
+            for key, series_obj in self._series.items():
+                if (symbol is None or key.symbol == symbol) and (timeframe is None or key.timeframe == timeframe):
+                    if hasattr(series_obj, "to_series"):  # OHLCV
+                        try:
+                            return series_obj.to_series(field)
+                        except (KeyError, AttributeError):
+                            continue
+
+        # Strategy 5: Fallback - use first matching series
+        for key, series_obj in self._series.items():
+            if (symbol is None or key.symbol == symbol) and (timeframe is None or key.timeframe == timeframe):
+                if source in key.source or base_source in key.source:
+                    if isinstance(series_obj, Series):
+                        return series_obj
+                    elif hasattr(series_obj, "to_series"):
+                        try:
+                            return series_obj.to_series(field)
+                        except (KeyError, AttributeError):
+                            continue
+
+        # If we get here, we couldn't find the series
+        raise MissingDataError(
+            f"Could not resolve series: {source}.{field}",
+            source=source,
+            field=field,
+            symbol=symbol,
+            timeframe=timeframe,
+        )
 
     def select(
         self,
@@ -385,6 +487,9 @@ class Dataset:
         context classes (OHLCVContext, TradeContext, OrderBookContext, LiquidationContext)
         based on the source type.
 
+        Results are cached per (symbol, timeframe, source) tuple to avoid
+        rebuilding contexts on every evaluation.
+
         Args:
             symbol: Optional symbol filter. If provided, only series for this symbol are used.
             timeframe: Optional timeframe filter. If provided, only series for this timeframe are used.
@@ -400,6 +505,11 @@ class Dataset:
         """
         from ..registry.models import SeriesContext
         from .context import create_context
+
+        # Check cache first
+        cache_key = (symbol, timeframe, source)
+        if cache_key in self._context_cache:
+            return self._context_cache[cache_key]
 
         # Filter series based on provided filters
         filtered_series: dict[DatasetKey, OHLCV | Series[Any]] = {}
@@ -451,10 +561,14 @@ class Dataset:
             source_name = next(iter(series_by_source.keys()))
             series_dict = series_by_source[source_name]
             try:
-                return create_context(source_name, **series_dict)
+                result = create_context(source_name, **series_dict)
+                self._context_cache[cache_key] = result
+                return result
             except (ValueError, KeyError):
                 # If context creation fails, fall back to generic
-                return SeriesContext(**series_dict)
+                result = SeriesContext(**series_dict)
+                self._context_cache[cache_key] = result
+                return result
 
         # Multiple sources or unknown source - return generic context
         # Merge all series into a single context
@@ -462,7 +576,10 @@ class Dataset:
         for source_dict in series_by_source.values():
             all_series.update(source_dict)
 
-        return SeriesContext(**all_series)
+        result = SeriesContext(**all_series)
+        # Cache the result
+        self._context_cache[cache_key] = result
+        return result
 
     def to_dict(self) -> dict[str, Any]:
         """Convert dataset to dictionary format."""

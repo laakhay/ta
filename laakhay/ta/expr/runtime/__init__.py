@@ -1,5 +1,6 @@
 """Runtime utilities for expression evaluation, preview, validation, and streaming."""
 
+from .analyze import AnalysisResult, analyze
 from .engine import Engine
 from .evaluator import RuntimeEvaluator
 from .preview import PreviewResult, preview
@@ -17,4 +18,6 @@ __all__ = [
     "Stream",
     "StreamUpdate",
     "AvailabilityTransition",
+    "analyze",
+    "AnalysisResult",
 ]

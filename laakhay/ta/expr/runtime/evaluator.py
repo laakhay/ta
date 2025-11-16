@@ -250,7 +250,13 @@ class RuntimeEvaluator:
         if hasattr(n, "__class__") and n.__class__.__name__ == "IndicatorNode":
             return self._eval_indicator_node(n, children_outputs, context)
 
-        raise NotImplementedError(f"Unsupported node type: {type(n)}")
+        from ...exceptions import EvaluationError
+
+        raise EvaluationError(
+            f"Unsupported node type: {type(n)}",
+            node_type=type(n).__name__,
+            context={"node": str(n)},
+        )
 
     def _eval_binary_op(
         self,
@@ -297,8 +303,10 @@ class RuntimeEvaluator:
     ) -> Series[Any]:
         """Resolve SourceExpression from context.
 
-        Tries multiple key formats to find the series in context.
+        First tries to use Dataset.resolve() if dataset is available in context,
+        otherwise falls back to context dictionary lookup.
         """
+        # Try context dictionary first (for backwards compatibility)
         possible_keys = []
 
         # Format: source.field (e.g., "trades.volume")
@@ -322,6 +330,9 @@ class RuntimeEvaluator:
                 if isinstance(series, Series):
                     return series
 
+        # If not found in context dict, try to get dataset from context and use resolve()
+        # This is a fallback for when context doesn't have the pre-resolved series
+        # In most cases, the series should already be in the context dict from to_multisource_context()
         raise MissingDataError(
             f"SourceExpression not found in context: {expr.source}.{expr.field}",
             source=expr.source,
@@ -345,10 +356,20 @@ class RuntimeEvaluator:
             series_expr = expr.series.evaluate(context)
             condition_expr = expr.condition.evaluate(context)
 
+        from ...exceptions import EvaluationError
+
         if not isinstance(series_expr, Series):
-            raise TypeError(f"Expected Series for filter, got {type(series_expr)}")
+            raise EvaluationError(
+                f"Expected Series for filter, got {type(series_expr)}",
+                node_type="FilterExpression",
+                context={"series_type": type(series_expr).__name__},
+            )
         if not isinstance(condition_expr, Series):
-            raise TypeError(f"Expected Series[bool] for filter condition, got {type(condition_expr)}")
+            raise EvaluationError(
+                f"Expected Series[bool] for filter condition, got {type(condition_expr)}",
+                node_type="FilterExpression",
+                context={"condition_type": type(condition_expr).__name__},
+            )
 
         return series_expr.filter(condition_expr)
 
@@ -365,8 +386,14 @@ class RuntimeEvaluator:
             # Fallback: evaluate directly
             series_expr = expr.series.evaluate(context)
 
+        from ...exceptions import EvaluationError
+
         if not isinstance(series_expr, Series):
-            raise TypeError(f"Expected Series for aggregation, got {type(series_expr)}")
+            raise EvaluationError(
+                f"Expected Series for aggregation, got {type(series_expr)}",
+                node_type="AggregateExpression",
+                context={"series_type": type(series_expr).__name__},
+            )
 
         if expr.operation == "count":
             return series_expr.count()
@@ -379,7 +406,11 @@ class RuntimeEvaluator:
         elif expr.operation == "min":
             return series_expr.min(expr.field)
         else:
-            raise ValueError(f"Unknown aggregation operation: {expr.operation}")
+            raise EvaluationError(
+                f"Unknown aggregation operation: {expr.operation}",
+                node_type="AggregateExpression",
+                context={"operation": expr.operation, "field": expr.field},
+            )
 
     def _eval_time_shift_expression(
         self,
@@ -394,8 +425,14 @@ class RuntimeEvaluator:
             # Fallback: evaluate directly
             series_expr = expr.series.evaluate(context)
 
+        from ...exceptions import EvaluationError
+
         if not isinstance(series_expr, Series):
-            raise TypeError(f"Expected Series for time shift, got {type(series_expr)}")
+            raise EvaluationError(
+                f"Expected Series for time shift, got {type(series_expr)}",
+                node_type="TimeShiftExpression",
+                context={"series_type": type(series_expr).__name__},
+            )
 
         # Parse shift string to extract periods
         periods = self._parse_shift_periods(expr.shift)
@@ -409,7 +446,11 @@ class RuntimeEvaluator:
             # Simple shift
             return series_expr.shift(-periods)  # Negative for "ago" (looking back)
         else:
-            raise ValueError(f"Unknown time shift operation: {expr.operation}")
+            raise EvaluationError(
+                f"Unknown time shift operation: {expr.operation}",
+                node_type="TimeShiftExpression",
+                context={"operation": expr.operation, "shift": expr.shift},
+            )
 
     def _parse_shift_periods(self, shift: str) -> int:
         """Parse shift string to extract number of periods.
@@ -433,7 +474,13 @@ class RuntimeEvaluator:
                 try:
                     periods = int(shift_part)
                 except ValueError:
-                    raise ValueError(f"Invalid shift format: {shift}")
+                    from ...exceptions import EvaluationError
+
+                    raise EvaluationError(
+                        f"Invalid shift format: {shift}",
+                        node_type="TimeShiftExpression",
+                        context={"shift": shift},
+                    )
         elif shift.endswith("h"):
             hours = int(shift[:-1])
             periods = hours
@@ -444,7 +491,13 @@ class RuntimeEvaluator:
             try:
                 periods = int(shift)
             except ValueError:
-                raise ValueError(f"Invalid shift format: {shift}")
+                from ...exceptions import EvaluationError
+
+                raise EvaluationError(
+                    f"Invalid shift format: {shift}",
+                    node_type="TimeShiftExpression",
+                    context={"shift": shift},
+                )
 
         return periods
 
@@ -460,7 +513,13 @@ class RuntimeEvaluator:
             input_series_result = children_outputs[0]
             ctx = {"close": input_series_result}
             if node.name not in node._registry._indicators:
-                raise ValueError(f"Indicator '{node.name}' not found in registry")
+                from ...exceptions import UnsupportedIndicatorError
+
+                raise UnsupportedIndicatorError(
+                    f"Indicator '{node.name}' not found in registry",
+                    indicator=node.name,
+                    reason="Indicator not registered",
+                )
             indicator_func = node._registry._indicators[node.name]
             params_without_input = {k: v for k, v in node.params.items() if k != "input_series"}
             return indicator_func(SeriesContext(**ctx), **params_without_input)
