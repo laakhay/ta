@@ -7,6 +7,7 @@ from typing import Any
 from ...core import Series
 from ...core.dataset import Dataset
 from ...core.series import align_series
+from ...exceptions import MissingDataError
 from ...registry.models import SeriesContext
 from ..algebra.models import (
     SCALAR_SYMBOL,
@@ -89,8 +90,27 @@ class Evaluator:
                             except (KeyError, AttributeError, ValueError):
                                 pass
                     else:
-                        # Regular series - use source as field name or add with source prefix
-                        context_dict[f"{key.source}.{key.source}"] = series_obj
+                        # Regular series - handle source.field format for SourceExpression resolution
+                        source_name = key.source
+                        # If source contains underscore, it might be:
+                        # 1. Exchange-qualified (e.g., "trades_binance") -> base_source = "trades"
+                        # 2. Source_field format (e.g., "orderbook_imbalance") -> base_source = "orderbook", field = "imbalance"
+                        if "_" in source_name:
+                            parts = source_name.split("_", 1)  # Split only on first underscore
+                            base_source = parts[0]
+                            field_name = parts[1] if len(parts) > 1 else base_source
+
+                            # Add with source.field format (e.g., "orderbook.imbalance")
+                            context_dict[f"{base_source}.{field_name}"] = series_obj
+                            # Also add with just field name for backward compatibility
+                            context_dict[field_name] = series_obj
+                            # Add with base source for backward compatibility
+                            context_dict[base_source] = series_obj
+                        else:
+                            # Simple source name - add with source.source format and just source
+                            context_dict[f"{source_name}.{source_name}"] = series_obj
+                            context_dict[source_name] = series_obj
+                        # Always add with full source name for backward compatibility
                         context_dict[key.source] = series_obj
 
             output = self._evaluate_graph(plan, context_dict, symbol, timeframe)
@@ -270,12 +290,13 @@ class Evaluator:
                 if isinstance(series, Series):
                     return series
 
-        # If not found, try to get from dataset if available
-        # This would require passing dataset to the evaluator, which we'll handle later
-        raise ValueError(
-            f"SourceExpression not found in context: {expr.source}.{expr.field} "
-            f"(symbol={expr.symbol}, timeframe={expr.timeframe}). "
-            f"Available keys: {list(context.keys())}"
+        # If not found, raise MissingDataError with context
+        raise MissingDataError(
+            f"SourceExpression not found in context: {expr.source}.{expr.field}",
+            source=expr.source,
+            field=expr.field,
+            symbol=expr.symbol,
+            timeframe=expr.timeframe,
         )
 
     def _evaluate_filter_expression(self, series: Series[Any], condition: Series[bool]) -> Series[Any]:
