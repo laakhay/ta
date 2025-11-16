@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from typing import Any
 
 from ...registry.registry import get_global_registry
 from ..dsl import (
@@ -12,6 +13,7 @@ from ..dsl import (
     extract_indicator_nodes,
     parse_expression_text,
 )
+from .capability_validator import CapabilityValidator
 
 
 class ExprValidationError(ValueError):
@@ -33,9 +35,11 @@ class ValidationResult:
     Attributes:
         valid: Whether the expression is valid and can be compiled.
         errors: List of error messages (indicator not found, invalid fields, etc.)
-        warnings: List of warning messages (deprecated indicators, etc.)
+        warnings: List of warning messages (deprecated indicators, capability issues, etc.)
         indicators: List of indicator names used in the expression.
         select_fields: List of select fields used (e.g., 'close', 'high', 'hlc3').
+        requirements: Optional SignalRequirements if expression was planned.
+        plan: Optional PlanResult if expression was planned.
     """
 
     valid: bool
@@ -43,6 +47,8 @@ class ValidationResult:
     warnings: list[str] = field(default_factory=list)
     indicators: list[str] = field(default_factory=list)
     select_fields: list[str] = field(default_factory=list)
+    requirements: Any | None = None  # SignalRequirements from planner
+    plan: Any | None = None  # PlanResult if available
 
 
 # Valid select fields that can be used with the 'select' indicator
@@ -73,7 +79,11 @@ VALID_SELECT_FIELDS = {
 }
 
 
-def validate(expression: str | StrategyExpression) -> ValidationResult:
+def validate(
+    expression: str | StrategyExpression,
+    exchange: str | None = None,
+    check_capabilities: bool = True,
+) -> ValidationResult:
     """Validate a strategy expression.
 
     Performs comprehensive validation:
@@ -182,11 +192,28 @@ def validate(expression: str | StrategyExpression) -> ValidationResult:
 
     # Step 3: Attempt dry-run compile
     try:
-        compile_expression(strategy_expr)
+        compiled_expr = compile_expression(strategy_expr)
     except StrategyError as e:
         errors.append(f"Compilation failed: {str(e)}")
     except Exception as e:
         errors.append(f"Unexpected error during compilation: {str(e)}")
+        compiled_expr = None
+
+    # Step 4: Check capabilities if requested and get plan
+    plan = None
+    requirements = None
+    if check_capabilities and compiled_expr is not None:
+        try:
+            from ..planner import plan_expression
+
+            plan = plan_expression(compiled_expr._node)
+            requirements = plan.requirements
+            validator = CapabilityValidator()
+            capability_warnings = validator.validate_plan(plan, exchange=exchange)
+            warnings.extend(capability_warnings)
+        except Exception as e:
+            # Don't fail validation if capability check fails
+            warnings.append(f"Could not validate capabilities: {str(e)}")
 
     # Determine if expression is valid
     valid = len(errors) == 0
@@ -197,4 +224,6 @@ def validate(expression: str | StrategyExpression) -> ValidationResult:
         warnings=warnings,
         indicators=list(set(indicator_names)),  # Remove duplicates
         select_fields=list(set(select_fields_used)),  # Remove duplicates
+        requirements=requirements,
+        plan=plan,
     )

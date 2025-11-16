@@ -94,7 +94,15 @@ def generate_capability_manifest() -> dict[str, Any]:
         "indicators": sorted(indicators, key=lambda x: x["name"]),
         "operators": operators,
         "examples": examples,
-        "version": "1.1.0",  # Bump version for exchange metadata merge
+        "version": "1.2.0",  # Version for multi-source support and explicit indicator inputs
+        "dsl_version": "1.0.0",  # DSL syntax version
+        "features": {
+            "multi_source": True,
+            "explicit_indicator_inputs": True,
+            "filters": True,
+            "aggregations": True,
+            "time_shifts": True,
+        },
     }
 
 
