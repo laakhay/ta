@@ -106,6 +106,9 @@ def _collect_requirements(graph: Graph) -> SignalRequirements:
     # Track lookback requirements per data requirement key (source, field, symbol, exchange, timeframe)
     data_lookbacks: Dict[Tuple[str, str | None, str | None, str | None, str | None], int] = {}
 
+    # Track required lookback per node ID. Root requires 1.
+    node_lookbacks: Dict[int, int] = {graph.root_id: 1}
+
     def merge_field(name: str, timeframe: str | None, lookback: int) -> None:
         key = (name, timeframe)
         prev = fields.get(key, 0)
@@ -126,8 +129,15 @@ def _collect_requirements(graph: Graph) -> SignalRequirements:
         if lookback > prev:
             data_lookbacks[key] = lookback
 
-    for node in graph.nodes.values():
+    # Traverse in reverse topological order (parent to child)
+    # This ensures parent lookback requirements propagate to children before children are processed.
+    node_order = _topological_order(graph)[::-1]
+
+    for node_id in node_order:
+        node = graph.nodes[node_id]
         expr_node = node.node
+        current_lookback = node_lookbacks.get(node_id, 1)
+
         if _is_indicator_node(expr_node):
             name = expr_node.name
             handle = registry.get(name)
@@ -142,49 +152,52 @@ def _collect_requirements(graph: Graph) -> SignalRequirements:
                 # If field is explicitly provided (e.g. mean(volume)), use it.
                 required_fields = (params["field"],)
             elif name == "select" and "field" in params:
-                # redundant with above but kept for clarity/legacy matching
                 required_fields = (params["field"],)
             else:
                 required_fields = metadata.required_fields if metadata and metadata.required_fields else ("close",)
 
-            lookback = metadata.default_lookback or 1
-
+            # Determine lookback of this indicator
+            indicator_lookback = metadata.default_lookback or 1
             if metadata and metadata.lookback_params:
                 collected: List[int] = []
                 for param in metadata.lookback_params:
                     value = params.get(param)
-                    if isinstance(value, int):
+                    if isinstance(value, int | float):
                         collected.append(int(value))
                 if collected:
-                    lookback = max(collected)
+                    indicator_lookback = max(collected)
 
-            # If indicator has explicit input_series, don't require default fields
-            # The input_series will be processed as a child node and its dependencies tracked
-            if not has_input_series:
+            # Total lookback required from dependencies of this indicator
+            # Formula: parent_required_lookback + indicator_window - 1
+            total_required = current_lookback + indicator_lookback - 1
+
+            if has_input_series:
+                # Propagate requirement to children (input_series)
+                for child_id in node.children:
+                    node_lookbacks[child_id] = max(node_lookbacks.get(child_id, 0), total_required)
+            else:
+                # Require standard fields
                 for field_name in required_fields:
-                    merge_field(field_name, None, max(lookback, 1))
-
-            # If this indicator uses a SourceExpression (either directly or via input_series),
-            # increase its lookback. The input_series will be processed as a child, so we
-            # need to increase lookback for data requirements that match the indicator's needs.
-            # For indicators with input_series, the lookback applies to the input_series source.
-            for key in list(data_lookbacks.keys()):
-                source, field, symbol, exchange, timeframe = key
-                # If this indicator requires the field we're tracking, increase lookback
-                if field in required_fields or (field == "close" and "close" in required_fields):
-                    data_lookbacks[key] = max(data_lookbacks[key], lookback)
+                    merge_field(field_name, None, max(total_required, 1))
 
         elif isinstance(expr_node, Literal):
             if isinstance(expr_node.value, Series):
-                merge_field("close", expr_node.value.timeframe, 1)
-        elif isinstance(expr_node, UnaryOp):
-            continue
+                merge_field("close", expr_node.value.timeframe, current_lookback)
+
         elif isinstance(expr_node, BinaryOp):
-            continue
+            # Propagate requirement to both operands
+            for child_id in node.children:
+                node_lookbacks[child_id] = max(node_lookbacks.get(child_id, 0), current_lookback)
+
+        elif isinstance(expr_node, UnaryOp):
+            # Propagate requirement to operand
+            for child_id in node.children:
+                node_lookbacks[child_id] = max(node_lookbacks.get(child_id, 0), current_lookback)
+
         elif isinstance(expr_node, SourceExpression):
             # Handle SourceExpression - map to DataRequirement
             # For OHLCV sources, also create FieldRequirement for backward compatibility
-            if expr_node.source == "ohlcv":
+            if expr_node.source == "ohlcv" and expr_node.symbol is None and expr_node.exchange is None:
                 # Map OHLCV fields to legacy FieldRequirement
                 field_name = expr_node.field
                 if field_name in ("price", "close"):
@@ -194,51 +207,39 @@ def _collect_requirements(graph: Graph) -> SignalRequirements:
                 else:
                     # For derived fields, default to close
                     field_name = "close"
-                merge_field(field_name, expr_node.timeframe, 1)
+                merge_field(field_name, expr_node.timeframe, current_lookback)
 
-            # Track data requirement (lookback will be merged later)
+            # Track data requirement
             merge_data_requirement(
                 expr_node.source,
                 expr_node.field,
                 expr_node.symbol,
                 expr_node.exchange,
                 expr_node.timeframe,
-                1,  # Base lookback, will be increased by indicators
+                current_lookback,
             )
 
         elif isinstance(expr_node, TimeShiftExpression):
             # Track time-based queries
             time_based_queries.append(expr_node.shift)
-            # Parse shift to determine lookback requirement
-            # e.g., "24h_ago" needs 24 hours of historical data
-            # The underlying series requirement will be collected recursively
-            # For now, we just track the shift pattern
+            # Propagate requirement to child series
+            for child_id in node.children:
+                node_lookbacks[child_id] = max(node_lookbacks.get(child_id, 0), current_lookback)
 
         elif isinstance(expr_node, FilterExpression):
-            # For filters, we need to collect requirements from both series and condition
-            # The filter doesn't change the data requirement, but we need to track it
-            # Requirements from series and condition will be collected recursively
-            # For now, we just pass through - the recursive collection will handle it
-            pass
+            # Propagate requirement to both series and condition
+            for child_id in node.children:
+                node_lookbacks[child_id] = max(node_lookbacks.get(child_id, 0), current_lookback)
 
         elif isinstance(expr_node, AggregateExpression):
-            # For aggregations, we need to collect requirements from the series
-            # The aggregation_params will be populated based on the operation
-            # For aggregations like trades.sum(amount), we need to track:
-            # - The source (trades)
-            # - The field being aggregated (amount)
-            # - The operation (sum, count, avg, etc.)
-            # Requirements from series will be collected recursively
-            # We'll extract aggregation params from the expression structure
-            aggregation_params = {
-                "operation": expr_node.operation,
-            }
-            if expr_node.field:
-                aggregation_params["field"] = expr_node.field
+            # Propagate requirement to series
+            for child_id in node.children:
+                node_lookbacks[child_id] = max(node_lookbacks.get(child_id, 0), current_lookback)
+
+            # Keep track of aggregation params for this node (though we don't return them per node here)
+            # SignalRequirements currently doesn't store per-node aggregation params.
 
     # Map legacy field requirements to canonical DataRequirements
-    # This ensures that standard OHLCV fields (close, volume, etc.) are always
-    # emitted as explicit DataRequirements with an 'ohlcv' source.
     for (name, timeframe), lookback in fields.items():
         merge_data_requirement(
             "ohlcv",
