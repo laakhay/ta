@@ -426,24 +426,24 @@ def rolling_rma(ctx: SeriesContext, period: int = 14, field: str | None = None) 
         raise ValueError("Period must be positive")
     if len(src) == 0:
         return _empty_like(src)  # type: ignore
-    
+
     xs = [_dec(v) for v in src.values]  # type: ignore
     alpha = Decimal(1) / Decimal(period)
-    
+
     # Initialize with SMA for the first 'period' values to match standard RMA/ATR definition
-    # or just start with first value? 
+    # or just start with first value?
     # Standard RMA often starts with SMA of first N values.
-    # However, to be consistent with rolling_ema here which starts from 1st value, 
+    # However, to be consistent with rolling_ema here which starts from 1st value,
     # let's effectively do what EMA does but with alpha=1/N.
     # Actually, standard TradingView/Wilder RMA:
     # RMA[0] based on SMA? Or just recursive?
     # Let's stick to the recursive formula: RMA_t = alpha * x_t + (1-alpha) * RMA_{t-1}
     # For initialization, most simple impl uses xs[0].
-    
+
     rma = [xs[0]]  # type: ignore
     for i in range(1, len(xs)):  # type: ignore
         rma.append(alpha * xs[i] + (Decimal(1) - alpha) * rma[-1])  # type: ignore
-        
+
     res = _build_like(src, src.timestamps, rma)  # type: ignore
     return CoreSeries[Price](
         timestamps=res.timestamps,

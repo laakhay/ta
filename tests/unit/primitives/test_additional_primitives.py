@@ -3,8 +3,6 @@
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 
-import pytest
-
 from laakhay.ta.core.series import Series
 from laakhay.ta.core.types import Price
 from laakhay.ta.primitives import (
@@ -32,19 +30,19 @@ def test_rolling_rma_basic():
     # RMA[1] = 0.5 * 20 + 0.5 * 10 = 15
     # RMA[2] = 0.5 * 10 + 0.5 * 15 = 5 + 7.5 = 12.5
     # RMA[3] = 0.5 * 20 + 0.5 * 12.5 = 10 + 6.25 = 16.25
-    
+
     close = _make_series([10, 20, 10, 20])
     ctx = SeriesContext(close=close)
-    
+
     result = rolling_rma(ctx, period=2)
-    
+
     expected = [
         Decimal("10"),
         Decimal("15"),
         Decimal("12.5"),
         Decimal("16.25"),
     ]
-    
+
     assert len(result) == 4
     for r, e in zip(result.values, expected, strict=True):
         assert abs(r - e) < Decimal("0.0001")
@@ -53,9 +51,9 @@ def test_rolling_rma_basic():
 def test_positive_values():
     vals = _make_series([10, -5, 20, -1, 0])
     ctx = SeriesContext(close=vals)
-    
+
     result = positive_values(ctx)
-    
+
     expected = [
         Decimal("10"),
         Decimal("0"),
@@ -69,9 +67,9 @@ def test_positive_values():
 def test_negative_values():
     vals = _make_series([10, -5, 20, -1, 0])
     ctx = SeriesContext(close=vals)
-    
+
     result = negative_values(ctx)
-    
+
     expected = [
         Decimal("0"),
         Decimal("-5"),
@@ -85,9 +83,9 @@ def test_negative_values():
 def test_cumulative_sum():
     vals = _make_series([1, 2, 3, 4])
     ctx = SeriesContext(close=vals)
-    
+
     result = cumulative_sum(ctx)
-    
+
     expected = [
         Decimal("1"),
         Decimal("3"),
@@ -100,7 +98,7 @@ def test_cumulative_sum():
 def test_true_range_calculation():
     # High, Low, Close
     # Bar 0: H=10, L=5, C=8. TR = H-L = 5
-    # Bar 1: H=12, L=9, C=10. PrevC=8. 
+    # Bar 1: H=12, L=9, C=10. PrevC=8.
     #   H-L = 3
     #   |H-PrevC| = |12-8| = 4
     #   |L-PrevC| = |9-8| = 1
@@ -110,15 +108,15 @@ def test_true_range_calculation():
     #   |H-PrevC| = |11-10| = 1
     #   |L-PrevC| = |10-10| = 0
     #   TR = 1
-    
+
     high = _make_series([10, 12, 11])
     low = _make_series([5, 9, 10])
     close = _make_series([8, 10, 10.5])
-    
+
     ctx = SeriesContext(high=high, low=low, close=close)
-    
+
     result = true_range(ctx)
-    
+
     expected = [
         Decimal("5"),
         Decimal("4"),

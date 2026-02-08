@@ -139,8 +139,8 @@ def _collect_requirements(graph: Graph) -> SignalRequirements:
             has_input_series = hasattr(expr_node, "input_series") and expr_node.input_series is not None
 
             if "field" in params:
-                 # If field is explicitly provided (e.g. mean(volume)), use it.
-                 required_fields = (params["field"],)
+                # If field is explicitly provided (e.g. mean(volume)), use it.
+                required_fields = (params["field"],)
             elif name == "select" and "field" in params:
                 # redundant with above but kept for clarity/legacy matching
                 required_fields = (params["field"],)

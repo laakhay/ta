@@ -1,9 +1,10 @@
-import pytest
 from datetime import UTC, datetime, timedelta
+
 from laakhay.ta.core.bar import Bar
 from laakhay.ta.core.dataset import Dataset
 from laakhay.ta.core.ohlcv import OHLCV
-from laakhay.ta.expr.dsl import compile_expression, StrategyError
+from laakhay.ta.expr.dsl import compile_expression
+
 
 def create_simple_dataset() -> Dataset:
     """Create a simple OHLCV dataset."""
@@ -17,15 +18,18 @@ def create_simple_dataset() -> Dataset:
     ds.add_series("BTCUSDT", "1h", ohlcv, source="ohlcv")
     return ds
 
+
 def test_integration_mean_alias_compiles():
     """Test that compiling an expression with 'mean' succeeds."""
     expr = compile_expression("mean(close, lookback=10)")
     assert expr is not None
 
+
 def test_integration_median_alias_compiles():
     """Test that compiling an expression with 'median' succeeds."""
     expr = compile_expression("median(close, lookback=10)")
     assert expr is not None
+
 
 def test_integration_lookback_keyword_works():
     """Test integration behavior of 'lookback' keyword."""
@@ -36,9 +40,10 @@ def test_integration_lookback_keyword_works():
     series = result[("BTCUSDT", "1h", "default")]
     assert len(series.values) > 0
 
+
 def test_integration_volume_mean_compiles():
     """Test volume-based mean compiles (execution might fail until primitive update)."""
-    # This should now compile because 'mean' is 'rolling_mean' 
+    # This should now compile because 'mean' is 'rolling_mean'
     # and 'volume' is a valid input expression.
     expr = compile_expression("mean(volume, lookback=10)")
     assert expr is not None

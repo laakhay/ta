@@ -31,9 +31,9 @@ class IndicatorAnalyzer:
             self._collect(node.operand, acc)
         elif hasattr(node, "series"):
             # Covers FilterNode, AggregateNode, TimeShiftNode
-            self._collect(getattr(node, "series"), acc)
+            self._collect(node.series, acc)
             if hasattr(node, "condition"):
-                self._collect(getattr(node, "condition"), acc)
+                self._collect(node.condition, acc)
 
     def compute_trim(self, indicators: list[IndicatorNode]) -> int:
         max_trim = 0

@@ -204,9 +204,7 @@ class ExpressionParser:
             raise StrategyError(f"Indicator '{actual_name}' not found")
 
         param_defs = [
-            param
-            for param in descriptor.schema.parameters.values()
-            if param.name.lower() not in {"ctx", "context"}
+            param for param in descriptor.schema.parameters.values() if param.name.lower() not in {"ctx", "context"}
         ]
         params: dict[str, Any] = {}
         input_expr: StrategyExpression | None = None
@@ -276,36 +274,36 @@ class ExpressionParser:
             # then we treat 1st arg as 'field' and shift others.
             has_field_param = "field" in {p.name for p in param_defs}
             first_param_is_not_field = len(param_defs) > 0 and param_defs[0].name != "field"
-            
+
             # Simple heuristic: if we have input_expr (from first arg) that is a simple Name,
             # and the indicator accepts a field, we might want to map it to 'field' if it matches a known source.
             # But wait, input_expr is already parsed. If it's a valid expression, it's stored in input_expr.
             # The Primitives use _select_field(ctx, field) if field is passed.
             # 'field' param is a string. `mean(volume)` -> volume is parsed as Name/Attribute/etc.
             # If we pass `field='volume'`, it expects a string.
-            
+
             # Correction: primitives expect `field` to be a string name of the field, NOT an expression object.
             # `input_expr` in IndicatorNode is for when we pipe an expression *into* the indicator (like source series).
             # But the primitives we touched (rolling_mean) take `field: str`.
-            
+
             # So, if first arg is a Name (e.g. volume), `_convert_node` might have turned it into an IndicatorNode(select, field='volume')
             # OR we might have caught it as a candidate for `field` string.
-            
+
             # Let's adjust the logic before the loop.
-            
+
             arg_offset = 0
-            
+
             if len(node.args) > 0:
-                 # Check for field shorthand
-                 # If first arg is a Name, and we support field param, and first param is not field
-                 first_arg = node.args[0]
-                 if isinstance(first_arg, ast.Name) and has_field_param and first_param_is_not_field:
-                     # Treat as field name string
-                     params["field"] = first_arg.id
-                     arg_offset = 1
-                     # If we successfully consumed first arg as field, we don't treat it as input_expr or param[0]
-                     input_expr = None 
-                 
+                # Check for field shorthand
+                # If first arg is a Name, and we support field param, and first param is not field
+                first_arg = node.args[0]
+                if isinstance(first_arg, ast.Name) and has_field_param and first_param_is_not_field:
+                    # Treat as field name string
+                    params["field"] = first_arg.id
+                    arg_offset = 1
+                    # If we successfully consumed first arg as field, we don't treat it as input_expr or param[0]
+                    input_expr = None
+
             # Process remaining positional arguments
             for arg_index in range(arg_offset, len(node.args)):
                 # Logic breakdown:
@@ -313,23 +311,24 @@ class ExpressionParser:
                 #    arg[1] -> param[0]
                 #    arg[2] -> param[1]
                 #    param_index = arg_index - 1
-                
+
                 # 2. arg_offset=0, input_expr!=None (explicit expression used):
                 #    arg[0] is input_expr (already handled)
                 #    arg[1] -> param[0]
                 #    arg[2] -> param[1]
                 #    param_index = arg_index - 1
-                
+
                 # 3. arg_offset=0, input_expr=None (literal used):
                 #    arg[0] -> param[0]
                 #    arg[1] -> param[1]
                 #    param_index = arg_index
-                
+
                 if arg_offset > 0:
                     param_index = arg_index - arg_offset
                 elif input_expr is not None:
                     # Arg 0 was expression, skip it for parameter mapping
-                    if arg_index == 0: continue
+                    if arg_index == 0:
+                        continue
                     param_index = arg_index - 1
                 else:
                     param_index = arg_index
