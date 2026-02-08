@@ -47,7 +47,22 @@ _UNARY_MAP = {
 
 _INDICATOR_ALIASES = {
     "mean": "rolling_mean",
+    "average": "rolling_mean",
+    "avg": "rolling_mean",
     "median": "rolling_median",
+    "med": "rolling_median",
+    "std": "rolling_std",
+    "stddev": "rolling_std",
+    "sum": "rolling_sum",
+    "argmax": "rolling_argmax",
+    "argmin": "rolling_argmin",
+    "cumsum": "cumulative_sum",
+    "pos": "positive_values",
+    "positive": "positive_values",
+    "neg": "negative_values",
+    "negative": "negative_values",
+    "tr": "true_range",
+    "rma": "rolling_rma",
 }
 
 _PARAM_ALIASES = {

@@ -21,6 +21,7 @@ _METADATA_HINTS: dict[str, IndicatorMetadata] = {
     "rolling_std": IndicatorMetadata(required_fields=("close",), lookback_params=("period",)),
     "rolling_median": IndicatorMetadata(required_fields=("close",), lookback_params=("period",)),
     "rolling_ema": IndicatorMetadata(required_fields=("close",), lookback_params=("period",)),
+    "rolling_rma": IndicatorMetadata(required_fields=("close",), lookback_params=("period",)),
     "max": IndicatorMetadata(required_fields=("close",), lookback_params=("period",)),
     "min": IndicatorMetadata(required_fields=("close",), lookback_params=("period",)),
     "rolling_argmax": IndicatorMetadata(required_fields=("close",), lookback_params=("period",)),
