@@ -23,12 +23,16 @@ from .builder import build_graph
 from .types import (
     AlignmentPolicy,
     DataRequirement,
-    DerivedRequirement,
-    FieldRequirement,
     Graph,
     PlanResult,
     SignalRequirements,
 )
+
+
+class PlanningError(ValueError):
+    """Raised when an expression cannot be planned due to ambiguous or missing metadata."""
+
+
 
 
 def alignment(
@@ -97,14 +101,10 @@ def _topological_order(graph: Graph) -> tuple[int, ...]:
 def _collect_requirements(graph: Graph) -> SignalRequirements:
     registry = get_global_registry()
     fields: Dict[Tuple[str, str | None], int] = {}
-    derived: List[DerivedRequirement] = []
-    data_requirements: List[DataRequirement] = []
-    required_sources: Set[str] = set()
-    required_exchanges: Set[str] = set()
     time_based_queries: List[str] = []
 
-    # Track lookback requirements per data requirement key
-    data_lookbacks: Dict[Tuple[str, str | None, str | None, str | None], int] = {}
+    # Track lookback requirements per data requirement key (source, field, symbol, exchange, timeframe)
+    data_lookbacks: Dict[Tuple[str, str | None, str | None, str | None, str | None], int] = {}
 
     def merge_field(name: str, timeframe: str | None, lookback: int) -> None:
         key = (name, timeframe)
@@ -205,9 +205,6 @@ def _collect_requirements(graph: Graph) -> SignalRequirements:
                 expr_node.timeframe,
                 1,  # Base lookback, will be increased by indicators
             )
-            required_sources.add(expr_node.source)
-            if expr_node.exchange:
-                required_exchanges.add(expr_node.exchange)
 
         elif isinstance(expr_node, TimeShiftExpression):
             # Track time-based queries
@@ -239,16 +236,18 @@ def _collect_requirements(graph: Graph) -> SignalRequirements:
             if expr_node.field:
                 aggregation_params["field"] = expr_node.field
 
-            # Try to find the underlying SourceExpression to create a DataRequirement
-            # with aggregation params
-            # This is a simplified approach - in practice, we'd need to traverse
-            # the series expression to find SourceExpression nodes
-            # For now, we'll rely on recursive collection
-
-    field_requirements = tuple(
-        FieldRequirement(name=name, timeframe=timeframe, min_lookback=lookback)
-        for (name, timeframe), lookback in sorted(fields.items(), key=lambda item: (item[0][0], item[0][1] or ""))
-    )
+    # Map legacy field requirements to canonical DataRequirements
+    # This ensures that standard OHLCV fields (close, volume, etc.) are always
+    # emitted as explicit DataRequirements with an 'ohlcv' source.
+    for (name, timeframe), lookback in fields.items():
+        merge_data_requirement(
+            "ohlcv",
+            name,
+            None,  # symbol
+            None,  # exchange
+            timeframe,
+            lookback
+        )
 
     # Convert data_lookbacks to DataRequirement objects
     data_requirements = [
@@ -267,11 +266,7 @@ def _collect_requirements(graph: Graph) -> SignalRequirements:
     ]
 
     return SignalRequirements(
-        fields=field_requirements,
-        derived=tuple(derived),
         data_requirements=tuple(data_requirements),
-        required_sources=tuple(sorted(required_sources)),
-        required_exchanges=tuple(sorted(required_exchanges)),
         time_based_queries=tuple(time_based_queries),
     )
 

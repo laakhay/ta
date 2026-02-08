@@ -22,7 +22,7 @@ def make_simple_plan(node):
             hash="test-hash",
         ),
         node_order=(0,),
-        requirements=SignalRequirements(fields=()),
+        requirements=SignalRequirements(),
         alignment=AlignmentPolicy(),
     )
 
@@ -50,7 +50,7 @@ def test_binaryop_node():
     plan = PlanResult(
         graph=Graph(root_id=0, nodes=nodes, hash="binop"),
         node_order=(1, 2, 0),
-        requirements=SignalRequirements(fields=()),
+        requirements=SignalRequirements(),
         alignment=AlignmentPolicy(),
     )
     result = evaluator._evaluate_graph(plan, context={})
@@ -69,7 +69,7 @@ def test_unaryop_node():
     plan = PlanResult(
         graph=Graph(root_id=0, nodes=nodes, hash="uop"),
         node_order=(1, 0),
-        requirements=SignalRequirements(fields=()),
+        requirements=SignalRequirements(),
         alignment=AlignmentPolicy(),
     )
     result = evaluator._evaluate_graph(plan, context={})
@@ -92,7 +92,7 @@ def test_shared_subgraph_cache():
     plan = PlanResult(
         graph=Graph(root_id=0, nodes=nodes, hash="shared-cache"),
         node_order=(2, 3, 1, 0),
-        requirements=SignalRequirements(fields=()),
+        requirements=SignalRequirements(),
         alignment=AlignmentPolicy(),
     )
     result = evaluator._evaluate_graph(plan, context={})

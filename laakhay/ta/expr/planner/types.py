@@ -67,11 +67,7 @@ class DataRequirement:
 
 @dataclass(frozen=True)
 class SignalRequirements:
-    fields: tuple[FieldRequirement, ...]
-    derived: tuple[DerivedRequirement, ...] = ()
     data_requirements: tuple[DataRequirement, ...] = ()
-    required_sources: tuple[str, ...] = ()
-    required_exchanges: tuple[str, ...] = ()
     time_based_queries: tuple[str, ...] = ()
 
 
@@ -92,21 +88,6 @@ class PlanResult:
             "graph_hash": self.graph_hash,
             "node_order": list(self.node_order),
             "requirements": {
-                "fields": [
-                    {
-                        "name": field.name,
-                        "timeframe": field.timeframe,
-                        "min_lookback": field.min_lookback,
-                    }
-                    for field in self.requirements.fields
-                ],
-                "derived": [
-                    {
-                        "name": derived.name,
-                        "params": dict(derived.params),
-                    }
-                    for derived in self.requirements.derived
-                ],
                 "data_requirements": [
                     {
                         "source": req.source,
@@ -119,8 +100,6 @@ class PlanResult:
                     }
                     for req in self.requirements.data_requirements
                 ],
-                "required_sources": list(self.requirements.required_sources),
-                "required_exchanges": list(self.requirements.required_exchanges),
                 "time_based_queries": list(self.requirements.time_based_queries),
             },
             "alignment": {

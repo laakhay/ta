@@ -128,7 +128,7 @@ class Expression:
 
     def dependencies(self) -> list[str]:
         requirements = self.requirements()
-        return sorted({field.name for field in requirements.fields if field.name})
+        return sorted({req.field for req in requirements.data_requirements if req.field})
 
     def describe(self) -> str:
         base = self._node.describe()
@@ -137,18 +137,16 @@ class Expression:
 
         lines = [f"expr: {base}"]
 
-        if req.fields:
-            lines.append("fields:")
-            for field in req.fields:
-                timeframe = field.timeframe or "-"
-                lines.append(f"  - {field.name} (timeframe={timeframe}, lookback={field.min_lookback})")
-
-        if req.derived:
-            lines.append("derived:")
-            for derived in req.derived:
-                params = ", ".join(f"{key}={value}" for key, value in derived.params) if derived.params else ""
-                suffix = f"({params})" if params else ""
-                lines.append(f"  - {derived.name}{suffix}")
+        if req.data_requirements:
+            lines.append("data_requirements:")
+            for data_req in req.data_requirements:
+                timeframe = data_req.timeframe or "-"
+                symbol = data_req.symbol or "*"
+                exchange = data_req.exchange or "*"
+                lines.append(
+                    f"  - {data_req.source}.{data_req.field} "
+                    f"(symbol={symbol}, exchange={exchange}, timeframe={timeframe}, lookback={data_req.min_lookback})"
+                )
 
         alignment = plan.alignment
         lines.append(

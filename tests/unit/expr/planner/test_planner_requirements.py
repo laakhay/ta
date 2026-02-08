@@ -7,11 +7,11 @@ def test_planner_volume_mean_requirements():
     expr = parse_expression_text("mean(volume, 10)")
     plan = plan_expression(expr)
 
-    # Check that 'volume' is required
-    assert any(req.name == "volume" for req in plan.requirements.fields)
+    # Check that 'volume' is required as a data requirement
+    assert any(req.field == "volume" and req.source == "ohlcv" for req in plan.requirements.data_requirements)
 
-    # Check that 'close' is NOT required (implicit close removed)
-    assert not any(req.name == "close" for req in plan.requirements.fields)
+    # Check that 'close' is NOT required
+    assert not any(req.field == "close" for req in plan.requirements.data_requirements)
 
 
 def test_planner_close_mean_requirements():
@@ -19,4 +19,4 @@ def test_planner_close_mean_requirements():
     expr = parse_expression_text("mean(close, 10)")
     plan = plan_expression(expr)
 
-    assert any(req.name == "close" for req in plan.requirements.fields)
+    assert any(req.field == "close" and req.source == "ohlcv" for req in plan.requirements.data_requirements)

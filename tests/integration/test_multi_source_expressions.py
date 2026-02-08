@@ -165,7 +165,7 @@ class TestMultiSourceExpressions:
         expr = compile_expression("sma(BTC.trades.volume, period=20) > 1000000")
         plan = plan_expression(expr._node)
 
-        assert "trades" in plan.requirements.required_sources
+        assert any(req.source == "trades" for req in plan.requirements.data_requirements)
         assert len(plan.requirements.data_requirements) > 0
 
         # Check that trades source is in data requirements

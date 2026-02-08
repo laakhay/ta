@@ -69,7 +69,7 @@ class TestExplicitSourceIndicators:
         plan = plan_expression(compiled._node)
 
         # Should require trades source
-        assert "trades" in plan.requirements.required_sources
+        assert any(req.source == "trades" for req in plan.requirements.data_requirements)
 
         # Should have data requirements for trades
         trades_reqs = [req for req in plan.requirements.data_requirements if req.source == "trades"]

@@ -408,7 +408,7 @@ class Evaluator:
 
 
 def _collect_required_field_names(requirements: SignalRequirements) -> list[str]:
-    names = {field.name for field in requirements.fields if field.name}
+    names = {req.field for req in requirements.data_requirements if req.field}
     if not names:
         names = {"close"}
     return sorted(names)
