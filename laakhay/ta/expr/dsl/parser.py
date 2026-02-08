@@ -353,6 +353,13 @@ class ExpressionParser:
                 )
             params[param_name] = self._literal_or_expression(keyword.value, supports_nested, actual_name, param_name)
 
+        # Validate that all parameters are known
+        # params keys are the canonical names (aliases already resolved)
+        valid_param_names = {p.name for p in descriptor.schema.parameters.values()}
+        for param_name in params:
+            if param_name not in valid_param_names:
+                raise StrategyError(f"Unknown parameter '{param_name}' for indicator '{actual_name}'")
+
         return IndicatorNode(name=actual_name, params=params, input_expr=input_expr)
 
     def _convert_select_call(self, node: ast.Call) -> IndicatorNode:

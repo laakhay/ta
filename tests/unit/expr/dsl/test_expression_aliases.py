@@ -107,3 +107,8 @@ def test_malformed_lookback():
     expr = parse_expression_text("mean(close, lookback='invalid')")
     indicators = extract_indicator_nodes(expr)
     assert indicators[0].params["period"] == "invalid"
+
+def test_unknown_parameter_raises_error():
+    """Test that unknown parameters raise StrategyError."""
+    with pytest.raises(StrategyError, match="Unknown parameter 'invalid_param'"):
+        parse_expression_text("mean(close, 10, invalid_param=5)")
