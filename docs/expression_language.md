@@ -22,8 +22,17 @@ Common indicators have intuitive aliases:
 |-------|----------------|-------------|
 | `mean`, `average`, `avg` | `rolling_mean` | Rolling average over a window |
 | `median`, `med` | `rolling_median` | Rolling median over a window |
+| `std`, `stddev` | `rolling_std` | Rolling standard deviation over a window |
+| `sum` | `rolling_sum` | Rolling sum over a window |
+| `rma` | `rolling_rma` | Wilder's Rolling Moving Average (alpha=1/N) |
 | `max` | `rolling_max` | Maximum value in a rolling window |
 | `min` | `rolling_min` | Minimum value in a rolling window |
+| `argmax` | `rolling_argmax` | Offset of maximum value in window |
+| `argmin` | `rolling_argmin` | Offset of minimum value in window |
+| `cumsum` | `cumulative_sum` | Cumulative sum of the series |
+| `pos`, `positive` | `positive_values` | Replace negative values with 0 |
+| `neg`, `negative` | `negative_values` | Replace positive values with 0 |
+| `tr` | `true_range` | True Range (volatility of single bar) |
 
 **Example:**
 ```python
