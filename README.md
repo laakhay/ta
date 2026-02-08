@@ -83,6 +83,8 @@ print(requirements.fields)  # Required data fields
 
 **New Feature**: Indicators can now operate on explicit series specified in expressions, enabling operations on arbitrary data sources.
 
+For details on expression syntax, aliases (`mean`, `median`), and `lookback` usage, see the [Expression Language Guide](docs/expression_language.md).
+
 ### Explicit Source Syntax
 
 ```python
