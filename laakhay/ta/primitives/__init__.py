@@ -170,8 +170,8 @@ def select(ctx: SeriesContext, field: str = "close") -> Series[Price]:
 
 
 @register("rolling_sum", description="Rolling sum over a window")
-def rolling_sum(ctx: SeriesContext, period: int = 20) -> Series[Price]:
-    src = _select(ctx)
+def rolling_sum(ctx: SeriesContext, period: int = 20, field: str | None = None) -> Series[Price]:
+    src = _select_field(ctx, field) if field else _select(ctx)
     init: InitFn
     upd: UpdateFn
     init, upd = rolling_sum_recipe(period)  # type: ignore
@@ -190,8 +190,8 @@ def rolling_sum(ctx: SeriesContext, period: int = 20) -> Series[Price]:
 
 
 @register("rolling_mean", description="Rolling mean over a window")
-def rolling_mean(ctx: SeriesContext, period: int = 20) -> Series[Price]:
-    src = _select(ctx)
+def rolling_mean(ctx: SeriesContext, period: int = 20, field: str | None = None) -> Series[Price]:
+    src = _select_field(ctx, field) if field else _select(ctx)
     init: InitFn
     upd: UpdateFn
     init, upd = rolling_mean_recipe(period)  # type: ignore
@@ -209,8 +209,8 @@ def rolling_mean(ctx: SeriesContext, period: int = 20) -> Series[Price]:
 
 
 @register("rolling_std", description="Rolling standard deviation over a window")
-def rolling_std(ctx: SeriesContext, period: int = 20) -> Series[Price]:
-    src = _select(ctx)
+def rolling_std(ctx: SeriesContext, period: int = 20, field: str | None = None) -> Series[Price]:
+    src = _select_field(ctx, field) if field else _select(ctx)
     init: InitFn
     upd: UpdateFn
     init, upd = rolling_std_recipe(period)  # type: ignore
@@ -293,8 +293,8 @@ def rolling_argmin(ctx: SeriesContext, period: int = 20, field: str | None = Non
 
 # Fallback example (rare): rolling_median using generic window_eval
 @register("rolling_median", description="Median over window (O(n*w))")
-def rolling_median(ctx: SeriesContext, period: int = 20) -> Series[Price]:
-    src = _select(ctx)
+def rolling_median(ctx: SeriesContext, period: int = 20, field: str | None = None) -> Series[Price]:
+    src = _select_field(ctx, field) if field else _select(ctx)
     return rolling_kernel(src, period, window_eval=lambda w: sorted(w)[len(w) // 2])  # type: ignore
 
 
@@ -314,8 +314,8 @@ def elementwise_min(ctx: SeriesContext, other_series: Series[Price]) -> Series[P
 
 
 @register("cumulative_sum", description="Cumulative sum of a series")
-def cumulative_sum(ctx: SeriesContext) -> Series[Price]:
-    src = _select(ctx)
+def cumulative_sum(ctx: SeriesContext, field: str | None = None) -> Series[Price]:
+    src = _select_field(ctx, field) if field else _select(ctx)
     acc = Decimal(0)
     vals = []
     for v in src.values:
@@ -332,8 +332,8 @@ def cumulative_sum(ctx: SeriesContext) -> Series[Price]:
 
 
 @register("diff", description="Difference between consecutive values")
-def diff(ctx: SeriesContext) -> Series[Price]:
-    src = _select(ctx)
+def diff(ctx: SeriesContext, field: str | None = None) -> Series[Price]:
+    src = _select_field(ctx, field) if field else _select(ctx)
     if len(src) < 2:
         return _empty_like(src)  # type: ignore
     xs = [_dec(v) for v in src.values]  # type: ignore
@@ -349,8 +349,8 @@ def diff(ctx: SeriesContext) -> Series[Price]:
 
 
 @register("shift", description="Shift series by n periods")
-def shift(ctx: SeriesContext, periods: int = 1) -> Series[Price]:
-    src = _select(ctx)
+def shift(ctx: SeriesContext, periods: int = 1, field: str | None = None) -> Series[Price]:
+    src = _select_field(ctx, field) if field else _select(ctx)
     n = len(src)
     if n == 0 or periods >= n or periods <= -n:
         return _empty_like(src)  # type: ignore
@@ -387,18 +387,18 @@ def shift(ctx: SeriesContext, periods: int = 1) -> Series[Price]:
 
 
 @register("positive_values", description="Replace negatives with 0")
-def positive_values(ctx: SeriesContext) -> Series[Price]:
-    return ew_unary(_select(ctx), lambda x: x if x > 0 else Decimal(0))  # type: ignore
+def positive_values(ctx: SeriesContext, field: str | None = None) -> Series[Price]:
+    return ew_unary(_select_field(ctx, field) if field else _select(ctx), lambda x: x if x > 0 else Decimal(0))  # type: ignore
 
 
 @register("negative_values", description="Replace positives with 0")
-def negative_values(ctx: SeriesContext) -> Series[Price]:
-    return ew_unary(_select(ctx), lambda x: x if x < 0 else Decimal(0))  # type: ignore
+def negative_values(ctx: SeriesContext, field: str | None = None) -> Series[Price]:
+    return ew_unary(_select_field(ctx, field) if field else _select(ctx), lambda x: x if x < 0 else Decimal(0))  # type: ignore
 
 
 @register("rolling_ema", description="Exponential Moving Average over a window")
-def rolling_ema(ctx: SeriesContext, period: int = 20) -> Series[Price]:
-    src = _select(ctx)
+def rolling_ema(ctx: SeriesContext, period: int = 20, field: str | None = None) -> Series[Price]:
+    src = _select_field(ctx, field) if field else _select(ctx)
     if period <= 0:
         raise ValueError("Period must be positive")
     if len(src) == 0:
@@ -469,9 +469,9 @@ def typical_price(ctx: SeriesContext) -> Series[Price]:
 
 
 @register("sign", description="Sign of price changes (1, 0, -1)")
-def sign(ctx: SeriesContext) -> Series[Price]:
+def sign(ctx: SeriesContext, field: str | None = None) -> Series[Price]:
     """Calculate sign of price changes: 1 for positive, -1 for negative, 0 for zero."""
-    src = _select(ctx)
+    src = _select_field(ctx, field) if field else _select(ctx)
     if len(src) < 2:
         return _empty_like(src)  # type: ignore
 
