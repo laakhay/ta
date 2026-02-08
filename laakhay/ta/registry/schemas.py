@@ -59,6 +59,7 @@ class IndicatorSchema:
     aliases: list[str] = field(default_factory=lambda: list[str]())
     metadata: IndicatorMetadata = field(default_factory=lambda: IndicatorMetadata())
     output_metadata: dict[str, dict[str, Any]] = field(default_factory=dict)
+    parameter_aliases: dict[str, str] = field(default_factory=dict)  # alias -> canonical_name
 
     def to_dict(self) -> dict[str, Any]:
         """Convert schema to dictionary representation."""
@@ -85,6 +86,7 @@ class IndicatorSchema:
             "aliases": self.aliases,
             "metadata": self.metadata.to_dict(),
             "output_metadata": self.output_metadata,
+            "parameter_aliases": self.parameter_aliases,
         }
 
     @classmethod
@@ -136,6 +138,7 @@ class IndicatorSchema:
             aliases=data.get("aliases", []),
             metadata=IndicatorMetadata.from_dict(data.get("metadata", {})),
             output_metadata=data.get("output_metadata", {}),
+            parameter_aliases=data.get("parameter_aliases", {}),
         )
 
 

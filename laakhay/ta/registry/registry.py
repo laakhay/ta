@@ -119,11 +119,11 @@ class Registry:
             # Validate function signature and return type
             self._validate_function(func)
 
-            # Build schema from function signature and docstring
             schema = self._build_schema(
                 func,
                 name,
                 description or func.__doc__ or "",
+                aliases=aliases or [],
                 output_metadata=output_metadata or {},
             )
 
@@ -250,6 +250,7 @@ class Registry:
         name: str,
         description: str,
         *,
+        aliases: list[str] | None = None,
         output_metadata: dict[str, dict[str, Any]] | None = None,
     ) -> IndicatorSchema:
         """Build schema from function signature."""
@@ -287,13 +288,22 @@ class Registry:
         # Build output schema based on return type annotation
         outputs = self._build_output_schema(func)
 
+        # Build parameter aliases
+        # For now, we manually inject common aliases
+        # In a future refactor, we could allow indicators to define their own aliases via metadata
+        parameter_aliases = {}
+        if "period" in parameters:
+            parameter_aliases["lookback"] = "period"
+
         return IndicatorSchema(
             name=name,
             description=description.strip(),
             parameters=parameters,  # type: ignore[arg-type]
             outputs=outputs,
             metadata=self._infer_metadata(name),
+            aliases=aliases or [],
             output_metadata=output_metadata or {},
+            parameter_aliases=parameter_aliases,
         )
 
     def _get_param_type(self, annotation: Any) -> type:

@@ -189,7 +189,7 @@ def rolling_sum(ctx: SeriesContext, period: int = 20, field: str | None = None) 
     )
 
 
-@register("rolling_mean", description="Rolling mean over a window")
+@register("rolling_mean", aliases=["mean", "average", "avg"], description="Rolling mean over a window")
 def rolling_mean(ctx: SeriesContext, period: int = 20, field: str | None = None) -> Series[Price]:
     src = _select_field(ctx, field) if field else _select(ctx)
     init: InitFn
@@ -292,7 +292,7 @@ def rolling_argmin(ctx: SeriesContext, period: int = 20, field: str | None = Non
 
 
 # Fallback example (rare): rolling_median using generic window_eval
-@register("rolling_median", description="Median over window (O(n*w))")
+@register("rolling_median", aliases=["median", "med"], description="Median over window (O(n*w))")
 def rolling_median(ctx: SeriesContext, period: int = 20, field: str | None = None) -> Series[Price]:
     src = _select_field(ctx, field) if field else _select(ctx)
     return rolling_kernel(src, period, window_eval=lambda w: sorted(w)[len(w) // 2])  # type: ignore
