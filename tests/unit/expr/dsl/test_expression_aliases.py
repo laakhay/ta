@@ -70,6 +70,35 @@ def test_parse_explicit_source_with_alias():
     assert indicators[0].name == "rolling_mean"
     assert indicators[0].params["period"] == 50
 
+def test_parse_mean_positional_field():
+    """Test mean(volume, 10) shorthand."""
+    expr = parse_expression_text("mean(volume, 10)")
+    indicators = extract_indicator_nodes(expr)
+    assert len(indicators) == 1
+    # Should resolve to field='volume', period=10
+    # Note: 'volume' is parsed as a name, which heuristics map to field param
+    assert indicators[0].name == "rolling_mean"
+    assert indicators[0].params["field"] == "volume"
+    assert indicators[0].params["period"] == 10
+
+def test_parse_mean_default_positional_field():
+    """Test mean(10) uses default field."""
+    expr = parse_expression_text("mean(10)")
+    indicators = extract_indicator_nodes(expr)
+    assert len(indicators) == 1
+    assert indicators[0].name == "rolling_mean"
+    assert indicators[0].params.get("field") is None
+    assert indicators[0].params["period"] == 10
+
+def test_parse_mean_explicit_field_kwarg():
+    """Test mean(10, field='high') works."""
+    expr = parse_expression_text("mean(10, field='high')")
+    indicators = extract_indicator_nodes(expr)
+    assert len(indicators) == 1
+    assert indicators[0].name == "rolling_mean"
+    assert indicators[0].params["field"] == "high"
+    assert indicators[0].params["period"] == 10
+
 def test_malformed_lookback():
     """Test negative cases for lookback (should still fail if invalid value)."""
     # The parser currently doesn't validate types strictly in _convert_indicator_call,
