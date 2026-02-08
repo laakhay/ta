@@ -169,7 +169,7 @@ def select(ctx: SeriesContext, field: str = "close") -> Series[Price]:
 # ---------- rolling ----------
 
 
-@register("rolling_sum", description="Rolling sum over a window")
+@register("rolling_sum", aliases=["sum"], description="Rolling sum over a window")
 def rolling_sum(ctx: SeriesContext, period: int = 20, field: str | None = None) -> Series[Price]:
     src = _select_field(ctx, field) if field else _select(ctx)
     init: InitFn
@@ -208,7 +208,7 @@ def rolling_mean(ctx: SeriesContext, period: int = 20, field: str | None = None)
     )
 
 
-@register("rolling_std", description="Rolling standard deviation over a window")
+@register("rolling_std", aliases=["std", "stddev"], description="Rolling standard deviation over a window")
 def rolling_std(ctx: SeriesContext, period: int = 20, field: str | None = None) -> Series[Price]:
     src = _select_field(ctx, field) if field else _select(ctx)
     init: InitFn
@@ -259,7 +259,7 @@ def rolling_min(ctx: SeriesContext, period: int = 20, field: str | None = None) 
     )
 
 
-@register("rolling_argmax", description="Offset of maximum value inside a rolling window")
+@register("rolling_argmax", aliases=["argmax"], description="Offset of maximum value inside a rolling window")
 def rolling_argmax(ctx: SeriesContext, period: int = 20, field: str | None = None) -> Series[Price]:
     source = _select_field(ctx, field) if field else _select(ctx)
     res = rolling_argmax_deque(source, period)  # type: ignore
@@ -275,7 +275,7 @@ def rolling_argmax(ctx: SeriesContext, period: int = 20, field: str | None = Non
     )
 
 
-@register("rolling_argmin", description="Offset of minimum value inside a rolling window")
+@register("rolling_argmin", aliases=["argmin"], description="Offset of minimum value inside a rolling window")
 def rolling_argmin(ctx: SeriesContext, period: int = 20, field: str | None = None) -> Series[Price]:
     source = _select_field(ctx, field) if field else _select(ctx)
     res = rolling_argmin_deque(source, period)  # type: ignore
@@ -313,7 +313,7 @@ def elementwise_min(ctx: SeriesContext, other_series: Series[Price]) -> Series[P
     return ew_binary(a, other_series, min)  # type: ignore
 
 
-@register("cumulative_sum", description="Cumulative sum of a series")
+@register("cumulative_sum", aliases=["cumsum"], description="Cumulative sum of a series")
 def cumulative_sum(ctx: SeriesContext, field: str | None = None) -> Series[Price]:
     src = _select_field(ctx, field) if field else _select(ctx)
     acc = Decimal(0)
@@ -386,12 +386,12 @@ def shift(ctx: SeriesContext, periods: int = 1, field: str | None = None) -> Ser
     )
 
 
-@register("positive_values", description="Replace negatives with 0")
+@register("positive_values", aliases=["pos", "positive"], description="Replace negatives with 0")
 def positive_values(ctx: SeriesContext, field: str | None = None) -> Series[Price]:
     return ew_unary(_select_field(ctx, field) if field else _select(ctx), lambda x: x if x > 0 else Decimal(0))  # type: ignore
 
 
-@register("negative_values", description="Replace positives with 0")
+@register("negative_values", aliases=["neg", "negative"], description="Replace positives with 0")
 def negative_values(ctx: SeriesContext, field: str | None = None) -> Series[Price]:
     return ew_unary(_select_field(ctx, field) if field else _select(ctx), lambda x: x if x < 0 else Decimal(0))  # type: ignore
 
@@ -419,7 +419,42 @@ def rolling_ema(ctx: SeriesContext, period: int = 20, field: str | None = None) 
     )
 
 
-@register("true_range", description="True Range for ATR")
+@register("rolling_rma", aliases=["rma"], description="Wilder's Moving Average (alpha=1/period)")
+def rolling_rma(ctx: SeriesContext, period: int = 14, field: str | None = None) -> Series[Price]:
+    src = _select_field(ctx, field) if field else _select(ctx)
+    if period <= 0:
+        raise ValueError("Period must be positive")
+    if len(src) == 0:
+        return _empty_like(src)  # type: ignore
+    
+    xs = [_dec(v) for v in src.values]  # type: ignore
+    alpha = Decimal(1) / Decimal(period)
+    
+    # Initialize with SMA for the first 'period' values to match standard RMA/ATR definition
+    # or just start with first value? 
+    # Standard RMA often starts with SMA of first N values.
+    # However, to be consistent with rolling_ema here which starts from 1st value, 
+    # let's effectively do what EMA does but with alpha=1/N.
+    # Actually, standard TradingView/Wilder RMA:
+    # RMA[0] based on SMA? Or just recursive?
+    # Let's stick to the recursive formula: RMA_t = alpha * x_t + (1-alpha) * RMA_{t-1}
+    # For initialization, most simple impl uses xs[0].
+    
+    rma = [xs[0]]  # type: ignore
+    for i in range(1, len(xs)):  # type: ignore
+        rma.append(alpha * xs[i] + (Decimal(1) - alpha) * rma[-1])  # type: ignore
+        
+    res = _build_like(src, src.timestamps, rma)  # type: ignore
+    return CoreSeries[Price](
+        timestamps=res.timestamps,
+        values=res.values,
+        symbol=res.symbol,
+        timeframe=res.timeframe,
+        availability_mask=tuple(True for _ in res.values),
+    )
+
+
+@register("true_range", aliases=["tr"], description="True Range for ATR")
 def true_range(ctx: SeriesContext) -> Series[Price]:
     for name in ("high", "low", "close"):
         if not hasattr(ctx, name):
