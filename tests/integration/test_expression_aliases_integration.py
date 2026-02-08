@@ -17,37 +17,28 @@ def create_simple_dataset() -> Dataset:
     ds.add_series("BTCUSDT", "1h", ohlcv, source="ohlcv")
     return ds
 
-def test_integration_mean_alias_fails():
-    """Test that compiling an expression with 'mean' fails currently."""
-    with pytest.raises(StrategyError):
-        compile_expression("mean(close, lookback=10)")
+def test_integration_mean_alias_compiles():
+    """Test that compiling an expression with 'mean' succeeds."""
+    expr = compile_expression("mean(close, lookback=10)")
+    assert expr is not None
 
-def test_integration_median_alias_fails():
-    """Test that compiling an expression with 'median' fails currently."""
-    with pytest.raises(StrategyError):
-        compile_expression("median(close, lookback=10)")
+def test_integration_median_alias_compiles():
+    """Test that compiling an expression with 'median' succeeds."""
+    expr = compile_expression("median(close, lookback=10)")
+    assert expr is not None
 
-def test_integration_lookback_keyword_ignored_or_fails():
+def test_integration_lookback_keyword_works():
     """Test integration behavior of 'lookback' keyword."""
-    # Currently, oma(close, lookback=10) might compile because 'sma' is known,
-    # but 'lookback' won't be mapped to 'period'.
-    # If the parser/compiler doesn't fail on unknown kwargs, it might just ignore it.
-    # The goal of this test is to observe current behavior and later ensure it works.
     ds = create_simple_dataset()
-    
-    # This might compile if sma is known and parser isn't strict about kwargs
-    # but it won't produce the expected result for period 10 if lookback is ignored (default period is usually used)
-    try:
-        expr = compile_expression("sma(close, lookback=10)")
-        # If it compiles, we check if it correctly used lookback=10 (which it shouldn't yet)
-        # This is more of a 'documentation' test of current (broken) behavior.
-    except StrategyError:
-        # If it fails, that's also fine for a 'red' test phase.
-        pass
+    expr = compile_expression("sma(close, lookback=10)")
+    result = expr.run(ds)
+    # Result should be produced
+    series = result[("BTCUSDT", "1h", "default")]
+    assert len(series.values) > 0
 
-def test_integration_volume_mean_fails():
-    """Test volume-based mean which requires primitive updates."""
-    with pytest.raises(StrategyError):
-        # Even if 'mean' worked, passing 'volume' as first positional arg 
-        # to a rolling primitive might not work yet.
-        compile_expression("mean(volume, lookback=10)")
+def test_integration_volume_mean_compiles():
+    """Test volume-based mean compiles (execution might fail until primitive update)."""
+    # This should now compile because 'mean' is 'rolling_mean' 
+    # and 'volume' is a valid input expression.
+    expr = compile_expression("mean(volume, lookback=10)")
+    assert expr is not None

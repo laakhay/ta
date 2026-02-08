@@ -22,11 +22,18 @@ class IndicatorAnalyzer:
     def _collect(self, node: StrategyExpression, acc: list[IndicatorNode]) -> None:
         if isinstance(node, IndicatorNode):
             acc.append(node)
+            if node.input_expr:
+                self._collect(node.input_expr, acc)
         elif isinstance(node, BinaryNode):
             self._collect(node.left, acc)
             self._collect(node.right, acc)
         elif isinstance(node, UnaryNode):
             self._collect(node.operand, acc)
+        elif hasattr(node, "series"):
+            # Covers FilterNode, AggregateNode, TimeShiftNode
+            self._collect(getattr(node, "series"), acc)
+            if hasattr(node, "condition"):
+                self._collect(getattr(node, "condition"), acc)
 
     def compute_trim(self, indicators: list[IndicatorNode]) -> int:
         max_trim = 0

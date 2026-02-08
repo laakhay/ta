@@ -45,6 +45,15 @@ _UNARY_MAP = {
     ast.USub: "neg",
 }
 
+_INDICATOR_ALIASES = {
+    "mean": "rolling_mean",
+    "median": "rolling_median",
+}
+
+_PARAM_ALIASES = {
+    "lookback": "period",
+}
+
 
 class ExpressionParser:
     """Parse Python-esque boolean expressions into strategy nodes."""
@@ -169,15 +178,20 @@ class ExpressionParser:
         if name == "select":
             return self._convert_select_call(node)
 
+        # Normalize indicator name if it's an alias
+        actual_name = _INDICATOR_ALIASES.get(name, name)
+
         # Ensure indicators are loaded (in case registry was cleared)
         from ... import indicators  # noqa: F401
 
-        descriptor = self._registry.get(name)
+        descriptor = self._registry.get(actual_name)
         if descriptor is None:
-            raise StrategyError(f"Indicator '{name}' not found")
+            raise StrategyError(f"Indicator '{actual_name}' not found")
 
         param_defs = [
-            param for param in descriptor.schema.parameters.values() if param.name.lower() not in {"ctx", "context"}
+            param
+            for param in descriptor.schema.parameters.values()
+            if param.name.lower() not in {"ctx", "context"}
         ]
         params: dict[str, Any] = {}
         input_expr: StrategyExpression | None = None
@@ -272,16 +286,18 @@ class ExpressionParser:
         for keyword in node.keywords:
             if keyword.arg is None:
                 raise StrategyError("Keyword arguments must specify parameter names")
-            if keyword.arg.lower() in {"ctx", "context"}:
-                raise StrategyError("Context argument is managed automatically and cannot be overridden")
             # Check if this parameter was already set from a positional argument
-            if keyword.arg in params:
-                raise StrategyError(
-                    f"Indicator '{name}' parameter '{keyword.arg}' cannot be specified both as positional and keyword argument"
-                )
-            params[keyword.arg] = self._literal_or_expression(keyword.value, supports_nested, name, keyword.arg)
+            param_name = keyword.arg.lower()
+            # Normalize parameter name if it's an alias
+            param_name = _PARAM_ALIASES.get(param_name, param_name)
 
-        return IndicatorNode(name=name, params=params, input_expr=input_expr)
+            if param_name in params:
+                raise StrategyError(
+                    f"Indicator '{actual_name}' parameter '{param_name}' cannot be specified both as positional and keyword argument"
+                )
+            params[param_name] = self._literal_or_expression(keyword.value, supports_nested, actual_name, param_name)
+
+        return IndicatorNode(name=actual_name, params=params, input_expr=input_expr)
 
     def _convert_select_call(self, node: ast.Call) -> IndicatorNode:
         params: dict[str, Any] = {}
