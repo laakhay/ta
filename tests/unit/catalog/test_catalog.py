@@ -156,3 +156,71 @@ class TestCatalogConvenience:
         assert isinstance(specs["period"], dict)
         assert "param_type" in specs["period"]
         assert "required" in specs["period"]
+
+    def test_bbands_output_metadata_exposed_in_catalog(self):
+        """Test that bbands outputs and their metadata are present in the catalog."""
+        catalog = list_catalog()
+        descriptor = catalog["bbands"]
+
+        # Expect three outputs: upper, middle, lower
+        output_names = {out.name for out in descriptor.outputs}
+        assert output_names == {"upper", "middle", "lower"}
+
+        meta_by_name = {out.name: out.metadata or {} for out in descriptor.outputs}
+
+        assert meta_by_name["upper"].get("role") == "band_upper"
+        assert meta_by_name["upper"].get("area_pair") == "lower"
+
+        assert meta_by_name["middle"].get("role") == "band_middle"
+
+        assert meta_by_name["lower"].get("role") == "band_lower"
+        assert meta_by_name["lower"].get("area_pair") == "upper"
+
+    def test_macd_output_metadata_exposed_in_catalog(self):
+        """Test that macd outputs and their metadata are present in the catalog."""
+        catalog = list_catalog()
+        descriptor = catalog["macd"]
+
+        output_names = {out.name for out in descriptor.outputs}
+        # macd, signal, histogram
+        assert {"macd", "signal", "histogram"} <= output_names
+
+        meta_by_name = {out.name: out.metadata or {} for out in descriptor.outputs}
+        assert meta_by_name["macd"].get("role") == "line"
+        assert meta_by_name["signal"].get("role") == "signal"
+        assert meta_by_name["histogram"].get("role") == "histogram"
+
+    def test_stochastic_output_metadata_exposed_in_catalog(self):
+        """Test that stochastic outputs and their metadata are present in the catalog."""
+        catalog = list_catalog()
+        descriptor = catalog["stochastic"]
+
+        output_names = {out.name for out in descriptor.outputs}
+        # k and d lines
+        assert {"k", "d"} <= output_names
+
+        meta_by_name = {out.name: out.metadata or {} for out in descriptor.outputs}
+        assert meta_by_name["k"].get("role") == "osc_main"
+        assert meta_by_name["d"].get("role") == "osc_signal"
+
+    def test_all_indicators_have_output_roles(self):
+        """All indicators in the catalog should have role metadata on each output."""
+        catalog = list_catalog()
+        for name, descriptor in catalog.items():
+            assert descriptor.outputs, f"Indicator {name} should have at least one output"
+            for out in descriptor.outputs:
+                assert out.metadata is not None, f"Indicator {name} output {out.name} missing metadata"
+                assert "role" in out.metadata, f"Indicator {name} output {out.name} missing 'role' metadata"
+
+    def test_volume_indicators_have_volume_role(self):
+        """Volume-category indicators should expose 'volume' role for outputs."""
+        catalog = list_catalog()
+
+        # OBV and VWAP are categorized as volume indicators
+        for name in ("obv", "vwap"):
+            descriptor = catalog[name]
+            assert descriptor.category == "volume"
+            assert descriptor.outputs, f"{name} should have at least one output"
+            for out in descriptor.outputs:
+                role = (out.metadata or {}).get("role")
+                assert role == "volume", f"{name} output {out.name} should have 'volume' role, got {role!r}"

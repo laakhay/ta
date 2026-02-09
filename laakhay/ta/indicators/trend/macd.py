@@ -7,7 +7,24 @@ from ...primitives import rolling_ema
 from .. import Expression, Literal, Price, SeriesContext, register
 
 
-@register("macd", description="MACD (Moving Average Convergence Divergence)")
+@register(
+    "macd",
+    description="MACD (Moving Average Convergence Divergence)",
+    output_metadata={
+        "macd": {
+            "role": "line",
+            "description": "MACD line (fast EMA - slow EMA)",
+        },
+        "signal": {
+            "role": "signal",
+            "description": "Signal line (EMA of MACD line)",
+        },
+        "histogram": {
+            "role": "histogram",
+            "description": "MACD histogram (macd - signal)",
+        },
+    },
+)
 def macd(
     ctx: SeriesContext,
     fast_period: int = 12,

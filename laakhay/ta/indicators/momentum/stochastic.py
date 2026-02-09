@@ -11,7 +11,21 @@ from ...registry.models import SeriesContext
 from ...registry.registry import register
 
 
-@register("stochastic", aliases=["stoch"], description="Stochastic Oscillator (%K and %D)")
+@register(
+    "stochastic",
+    aliases=["stoch"],
+    description="Stochastic Oscillator (%K and %D)",
+    output_metadata={
+        "k": {
+            "role": "osc_main",
+            "description": "%K line of stochastic oscillator",
+        },
+        "d": {
+            "role": "osc_signal",
+            "description": "%D line (moving average of %K)",
+        },
+    },
+)
 def stochastic(ctx: SeriesContext, k_period: int = 14, d_period: int = 3) -> tuple[Series[Price], Series[Price]]:
     """
     Stochastic Oscillator indicator using primitives.

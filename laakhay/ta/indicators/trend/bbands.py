@@ -11,6 +11,22 @@ from .. import Expression, Literal, Price, SeriesContext, register
     "bbands",
     aliases=["bb"],
     description="Bollinger Bands with upper, middle, and lower bands",
+    output_metadata={
+        "upper": {
+            "role": "band_upper",
+            "area_pair": "lower",
+            "description": "Upper Bollinger Band",
+        },
+        "middle": {
+            "role": "band_middle",
+            "description": "Middle Bollinger Band (moving average)",
+        },
+        "lower": {
+            "role": "band_lower",
+            "area_pair": "upper",
+            "description": "Lower Bollinger Band",
+        },
+    },
 )
 def bbands(
     ctx: SeriesContext, period: int = 20, std_dev: float = 2.0

@@ -149,6 +149,16 @@ class CatalogBuilder:
         outputs, aliases = self._build_outputs(name, schema.output_metadata)
         supported = all(param.supported for param in parameters)
         category = self._infer_category(func.__module__)
+
+        # Post-process outputs based on category:
+        # - Volume indicators get a dedicated visual role so frontends can render them appropriately.
+        if category == "volume":
+            for out in outputs:
+                meta = out.metadata or {}
+                # Only override generic defaults (e.g. "line"/"series") to "volume"
+                if "role" not in meta or meta.get("role") in ("line", "series"):
+                    meta["role"] = "volume"
+                out.metadata = meta
         description = schema.description or func.__doc__ or name
         return IndicatorDescriptor(
             name=name,
@@ -216,10 +226,29 @@ class CatalogBuilder:
                     )
                 )
         elif alias_override:
+            # Use tuple alias overrides to define output names, with sensible default metadata
             for alias in alias_override:
-                outputs.append(OutputDefinition(name=alias))
+                default_meta: dict[str, Any] = {"role": "line"}
+                # Special-case common patterns
+                if alias.lower() == "histogram":
+                    default_meta["role"] = "histogram"
+                outputs.append(
+                    OutputDefinition(
+                        name=alias,
+                        kind=default_meta.get("role", "series"),
+                        metadata=default_meta,
+                    )
+                )
         else:
-            outputs.append(OutputDefinition(name="result"))
+            # Single-output indicators: provide a default "result" line series
+            default_meta = {"role": "line"}
+            outputs.append(
+                OutputDefinition(
+                    name="result",
+                    kind="series",
+                    metadata=default_meta,
+                )
+            )
         return outputs, alias_override
 
     @staticmethod
