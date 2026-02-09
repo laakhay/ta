@@ -264,14 +264,14 @@ class Evaluator:
             # Prepare parameters by substituting child results
             params = n.params.copy()
             child_output_index = 0
-            
+
             # Sort params to match builder order
             for key, value in sorted(n.params.items()):
                 if isinstance(value, ExpressionNode):
                     if child_output_index < len(children_outputs):
                         params[key] = children_outputs[child_output_index]
                         child_output_index += 1
-            
+
             # Handle input_series (always processed after params in builder)
             if hasattr(n, "input_series") and n.input_series is not None:
                 if child_output_index < len(children_outputs):
@@ -279,21 +279,21 @@ class Evaluator:
                     input_series_result = children_outputs[child_output_index]
                     # Create context with the input series as 'close'
                     ctx = SeriesContext(close=input_series_result)
-                    
+
                     # Remove input_series from params if present
                     if "input_series" in params:
                         del params["input_series"]
-                    
+
                     # Evaluate the indicator with this context
                     if n.name not in n._registry._indicators:
                         raise ValueError(f"Indicator '{n.name}' not found in registry")
                     indicator_func = n._registry._indicators[n.name]
                     return indicator_func(ctx, **params)
-            
+
             # Use standard context if no input_series
             if n.name not in n._registry._indicators:
                 raise ValueError(f"Indicator '{n.name}' not found in registry")
-            
+
             indicator_func = n._registry._indicators[n.name]
             return indicator_func(SeriesContext(**context), **params)
         else:

@@ -33,8 +33,6 @@ class PlanningError(ValueError):
     """Raised when an expression cannot be planned due to ambiguous or missing metadata."""
 
 
-
-
 def alignment(
     *,
     how: str | None = None,
@@ -263,7 +261,7 @@ def _collect_requirements(graph: Graph) -> SignalRequirements:
             None,  # symbol
             None,  # exchange
             timeframe,
-            lookback
+            lookback,
         )
 
     # Convert data_lookbacks to DataRequirement objects

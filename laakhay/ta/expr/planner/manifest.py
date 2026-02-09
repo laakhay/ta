@@ -43,7 +43,7 @@ def generate_capability_manifest() -> dict[str, Any]:
         if handle:
             # Determine if this is an alias by comparing name with handle.name
             is_alias = name != handle.name
-            
+
             # Use CatalogBuilder logic to get rich metadata
             try:
                 descriptor = describe_indicator(handle.name)

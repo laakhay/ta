@@ -74,7 +74,7 @@ def build_graph(root: ExpressionNode) -> Graph:
         elif _is_indicator_node(node):
             params_sig_items = []
             param_children_ids = []
-            
+
             # Sort params for deterministic signature
             for key, value in sorted(node.params.items()):
                 if isinstance(value, ExpressionNode):
@@ -83,9 +83,9 @@ def build_graph(root: ExpressionNode) -> Graph:
                     param_children_ids.append(child_id)
                 else:
                     params_sig_items.append((key, value))
-            
+
             params_sig = tuple(params_sig_items)
-            
+
             # If input_series is present, treat it as a child dependency
             if hasattr(node, "input_series") and node.input_series is not None:
                 input_id, input_sig = visit(node.input_series)
