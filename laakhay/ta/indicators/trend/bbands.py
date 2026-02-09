@@ -7,7 +7,11 @@ from ...primitives import rolling_mean, rolling_std  # type: ignore
 from .. import Expression, Literal, Price, SeriesContext, register
 
 
-@register("bbands", description="Bollinger Bands with upper, middle, and lower bands")
+@register(
+    "bbands",
+    aliases=["bb"],
+    description="Bollinger Bands with upper, middle, and lower bands",
+)
 def bbands(
     ctx: SeriesContext, period: int = 20, std_dev: float = 2.0
 ) -> tuple[Series[Price], Series[Price], Series[Price]]:
@@ -39,3 +43,29 @@ def bbands(
     lower_band = (middle_expr - (std_expr * std_dev)).evaluate({})  # type: ignore
 
     return upper_band, middle_band, lower_band  # type: ignore
+
+
+@register("bb_upper", description="Upper Bollinger Band")
+def bb_upper(
+    ctx: SeriesContext,
+    period: int = 20,
+    std_dev: float = 2.0,
+) -> Series[Price]:
+    """
+    Convenience wrapper that returns only the upper Bollinger Band.
+    """
+    upper_band, _, _ = bbands(ctx, period=period, std_dev=std_dev)
+    return upper_band
+
+
+@register("bb_lower", description="Lower Bollinger Band")
+def bb_lower(
+    ctx: SeriesContext,
+    period: int = 20,
+    std_dev: float = 2.0,
+) -> Series[Price]:
+    """
+    Convenience wrapper that returns only the lower Bollinger Band.
+    """
+    _, _, lower_band = bbands(ctx, period=period, std_dev=std_dev)
+    return lower_band

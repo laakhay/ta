@@ -341,3 +341,13 @@ class TestStochasticIndicator:
         # When high = low = close, %K should be 50
         for value in k_series.values:
             assert abs(float(value) - 50.0) < 0.01
+
+    def test_stoch_alias_in_indicator_handle(self):
+        """Alias 'stoch' should be available via the generic indicator() API."""
+        from laakhay.ta import indicator
+
+        handle = indicator("stoch", k_period=14, d_period=3)
+        schema = handle.schema
+
+        # Underlying registered name should still be 'stochastic'
+        assert schema["name"] == "stochastic"

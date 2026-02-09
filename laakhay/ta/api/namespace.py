@@ -84,6 +84,12 @@ def ensure_namespace_registered() -> None:
 
 
 def indicator(name: str, **params: Any) -> IndicatorHandle:
+    """Create an indicator handle by name or alias."""
+    registry = get_global_registry()
+    # Resolve aliases to canonical name when possible
+    handle = registry.get(name)
+    if handle is not None:
+        name = handle.name
     return IndicatorHandle(name, **params)
 
 

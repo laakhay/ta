@@ -258,16 +258,18 @@ class Registry:
         sig = inspect.signature(func)
         parameters = {}
 
-        # Skip first parameter if it's SeriesContext
+        # Skip first parameter if it's SeriesContext (handle both type and string annotation)
         param_items = list(sig.parameters.items())
-        if param_items and param_items[0][1].annotation == SeriesContext:
-            param_items = param_items[1:]  # Skip the first parameter
-        elif (
-            param_items
-            and hasattr(param_items[0][1].annotation, "__name__")
-            and param_items[0][1].annotation.__name__ == "SeriesContext"
-        ):
-            param_items = param_items[1:]  # Skip the first parameter
+        if param_items:
+            first_param = param_items[0][1]
+            is_ctx = (
+                first_param.annotation == SeriesContext
+                or (hasattr(first_param.annotation, "__name__") and first_param.annotation.__name__ == "SeriesContext")
+                or first_param.annotation == "SeriesContext"
+                or first_param.name == "ctx"
+            )
+            if is_ctx:
+                param_items = param_items[1:]
 
         # Process remaining parameters
         for param_name, param in param_items:

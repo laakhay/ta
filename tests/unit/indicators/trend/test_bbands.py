@@ -7,7 +7,7 @@ import pytest
 
 from laakhay.ta.core.series import Series
 from laakhay.ta.core.types import Price
-from laakhay.ta.indicators.trend.bbands import bbands
+from laakhay.ta.indicators.trend.bbands import bb_lower, bb_upper, bbands
 from laakhay.ta.registry.models import SeriesContext
 
 
@@ -186,3 +186,45 @@ class TestBollingerBandsIndicator:
         for i in range(len(upper1.timestamps)):
             assert upper3.values[i] > upper1.values[i]
             assert lower1.values[i] > lower3.values[i]
+
+    def test_bb_upper_wrapper_matches_bbands(self):
+        """bb_upper should return the same upper band as bbands."""
+        timestamps = [datetime(2024, 1, i, tzinfo=UTC) for i in range(1, 26)]
+        values = [Decimal(str(100 + i)) for i in range(25)]
+
+        close_series = Series[Price](
+            timestamps=tuple(timestamps),
+            values=tuple(values),
+            symbol="BTCUSDT",
+            timeframe="1h",
+        )
+
+        ctx = SeriesContext(close=close_series)
+        upper_band, middle_band, lower_band = bbands(ctx, period=20, std_dev=2.0)
+        upper_wrapper = bb_upper(ctx, period=20, std_dev=2.0)
+
+        assert upper_wrapper.symbol == upper_band.symbol
+        assert upper_wrapper.timeframe == upper_band.timeframe
+        assert upper_wrapper.timestamps == upper_band.timestamps
+        assert upper_wrapper.values == upper_band.values
+
+    def test_bb_lower_wrapper_matches_bbands(self):
+        """bb_lower should return the same lower band as bbands."""
+        timestamps = [datetime(2024, 1, i, tzinfo=UTC) for i in range(1, 26)]
+        values = [Decimal(str(100 + i)) for i in range(25)]
+
+        close_series = Series[Price](
+            timestamps=tuple(timestamps),
+            values=tuple(values),
+            symbol="BTCUSDT",
+            timeframe="1h",
+        )
+
+        ctx = SeriesContext(close=close_series)
+        upper_band, middle_band, lower_band = bbands(ctx, period=20, std_dev=2.0)
+        lower_wrapper = bb_lower(ctx, period=20, std_dev=2.0)
+
+        assert lower_wrapper.symbol == lower_band.symbol
+        assert lower_wrapper.timeframe == lower_band.timeframe
+        assert lower_wrapper.timestamps == lower_band.timestamps
+        assert lower_wrapper.values == lower_band.values
