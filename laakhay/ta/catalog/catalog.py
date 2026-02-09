@@ -227,8 +227,9 @@ class CatalogBuilder:
         """Infer indicator category from module name."""
         if not module_name:
             return "custom"
+        parts = module_name.split(".")
         for keyword, category in _CATEGORY_HINTS.items():
-            if f".{keyword}." in module_name:
+            if keyword in parts:
                 return category
         return "custom"
 

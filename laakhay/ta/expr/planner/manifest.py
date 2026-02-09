@@ -22,7 +22,7 @@ def generate_capability_manifest() -> dict[str, Any]:
     This manifest describes:
     - Available data sources (ohlcv, trades, orderbook, liquidation)
     - Available fields per source
-    - Available indicators
+    - Available indicators (categorized)
     - Available operators
     - Expression syntax examples
     - Exchange-specific source support (merged with laakhay-data metadata)
@@ -30,27 +30,60 @@ def generate_capability_manifest() -> dict[str, Any]:
     Returns:
         Dictionary with capability information for frontend/backend consumption.
     """
+    from ...catalog import describe_indicator
+
     registry = get_global_registry()
 
-    # Get all registered indicators
+    # Get all registered indicators including aliases
     indicators = []
-    for name in registry.list_all_names():
+    all_names = registry.list_all_names()
+
+    for name in all_names:
         handle = registry.get(name)
         if handle:
-            schema = handle.schema
+            # Determine if this is an alias by comparing name with handle.name
+            is_alias = name != handle.name
+            
+            # Use CatalogBuilder logic to get rich metadata
+            try:
+                descriptor = describe_indicator(handle.name)
+                category = descriptor.category
+                description = descriptor.description
+                params = descriptor.get_parameter_specs()
+                outputs = [o.name for o in descriptor.outputs]
+            except Exception:
+                # Fallback if catalog description fails
+                schema = handle.schema
+                category = "custom"
+                description = schema.description or name
+                params = {
+                    p_name: {
+                        "name": p_schema.name,
+                        "param_type": p_schema.type.__name__ if p_schema.type else "unknown",
+                        "required": p_schema.required,
+                        "default_value": p_schema.default,
+                    }
+                    for p_name, p_schema in schema.parameters.items()
+                    if p_name.lower() not in ("ctx", "context")
+                }
+                outputs = list(schema.outputs.keys()) if schema.outputs else []
+
             indicators.append(
                 {
                     "name": name,
+                    "description": description,
+                    "category": category,
+                    "is_alias": is_alias,
+                    "target": handle.name if is_alias else None,
                     "parameters": {
-                        param_name: {
-                            "type": param_schema.type.__name__ if param_schema.type else "unknown",
-                            "required": param_schema.required,
-                            "default": param_schema.default,
+                        p_name: {
+                            "type": p_data.get("param_type") or p_data.get("type", "unknown"),
+                            "required": p_data.get("required", False),
+                            "default": p_data.get("public_default") or p_data.get("default_value"),
                         }
-                        for param_name, param_schema in schema.parameters.items()
-                        if param_name.lower() not in ("ctx", "context")
+                        for p_name, p_data in params.items()
                     },
-                    "outputs": list(schema.outputs.keys()) if schema.outputs else [],
+                    "outputs": outputs,
                 }
             )
 
@@ -91,11 +124,11 @@ def generate_capability_manifest() -> dict[str, Any]:
     return {
         "sources": sources,
         "exchange_source_support": exchange_source_support,
-        "indicators": sorted(indicators, key=lambda x: x["name"]),
+        "indicators": sorted(indicators, key=lambda x: (x["category"], x["name"])),
         "operators": operators,
         "examples": examples,
-        "version": "1.2.0",  # Version for multi-source support and explicit indicator inputs
-        "dsl_version": "1.0.0",  # DSL syntax version
+        "version": "1.3.0",  # Bumped version for rich metadata
+        "dsl_version": "1.0.0",
         "features": {
             "multi_source": True,
             "explicit_indicator_inputs": True,

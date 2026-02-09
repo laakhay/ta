@@ -37,6 +37,7 @@ class PreviewResult:
     triggers: list[dict[str, Any]]
     indicators: list[Any]
     trim: int
+    indicator_series: dict[str, Series[Any]] | None = None  # Mapping of indicator "name_nodeid" -> Series
     requirements: Any | None = None  # SignalRequirements from planner
     plan: Any | None = None  # PlanResult if available
 
@@ -100,7 +101,23 @@ def preview(
     compiled_expr = compile_expression(strategy_expr)
 
     # Evaluate expression
-    result = compiled_expr.run(dataset)
+    eval_result = compiled_expr.run(dataset, return_all_outputs=True)
+    if isinstance(eval_result, tuple) and len(eval_result) == 2:
+        result, node_outputs = eval_result
+    else:
+        result = eval_result
+        node_outputs = {}
+
+    # Extract indicators and their series
+    indicator_series = {}
+    plan = compiled_expr._ensure_plan()
+    for node_id, node_data in plan.graph.nodes.items():
+        n = node_data.node
+        if hasattr(n, "__class__") and n.__class__.__name__ == "IndicatorNode":
+            if node_id in node_outputs:
+                # Key format: "indicator_nodeid" (e.g., "sma_25")
+                key = f"{n.name}_{node_id}"
+                indicator_series[key] = node_outputs[node_id]
 
     # Extract series and triggers
     if isinstance(result, dict):
@@ -134,6 +151,7 @@ def preview(
         triggers=triggers,
         indicators=indicator_nodes,
         trim=trim,
+        indicator_series=indicator_series,
         requirements=requirements,
         plan=plan,
     )

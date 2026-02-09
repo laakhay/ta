@@ -13,6 +13,7 @@ from ..algebra.models import (
     SCALAR_SYMBOL,
     AggregateExpression,
     BinaryOp,
+    ExpressionNode,
     FilterExpression,
     Literal,
     OperatorType,
@@ -28,22 +29,34 @@ class Evaluator:
         # Per-node cache: (graph_hash, node_id, alignment, symbol, timeframe) -> output
         self._cache: dict[tuple, Any] = {}
 
-    def evaluate(self, expr, data: Series[Any] | Dataset) -> Series[Any] | dict[tuple[str, str, str], Series[Any]]:
+    def evaluate(
+        self,
+        expr,
+        data: Series[Any] | Dataset,
+        return_all_outputs: bool = False,
+    ) -> Series[Any] | dict[tuple[str, str, str], Series[Any]] | tuple[Any, dict[int, Any]]:
         plan = expr._ensure_plan()
         if isinstance(data, Series):
             context: dict[str, Series[Any]] = {"close": data}
             # Node-level caching is not performed for Series input
-            return self._evaluate_graph(plan, context)
+            return self._evaluate_graph(plan, context, return_all_outputs=return_all_outputs)
         if isinstance(data, Dataset):
-            return self._evaluate_dataset(expr, plan, data)
+            return self._evaluate_dataset(expr, plan, data, return_all_outputs=return_all_outputs)
         raise TypeError("Evaluator expects Series or Dataset")
 
-    def _evaluate_dataset(self, expr, plan: PlanResult, dataset: Dataset) -> dict[tuple[str, str, str], Series[Any]]:
+    def _evaluate_dataset(
+        self,
+        expr,
+        plan: PlanResult,
+        dataset: Dataset,
+        return_all_outputs: bool = False,
+    ) -> dict[tuple[str, str, str], Series[Any]] | tuple[dict[tuple[str, str, str], Series[Any]], dict[int, Any]]:
         if dataset.is_empty:
             return {}
 
         required_fields = _collect_required_field_names(plan.requirements)
         results: dict[tuple[str, str, str], Series[Any]] = {}
+        all_node_outputs: dict[int, Any] = {}
         unique_keys = {(key.symbol, key.timeframe) for key in dataset.keys}
         for symbol, timeframe in unique_keys:
             alignment_key = plan.alignment.cache_key()
@@ -54,7 +67,7 @@ class Evaluator:
                 symbol,
                 timeframe,
             )
-            if node_cache_key in self._cache:
+            if node_cache_key in self._cache and not return_all_outputs:
                 # Only retrieve the root node if all subnodes already cached
                 results[(symbol, timeframe, "default")] = self._cache[node_cache_key]
                 continue
@@ -113,8 +126,17 @@ class Evaluator:
                         # Always add with full source name for backward compatibility
                         context_dict[key.source] = series_obj
 
-            output = self._evaluate_graph(plan, context_dict, symbol, timeframe)
+            if return_all_outputs:
+                output, node_outputs = self._evaluate_graph(
+                    plan, context_dict, symbol, timeframe, return_all_outputs=True
+                )
+                all_node_outputs.update(node_outputs)
+            else:
+                output = self._evaluate_graph(plan, context_dict, symbol, timeframe)
             results[(symbol, timeframe, "default")] = output
+
+        if return_all_outputs:
+            return results, all_node_outputs
         return results
 
     def _evaluate_graph(
@@ -123,7 +145,8 @@ class Evaluator:
         context: dict[str, Any],
         symbol: str = None,
         timeframe: str = None,
-    ) -> Any:
+        return_all_outputs: bool = False,
+    ) -> Any | tuple[Any, dict[int, Any]]:
         graph = plan.graph
         order = plan.node_order
         node_outputs: dict[int, Any] = {}
@@ -150,6 +173,9 @@ class Evaluator:
                 if cache_key is not None:
                     self._cache[cache_key] = out
             node_outputs[node_id] = out
+
+        if return_all_outputs:
+            return node_outputs[graph.root_id], node_outputs
         return node_outputs[graph.root_id]
 
     def _eval_node(self, node, children_outputs, context, alignment_args):
@@ -235,20 +261,41 @@ class Evaluator:
                 series_expr = n.series.evaluate(context)
             return self._evaluate_time_shift_expression(series_expr, n.shift, n.operation)
         elif hasattr(n, "__class__") and n.__class__.__name__ == "IndicatorNode":
-            # If indicator has input_series and it was evaluated as a child, use that result
-            if hasattr(n, "input_series") and n.input_series is not None and len(children_outputs) >= 1:
-                # Use the pre-evaluated input_series from children
-                input_series_result = children_outputs[0]
-                # Create context with the input series as 'close'
-                ctx = {"close": input_series_result}
-                # Evaluate the indicator with this context
-                if n.name not in n._registry._indicators:
-                    raise ValueError(f"Indicator '{n.name}' not found in registry")
-                indicator_func = n._registry._indicators[n.name]
-                params_without_input = {k: v for k, v in n.params.items() if k != "input_series"}
-                return indicator_func(SeriesContext(**ctx), **params_without_input)
-            # Otherwise, use standard evaluation (which will evaluate input_series if present)
-            return n.run(context)
+            # Prepare parameters by substituting child results
+            params = n.params.copy()
+            child_output_index = 0
+            
+            # Sort params to match builder order
+            for key, value in sorted(n.params.items()):
+                if isinstance(value, ExpressionNode):
+                    if child_output_index < len(children_outputs):
+                        params[key] = children_outputs[child_output_index]
+                        child_output_index += 1
+            
+            # Handle input_series (always processed after params in builder)
+            if hasattr(n, "input_series") and n.input_series is not None:
+                if child_output_index < len(children_outputs):
+                    # Use the pre-evaluated input_series from children
+                    input_series_result = children_outputs[child_output_index]
+                    # Create context with the input series as 'close'
+                    ctx = SeriesContext(close=input_series_result)
+                    
+                    # Remove input_series from params if present
+                    if "input_series" in params:
+                        del params["input_series"]
+                    
+                    # Evaluate the indicator with this context
+                    if n.name not in n._registry._indicators:
+                        raise ValueError(f"Indicator '{n.name}' not found in registry")
+                    indicator_func = n._registry._indicators[n.name]
+                    return indicator_func(ctx, **params)
+            
+            # Use standard context if no input_series
+            if n.name not in n._registry._indicators:
+                raise ValueError(f"Indicator '{n.name}' not found in registry")
+            
+            indicator_func = n._registry._indicators[n.name]
+            return indicator_func(SeriesContext(**context), **params)
         else:
             raise NotImplementedError(f"Unsupported node type: {type(n)}")
 

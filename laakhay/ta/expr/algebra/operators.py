@@ -117,11 +117,11 @@ class Expression:
     def evaluate(self, context: dict[str, Series[Any]]) -> Series[Any]:
         return self._node.evaluate(context)
 
-    def run(self, data: Any) -> Any:
+    def run(self, data: Any, return_all_outputs: bool = False) -> Any:
         from ..planner.evaluator import Evaluator
 
         evaluator = Evaluator()
-        return evaluator.evaluate(self, data)
+        return evaluator.evaluate(self, data, return_all_outputs=return_all_outputs)
 
     def requirements(self) -> SignalRequirements:
         return self._ensure_plan().requirements

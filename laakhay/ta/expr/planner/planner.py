@@ -158,6 +158,22 @@ def _collect_requirements(graph: Graph) -> SignalRequirements:
 
             # Determine lookback of this indicator
             indicator_lookback = metadata.default_lookback or 1
+            # Special handling for 'select' primitive which is used for terminal fields
+            if name == "select":
+                field = params.get("field", "close")
+                # Source is usually ohlcv for select, but could be overridden if select is used on trades etc.
+                # However, for terminal SelectNodes in the graph, it's the default context.
+                merge_data_requirement(
+                    "ohlcv",
+                    field,
+                    None,
+                    None,
+                    None,
+                    current_lookback,
+                )
+                # Also merge into legacy fields for backward compatibility
+                merge_field(field, None, current_lookback)
+
             if metadata and metadata.lookback_params:
                 collected: List[int] = []
                 for param in metadata.lookback_params:
@@ -171,12 +187,12 @@ def _collect_requirements(graph: Graph) -> SignalRequirements:
             # Formula: parent_required_lookback + indicator_window - 1
             total_required = current_lookback + indicator_lookback - 1
 
-            if has_input_series:
-                # Propagate requirement to children (input_series)
+            if node.children:
+                # Propagate requirement to all children (input_series and param-based inputs)
                 for child_id in node.children:
                     node_lookbacks[child_id] = max(node_lookbacks.get(child_id, 0), total_required)
             else:
-                # Require standard fields
+                # Require standard fields if no inputs provided
                 for field_name in required_fields:
                     merge_field(field_name, None, max(total_required, 1))
 
