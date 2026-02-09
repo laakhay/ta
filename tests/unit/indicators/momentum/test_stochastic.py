@@ -342,12 +342,93 @@ class TestStochasticIndicator:
         for value in k_series.values:
             assert abs(float(value) - 50.0) < 0.01
 
-    def test_stoch_alias_in_indicator_handle(self):
-        """Alias 'stoch' should be available via the generic indicator() API."""
-        from laakhay.ta import indicator
+    def test_stoch_k_and_stoch_d_match_stochastic_outputs(self):
+        """stoch_k and stoch_d wrappers should exactly match stochastic() outputs."""
+        timestamps = [datetime(2024, 1, i, tzinfo=UTC) for i in range(1, 17)]  # 16 days
+        high_values = [Decimal(str(100 + i)) for i in range(16)]
+        low_values = [Decimal(str(99 + i)) for i in range(16)]
+        close_values = [Decimal(str(99.5 + i)) for i in range(16)]
 
-        handle = indicator("stoch", k_period=14, d_period=3)
-        schema = handle.schema
+        high_series = Series[Price](
+            timestamps=tuple(timestamps),
+            values=tuple(high_values),
+            symbol="BTCUSDT",
+            timeframe="1h",
+        )
 
-        # Underlying registered name should still be 'stochastic'
-        assert schema["name"] == "stochastic"
+        low_series = Series[Price](
+            timestamps=tuple(timestamps),
+            values=tuple(low_values),
+            symbol="BTCUSDT",
+            timeframe="1h",
+        )
+
+        close_series = Series[Price](
+            timestamps=tuple(timestamps),
+            values=tuple(close_values),
+            symbol="BTCUSDT",
+            timeframe="1h",
+        )
+
+        ctx = SeriesContext(high=high_series, low=low_series, close=close_series)
+
+        # Canonical multi-output call
+        k_series, d_series = stochastic(ctx, k_period=14, d_period=3)
+
+        # Wrapper calls
+        from laakhay.ta.indicators.momentum.stochastic import stoch_d, stoch_k
+
+        k_only = stoch_k(ctx, k_period=14, d_period=3)
+        d_only = stoch_d(ctx, k_period=14, d_period=3)
+
+        # %K wrapper should be identical to first output
+        assert k_only.symbol == k_series.symbol
+        assert k_only.timeframe == k_series.timeframe
+        assert k_only.timestamps == k_series.timestamps
+        assert k_only.values == k_series.values
+
+        # %D wrapper should be identical to second output
+        assert d_only.symbol == d_series.symbol
+        assert d_only.timeframe == d_series.timeframe
+        assert d_only.timestamps == d_series.timestamps
+        assert d_only.values == d_series.values
+
+    def test_stoch_k_and_stoch_d_metadata_preserved(self):
+        """stoch_k and stoch_d should preserve symbol/timeframe metadata."""
+        timestamps = [datetime(2024, 1, i, tzinfo=UTC) for i in range(1, 17)]
+        high_values = [Decimal(str(100 + i)) for i in range(16)]
+        low_values = [Decimal(str(99 + i)) for i in range(16)]
+        close_values = [Decimal(str(99.5 + i)) for i in range(16)]
+
+        high_series = Series[Price](
+            timestamps=tuple(timestamps),
+            values=tuple(high_values),
+            symbol="ETHUSDT",
+            timeframe="4h",
+        )
+
+        low_series = Series[Price](
+            timestamps=tuple(timestamps),
+            values=tuple(low_values),
+            symbol="ETHUSDT",
+            timeframe="4h",
+        )
+
+        close_series = Series[Price](
+            timestamps=tuple(timestamps),
+            values=tuple(close_values),
+            symbol="ETHUSDT",
+            timeframe="4h",
+        )
+
+        ctx = SeriesContext(high=high_series, low=low_series, close=close_series)
+
+        from laakhay.ta.indicators.momentum.stochastic import stoch_d, stoch_k
+
+        k_only = stoch_k(ctx)
+        d_only = stoch_d(ctx)
+
+        assert k_only.symbol == "ETHUSDT"
+        assert d_only.symbol == "ETHUSDT"
+        assert k_only.timeframe == "4h"
+        assert d_only.timeframe == "4h"

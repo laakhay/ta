@@ -78,3 +78,21 @@ def stochastic(ctx: SeriesContext, k_period: int = 14, d_period: int = 3) -> tup
     d_series = rolling_mean(SeriesContext(close=k_series), d_period)
 
     return k_series, d_series
+
+
+@register("stoch_k", description="Stochastic %K line")
+def stoch_k(ctx: SeriesContext, k_period: int = 14, d_period: int = 3) -> Series[Price]:
+    """
+    Convenience wrapper that returns only the %K line from stochastic().
+    """
+    k_series, _ = stochastic(ctx, k_period=k_period, d_period=d_period)
+    return k_series
+
+
+@register("stoch_d", description="Stochastic %D line")
+def stoch_d(ctx: SeriesContext, k_period: int = 14, d_period: int = 3) -> Series[Price]:
+    """
+    Convenience wrapper that returns only the %D line from stochastic().
+    """
+    _, d_series = stochastic(ctx, k_period=k_period, d_period=d_period)
+    return d_series
