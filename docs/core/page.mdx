@@ -1,0 +1,34 @@
+# Core Concepts
+
+The TA package is built around a few strict principles from `README.md` and `VISION.md`.
+
+## Stateless and Immutable
+
+- Series and bars are immutable inputs
+- Runtime evaluation does not keep hidden mutable global state
+- Precision and timestamps are explicit
+
+## Registry Driven Indicators
+
+Indicators are described with metadata and schemas:
+
+- parameter definitions
+- aliases
+- lookback requirements
+- expected input semantics
+
+This makes the same indicator definitions usable for runtime execution, expression parsing, and UI/tooling introspection.
+
+## Algebraic Composition
+
+Indicator handles and literals compose into expression graphs:
+
+- arithmetic and boolean operators
+- nested indicator expressions
+- inspectable dependency structure
+
+This is foundational for strategy building, requirement planning, and runtime explainability.
+
+## Multi-Source by Design
+
+Beyond OHLCV, the model supports derived sources from trades/orderbook/liquidations so users can write richer conditions without forking execution logic.

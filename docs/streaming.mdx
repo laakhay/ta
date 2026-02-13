@@ -1,0 +1,816 @@
+# Stateless Realtime Streaming Plan for Laakhay TA
+
+## Objective
+
+Make TA capable of **stateless realtime streaming execution** at the library core:
+
+- TA exposes pure transition logic (`prev_state + input -> next_state + output`).
+- Host applications (like Kendra) own persistence/checkpointing/lifecycle/state sharding.
+- No hidden mutable global state inside TA runtime.
+
+This plan is structured as a **commit-by-commit execution guide** with file touchpoints, tests, and acceptance criteria.
+
+## North-Star Constraints
+
+1. Keep existing batch/stateless APIs working (`compile_expression(...).run(dataset)`).
+2. Add streaming support as a first-class runtime, not as ad-hoc patches.
+3. Ensure deterministic replay parity between batch and streaming outputs.
+4. Keep core streaming interfaces pure and serializable.
+5. O(1) or amortized O(1) update path for common hot indicators.
+
+## Non-Goals (For This Phase)
+
+- Solving every indicator in O(1) (e.g., exact rolling median remains higher complexity).
+- Embedding state management concerns (TTL, persistence, partitioning) into TA.
+- Replacing the batch evaluator path.
+
+## Target Architecture
+
+## A) Stateless core contracts (TA)
+
+- `KernelSpec`: immutable descriptor of a kernel node.
+- `KernelState`: serializable state payload (plain dict/tuple/dataclass).
+- `KernelStep`: pure function contract.
+- `StreamingGraph`: compiled DAG of kernel nodes from expression plan.
+
+Pseudo-contract:
+
+```python
+next_state, output = step(prev_state, input_frame)
+```
+
+No implicit mutable singletons.
+
+## B) Stateful host runtime (Kendra later)
+
+- Maintains state per `(alert_id, exchange, symbol, timeframe)`.
+- Calls TA `step(...)` on each new event.
+- Stores snapshots/checkpoints externally.
+
+## C) Dual execution modes
+
+- Batch mode: existing evaluator remains canonical for previews/backtests.
+- Streaming mode: incremental per-event updates using kernel graph.
+
+## Baseline Before First Commit
+
+Create baseline parity/perf fixtures now so every commit is measurable.
+
+Commands:
+
+```bash
+pytest tests/unit/expr/runtime/test_stream.py
+pytest tests/integration/test_end_to_end.py
+pytest tests/performance/test_evaluation_benchmarks.py -q
+```
+
+Record baseline metrics (manual note in PR):
+
+- eval latency p50/p95 for representative expressions
+- memory profile for 10k tick replay
+- parity mismatch count (should be 0 with current batch-only path)
+
+---
+
+## Commit Plan
+
+## Commit 01 - Add Streaming RFC + Public Contracts Skeleton
+
+Suggested message:
+
+```text
+docs/runtime: add stateless streaming RFC and kernel contracts
+```
+
+Purpose:
+
+- Lock interface shape before implementation.
+- Avoid API churn during kernel rollout.
+
+Touchpoints:
+
+- `docs/streaming.md` (this doc evolves as canonical plan)
+- `laakhay/ta/expr/runtime/__init__.py`
+- **new** `laakhay/ta/expr/runtime/streaming_types.py`
+
+Add:
+
+- dataclasses/protocols for `KernelSpec`, `KernelState`, `StepResult`, `StreamingGraphSpec`.
+
+Tests:
+
+- **new** `tests/unit/expr/runtime/test_streaming_types.py`
+
+Acceptance:
+
+- Types import cleanly.
+- Zero behavioral change in existing tests.
+
+---
+
+## Commit 02 - Introduce Stateless Kernel Registry Layer
+
+Suggested message:
+
+```text
+runtime: add stateless kernel registry for streaming execution
+```
+
+Purpose:
+
+- Decouple indicator names from kernel implementations.
+- Enable capability introspection (`is_streaming_supported`).
+
+Touchpoints:
+
+- **new** `laakhay/ta/expr/runtime/kernel_registry.py`
+- `laakhay/ta/registry/registry.py` (read-only integration point; no mutable runtime coupling)
+- `laakhay/ta/expr/runtime/__init__.py`
+
+Tests:
+
+- **new** `tests/unit/expr/runtime/test_kernel_registry.py`
+
+Acceptance:
+
+- Register/resolve kernels by node type + operator + indicator name.
+- Explicit unsupported signal (no silent fallback).
+
+---
+
+## Commit 03 - Serialization Contract for Kernel State
+
+Suggested message:
+
+```text
+runtime: add deterministic kernel state serialization contract
+```
+
+Purpose:
+
+- Ensure host runtimes can persist/restore exactly.
+- Prevent hidden non-serializable fields.
+
+Touchpoints:
+
+- **new** `laakhay/ta/expr/runtime/state_codec.py`
+- `laakhay/ta/expr/runtime/streaming_types.py`
+
+Design:
+
+- Canonical JSON-safe encoding for states.
+- Decimal/timestamp normalized encoding rules.
+
+Tests:
+
+- **new** `tests/unit/expr/runtime/test_state_codec.py`
+
+Acceptance:
+
+- `encode(decode(x))` and `decode(encode(x))` are stable.
+- Deterministic ordering and content across runs.
+
+---
+
+## Commit 04 - Implement Core O(1) Primitive Kernels
+
+Suggested message:
+
+```text
+primitives: add pure streaming kernels for rolling and ewma ops
+```
+
+Purpose:
+
+- Reuse existing primitive math but expose streaming-step forms.
+
+Touchpoints:
+
+- `laakhay/ta/primitives/_kernels.py`
+- **new** `laakhay/ta/primitives/streaming.py`
+- `laakhay/ta/primitives/__init__.py`
+
+Implement first:
+
+- rolling sum
+- rolling mean (via sum)
+- ema/rma
+- rolling min/max with monotonic deque
+- diff/shift primitives with bounded buffers
+
+Tests:
+
+- **new** `tests/unit/primitives/test_streaming_kernels.py`
+- Extend `tests/unit/primitives/test_additional_primitives.py`
+
+Acceptance:
+
+- Per-update complexity O(1)/amortized O(1) for implemented kernels.
+- Replay parity vs batch primitive outputs.
+
+---
+
+## Commit 05 - Indicator-Level Streaming Adapters (Wave 1)
+
+Suggested message:
+
+```text
+indicators: add streaming adapters for sma ema rsi atr obv
+```
+
+Purpose:
+
+- Map common indicators to kernel registry.
+
+Touchpoints:
+
+- `laakhay/ta/indicators/trend/sma.py`
+- `laakhay/ta/indicators/trend/ema.py`
+- `laakhay/ta/indicators/momentum/rsi.py`
+- `laakhay/ta/indicators/volatility/atr.py`
+- `laakhay/ta/indicators/volume/obv.py`
+- **new** `laakhay/ta/expr/runtime/indicator_kernels.py`
+
+Tests:
+
+- Extend indicator unit tests under:
+  - `tests/unit/indicators/trend/test_sma.py` (or existing equivalent)
+  - `tests/unit/indicators/trend/test_ema.py`
+  - `tests/unit/indicators/momentum/test_rsi.py`
+  - `tests/unit/indicators/volatility/test_atr.py`
+  - `tests/unit/indicators/volume/test_obv.py`
+
+Acceptance:
+
+- Streaming adapters match batch outputs within tolerance.
+- Explicit warmup behavior documented and tested.
+
+---
+
+## Commit 06 - Expression Node Streaming Kernels (Algebra Ops)
+
+Suggested message:
+
+```text
+runtime: add streaming kernels for binary unary compare logical nodes
+```
+
+Purpose:
+
+- Enable incremental expression DAG evaluation beyond indicators.
+
+Touchpoints:
+
+- **new** `laakhay/ta/expr/runtime/node_kernels.py`
+- `laakhay/ta/expr/algebra/models.py` (only metadata hooks if needed)
+- `laakhay/ta/expr/runtime/kernel_registry.py`
+
+Cover:
+
+- binary arithmetic ops
+- comparisons
+- logical ops
+- unary ops
+
+Tests:
+
+- **new** `tests/unit/expr/runtime/test_node_kernels.py`
+
+Acceptance:
+
+- Node kernels are pure functions.
+- Stable null/availability-mask semantics.
+
+---
+
+## Commit 07 - Streaming Graph Compiler From Planner Output
+
+Suggested message:
+
+```text
+runtime: compile plan graph into streaming graph spec
+```
+
+Purpose:
+
+- Convert `PlanResult` DAG into executable streaming graph with dependency order.
+
+Touchpoints:
+
+- **new** `laakhay/ta/expr/runtime/streaming_compiler.py`
+- `laakhay/ta/expr/planner/planner.py` (read-only compatibility checks only)
+- `laakhay/ta/expr/runtime/__init__.py`
+
+Tests:
+
+- **new** `tests/unit/expr/runtime/test_streaming_compiler.py`
+
+Acceptance:
+
+- Compiler rejects unsupported nodes with precise diagnostics.
+- Topological order and dependency wiring validated.
+
+---
+
+## Commit 08 - Stateless Streaming Engine (Core)
+
+Suggested message:
+
+```text
+runtime: add stateless streaming engine api
+```
+
+Purpose:
+
+- Provide host-facing API:
+  - `initialize_state(graph, warmup_frame)`
+  - `step(graph, prev_state, frame)`
+
+Touchpoints:
+
+- **new** `laakhay/ta/expr/runtime/streaming_engine.py`
+- `laakhay/ta/expr/runtime/__init__.py`
+
+Design constraints:
+
+- No global mutable caches.
+- No implicit IO.
+- All state in input/output arguments.
+
+Tests:
+
+- **new** `tests/unit/expr/runtime/test_streaming_engine.py`
+
+Acceptance:
+
+- Deterministic same-input same-output behavior.
+- Works for single and multi-symbol frames (if graph supports it).
+
+---
+
+## Commit 09 - Upgrade Existing `Stream` Helper To Use New Engine
+
+Suggested message:
+
+```text
+runtime: refactor Stream helper onto stateless streaming engine
+```
+
+Purpose:
+
+- Keep ergonomic helper while making internals aligned with new architecture.
+
+Touchpoints:
+
+- `laakhay/ta/expr/runtime/stream.py`
+- `laakhay/ta/expr/runtime/__init__.py`
+
+Important:
+
+- `Stream` can remain stateful wrapper object for convenience, but underlying execution path must call stateless engine.
+
+Tests:
+
+- Update `tests/unit/expr/runtime/test_stream.py`
+
+Acceptance:
+
+- Existing stream tests pass.
+- No per-step evaluator recreation over full history for supported kernels.
+
+---
+
+## Commit 10 - Fallback Strategy + Capability Matrix
+
+Suggested message:
+
+```text
+runtime: add streaming capability matrix and explicit fallback policy
+```
+
+Purpose:
+
+- Make unsupported realtime features explicit and safe.
+
+Touchpoints:
+
+- **new** `laakhay/ta/expr/runtime/streaming_capabilities.py`
+- `laakhay/ta/expr/runtime/capability_validator.py`
+- `laakhay/ta/expr/runtime/analyze.py`
+
+Policy options (pick one and enforce):
+
+- strict: fail compile for unsupported streaming nodes
+- hybrid: fallback to windowed recompute for specific nodes only
+
+Tests:
+
+- **new** `tests/unit/expr/runtime/test_streaming_capabilities.py`
+
+Acceptance:
+
+- Users can inspect whether an expression is streaming-safe before deployment.
+
+---
+
+## Commit 11 - Deterministic Replay + Parity Harness
+
+Suggested message:
+
+```text
+tests: add replay parity harness for batch vs streaming outputs
+```
+
+Purpose:
+
+- Prevent correctness regressions while optimizing.
+
+Touchpoints:
+
+- **new** `tests/integration/test_streaming_parity.py`
+- **new** `tests/integration/fixtures/replay/*.json` (small deterministic datasets)
+
+Parity checks:
+
+- final output series parity
+- trigger edge parity (false->true transitions)
+- warmup boundary parity
+
+Acceptance:
+
+- 0 mismatches on baseline fixture suite.
+
+---
+
+## Commit 12 - Performance Benchmarks For Streaming Path
+
+Suggested message:
+
+```text
+perf: add streaming step benchmarks and memory profile checks
+```
+
+Purpose:
+
+- Quantify win and guard against regressions.
+
+Touchpoints:
+
+- `tests/performance/test_evaluation_benchmarks.py`
+- **new** `tests/performance/test_streaming_benchmarks.py`
+
+Metrics to capture:
+
+- step latency for hot indicators
+- allocations per update
+- memory growth across long replays
+
+Acceptance targets (example, tune after baseline):
+
+- 3-10x lower per-update CPU for supported expressions
+- flat memory curve over 1M updates (no unbounded growth)
+
+---
+
+## Commit 13 - Public API Surface + Docs + Migration Guide
+
+Suggested message:
+
+```text
+docs/api: publish streaming runtime usage and migration guide
+```
+
+Purpose:
+
+- Make TA streaming consumable by Kendra and external users.
+
+Touchpoints:
+
+- `README.md`
+- `docs/streaming.md`
+- `laakhay/ta/api/__init__.py` (export runtime entrypoints if intended)
+
+Include:
+
+- examples for stateless host-managed loop
+- snapshot/restore example
+- compatibility matrix
+
+Tests:
+
+- **new** `tests/integration/test_public_api_streaming.py`
+
+Acceptance:
+
+- Users can implement a host runtime without reading internals.
+
+---
+
+## Commit 14 - Stabilization + Version Gate
+
+Suggested message:
+
+```text
+release: stabilize streaming runtime and mark experimental/stable level
+```
+
+Purpose:
+
+- Declare support level and lock behavior.
+
+Touchpoints:
+
+- `pyproject.toml` (version bump)
+- `README.md`
+- changelog/release notes (if used)
+
+Acceptance:
+
+- CI green across unit/integration/perf gates.
+- Explicit semantic versioning note for streaming APIs.
+
+---
+
+## Testing Strategy (Per PR)
+
+Minimum local test command set for each commit touching runtime logic:
+
+```bash
+pytest tests/unit/expr/runtime -q
+pytest tests/unit/primitives -q
+pytest tests/unit/indicators -q
+pytest tests/integration/test_streaming_parity.py -q
+```
+
+Before merging milestone commits (08, 11, 12, 14):
+
+```bash
+pytest tests/unit -q
+pytest tests/integration -q
+pytest tests/performance/test_streaming_benchmarks.py -q
+```
+
+## Review Checklist For Every Commit
+
+1. Is the new code path pure (no hidden mutable global state)?
+2. Is state serializable and deterministic?
+3. Are warmup semantics explicit and tested?
+4. Is unsupported behavior explicit (not silent fallback)?
+5. Do parity fixtures pass?
+6. Is performance equal or better for target expressions?
+
+## Risks and Mitigations
+
+1. Drift between batch and streaming semantics
+- Mitigation: parity harness + golden fixtures + strict CI gate.
+
+2. API churn during rollout
+- Mitigation: lock `streaming_types.py` contracts early; only additive changes.
+
+3. Partial indicator coverage leading to confusion
+- Mitigation: capability matrix and strict compile errors for unsupported streaming usage.
+
+4. Hidden state sneaking into TA
+- Mitigation: static review rule: streaming engine functions receive and return all state explicitly.
+
+## Kendra Porting Readiness Criteria (Exit Criteria for TA Work)
+
+TA is considered ready for Kendra integration when all are true:
+
+1. Core engine API is stable (`compile -> init -> step -> snapshot/restore`).
+2. Wave-1 indicators needed for alerts are streaming-supported.
+3. Batch vs streaming parity suite is green.
+4. Streaming performance benchmarks show clear win.
+5. Capability matrix is user-visible and documented.
+
+## Suggested Branching + Commit Hygiene
+
+- Branch: `feature/ta-streaming-core`
+- One commit per step above.
+- Each commit includes:
+  - code changes
+  - tests
+  - brief section in PR description: purpose, touchpoints, benchmark/parity deltas
+
+Recommended commit footer template:
+
+```text
+Validation:
+- pytest ...
+- parity: pass/fail summary
+- perf delta: p50/p95 ...
+```
+
+---
+
+This plan intentionally keeps TA as a stateless computation library while enabling high-performance realtime execution for host systems that manage state.
+
+## Appendix A - Industry-Standard Realtime Capability Framework
+
+This section defines a production-grade capability model so streaming eligibility is explicit, testable, and enforceable.
+
+## A1) Why a capability framework is required
+
+A single boolean (`realtime=True/False`) is not enough for robust systems because it cannot encode:
+
+- exact vs approximate computation
+- per-update complexity behavior
+- bounded vs unbounded state growth
+- degradation/fallback behavior under policy constraints
+
+Industry practice is to classify computation capability and let deployment policy decide execution mode.
+
+## A2) Recommended capability model
+
+Introduce a typed metadata contract for indicators and runtime nodes.
+
+### Core fields
+
+- `realtime_mode`: `exact` | `approx` | `batch_only`
+- `update_complexity`: `O(1)` | `O(log_w)` | `O(w)` | `O(n)`
+- `state_bound`: `bounded` | `unbounded`
+- `warmup_bars`: integer >= 0
+- `deterministic`: boolean
+- `fallback_mode`: `deny` | `batch_recompute` | `approximate`
+- `notes`: human-readable rationale
+
+Example classification guidance:
+
+- `sma`, `ema`, `atr`, `obv`: `exact`, `O(1)`, `bounded`
+- `rolling_min/max` with monotonic deque: `exact`, amortized `O(1)`, `bounded`
+- exact `rolling_median`: usually `batch_only` or `O(log_w)` with heavier state/complexity
+- advanced percentile/rank ops: often `approx` or `batch_only`
+
+## A3) Expression-level capability resolution
+
+Expression runtime must compute capability for the whole DAG.
+
+Resolution rules:
+
+1. Gather capability metadata for every node.
+2. Determine expression-level mode under selected policy.
+3. Return structured diagnostics with blocking nodes.
+
+Suggested result model:
+
+```json
+{
+  "streaming_supported": true,
+  "effective_mode": "exact",
+  "policy": "strict",
+  "blocking_nodes": [],
+  "degradation_nodes": [],
+  "max_warmup_bars": 200,
+  "worst_update_complexity": "O(1)",
+  "state_bound": "bounded"
+}
+```
+
+If unsupported:
+
+```json
+{
+  "streaming_supported": false,
+  "effective_mode": "batch_only",
+  "policy": "strict",
+  "blocking_nodes": [
+    {
+      "node_id": 42,
+      "name": "rolling_median",
+      "reason": "batch_only indicator"
+    }
+  ]
+}
+```
+
+## A4) Runtime policies (must be explicit)
+
+Support at least three policies:
+
+1. `strict_exact`
+- allow only `realtime_mode=exact`
+- fail compile if any node is `approx` or `batch_only`
+
+2. `strict_no_batch`
+- allow `exact` and `approx`
+- disallow `batch_only`
+
+3. `hybrid`
+- allow streaming graph with targeted fallback nodes
+- requires explicit cost budget and observability
+
+Default for alerts should be `strict_exact` unless product requirements explicitly permit approximation.
+
+## A5) Median-specific recommendation
+
+For initial production rollout:
+
+- Mark `rolling_median` as `batch_only`.
+- Expression containing median should fail under `strict_exact`.
+- Optionally permit under `hybrid` with explicit warning and bounded recompute limits.
+
+Do not silently downgrade to approximation without user-visible policy and auditability.
+
+## A6) Implementation touchpoints in TA
+
+Add/extend these modules:
+
+- `laakhay/ta/registry/models.py`
+  - extend indicator metadata schema with realtime capability fields
+- `laakhay/ta/registry/registry.py`
+  - expose capability introspection in public registry APIs
+- `laakhay/ta/expr/runtime/streaming_capabilities.py` (new)
+  - expression capability resolver + policy engine
+- `laakhay/ta/expr/runtime/capability_validator.py`
+  - include streaming policy checks
+- `laakhay/ta/expr/runtime/analyze.py`
+  - return streaming capability summary
+- `laakhay/ta/expr/runtime/streaming_compiler.py`
+  - enforce policy before graph compilation
+
+## A7) Public API shape (recommended)
+
+Expose capability introspection APIs:
+
+- `describe_indicator("sma").realtime_capability`
+- `analyze(expression, streaming_policy="strict_exact")`
+- `compile_streaming(expression, policy="strict_exact")`
+
+`compile_streaming(...)` should fail fast with typed errors:
+
+- `UnsupportedStreamingNodeError`
+- `StreamingPolicyViolationError`
+
+## A8) Observability and SLO requirements (industry baseline)
+
+For runtime-safe rollout, instrument at minimum:
+
+- expression compile mode counts: exact/approx/batch
+- policy violation counts by indicator
+- step latency p50/p95/p99 by expression family
+- fallback invocation rate (must be near zero in strict mode)
+- state size per stream instance
+- parity mismatch counters against shadow batch path
+
+Required alerting thresholds:
+
+- non-zero parity mismatch rate over rolling window
+- fallback rate above configured budget
+- state growth slope indicating potential unbounded memory
+
+## A9) Backward compatibility and versioning
+
+Capability fields are additive, so maintain compatibility:
+
+- older indicators default to conservative values (`batch_only`) until classified
+- major behavior changes (e.g., strict policy default) must be version-gated
+
+Recommendation:
+
+- release capability model as `experimental` first
+- promote to `stable` after parity and performance gates pass
+
+## A10) CI and governance gates
+
+Require these checks before merging capability-related changes:
+
+1. metadata completeness check
+- every public indicator must declare capability
+
+2. policy matrix tests
+- same expression validated under all policies
+
+3. deterministic parity tests
+- streaming vs batch on golden fixtures
+
+4. performance guardrails
+- no regression beyond defined budget for exact streaming indicators
+
+## A11) Concrete next commit additions
+
+Integrate into existing plan around Commit 10 with these concrete tasks:
+
+1. Add `RealtimeCapability` schema in registry metadata.
+2. Classify all currently shipped indicators.
+3. Implement expression capability resolver with policy engine.
+4. Add strict/hybrid policy tests including median-negative cases.
+5. Extend `analyze()` output with blocking node diagnostics.
+6. Add documentation table mapping indicator -> capability.
+
+## A12) Minimal initial policy table
+
+- `strict_exact`:
+  - Allowed: `exact`
+  - Rejected: `approx`, `batch_only`
+  - Intended use: alerts/automation
+
+- `strict_no_batch`:
+  - Allowed: `exact`, `approx`
+  - Rejected: `batch_only`
+  - Intended use: low-latency exploratory workflows with explicit approximation
+
+- `hybrid`:
+  - Allowed: all, with explicit fallback nodes
+  - Intended use: transitional migration only
+
+In production alerting systems, prefer `strict_exact` as default.

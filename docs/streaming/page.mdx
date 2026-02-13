@@ -1,0 +1,35 @@
+# Stateless Realtime Streaming
+
+Laakhay TA is designed to support high-performance, stateless realtime streaming execution at its core.
+
+## Objective
+
+The primary goal of the streaming runtime is to enable deterministic, incremental execution of technical analysis indicators and expressions:
+
+- **State Transparency**: TA exposes pure transition logic (`prev_state + input -> next_state + output`).
+- **External State Management**: Host applications (like Kendra) own persistence, checkpointing, and lifecycle management.
+- **No Hidden State**: There is no hidden mutable global state inside the TA runtime.
+
+## Core Concepts
+
+### Stateless Core Contracts
+- **KernelSpec**: Immutable descriptor of a computation node.
+- **KernelState**: Serializable state payload (plain dict/tuple/dataclass).
+- **KernelStep**: Pure function that computes the next state and output.
+
+### Dual Execution Modes
+- **Batch mode**: Canonical execution for previews and backtests over historical datasets.
+- **Streaming mode**: Incremental per-event updates using a compiled kernel graph.
+
+## Performance
+The streaming runtime is optimized for performance, targetting:
+- **Exact Parity**: Replay parity between batch and streaming outputs.
+- **O(1) Updates**: Amortized O(1) update path for common indicators like SMA, EMA, and RSI.
+- **Bounded State**: Deterministic memory footprint for long-running streams.
+
+## Usage in Host Applications
+
+Host applications typically follow this cycle:
+1. **Initialize**: Request initial state from TA based on a sliding window.
+2. **Step**: On each new event, pass the previous state and input event to the TA engine.
+3. **Persist**: Store the returned state in a database or cache for the next event.
