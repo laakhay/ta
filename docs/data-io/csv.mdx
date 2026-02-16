@@ -1,0 +1,23 @@
+# CSV IO
+
+Use `from_csv(...)` and `to_csv(...)` for OHLCV or generic Series snapshots.
+
+## Load
+
+```python
+from laakhay.ta.data.csv import from_csv
+
+data = from_csv('btc.csv', symbol='BTCUSDT', timeframe='1h')
+```
+
+If OHLCV columns are present, returns `OHLCV`; otherwise returns `Series` using value column mapping.
+
+## Dump
+
+```python
+from laakhay.ta.data.csv import to_csv
+
+to_csv(data, 'out.csv')
+```
+
+Column mapping can be customized via keyword arguments.

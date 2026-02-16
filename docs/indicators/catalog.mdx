@@ -1,0 +1,74 @@
+# Catalog
+
+Auto-generated from the current runtime registry (full indicator set).
+
+- Registered indicator names: `52`
+- Total names including aliases: `71`
+
+## Category Summary
+
+- `event`: `11`
+- `momentum`: `4`
+- `pattern`: `4`
+- `primitive`: `23`
+- `selector`: `1`
+- `trend`: `6`
+- `volatility`: `1`
+- `volume`: `2`
+
+## Indicator Inventory
+
+| Name | Category | Parameters | Outputs | Aliases |
+| --- | --- | --- | --- | --- |
+| `atr` | `volatility` | `period` | `result` | `-` |
+| `bb_lower` | `trend` | `period, std_dev` | `result` | `-` |
+| `bb_upper` | `trend` | `period, std_dev` | `result` | `-` |
+| `bbands` | `trend` | `period, std_dev` | `result` | `bb` |
+| `cross` | `event` | `a, b` | `result` | `-` |
+| `crossdown` | `event` | `a, b` | `result` | `-` |
+| `crossup` | `event` | `a, b` | `result` | `-` |
+| `cumulative_sum` | `primitive` | `field` | `result` | `cumsum` |
+| `diff` | `primitive` | `field` | `result` | `-` |
+| `downsample` | `primitive` | `factor, agg, target, target_timeframe` | `result` | `-` |
+| `elementwise_max` | `primitive` | `other_series` | `result` | `-` |
+| `elementwise_min` | `primitive` | `other_series` | `result` | `-` |
+| `ema` | `trend` | `period, source` | `result` | `-` |
+| `enter` | `event` | `price, upper, lower` | `result` | `-` |
+| `exit` | `event` | `price, upper, lower` | `result` | `-` |
+| `falling` | `event` | `a` | `result` | `-` |
+| `falling_pct` | `event` | `a, pct` | `result` | `-` |
+| `fib_retracement` | `pattern` | `left, right, levels, mode` | `result` | `-` |
+| `in` | `event` | `price, upper, lower` | `result` | `-` |
+| `macd` | `trend` | `fast_period, slow_period, signal_period` | `result` | `-` |
+| `max` | `primitive` | `period, field` | `result` | `-` |
+| `min` | `primitive` | `period, field` | `result` | `-` |
+| `negative_values` | `primitive` | `field` | `result` | `neg, negative` |
+| `obv` | `volume` | `-` | `result` | `-` |
+| `out` | `event` | `price, upper, lower` | `result` | `-` |
+| `positive_values` | `primitive` | `field` | `result` | `pos, positive` |
+| `rising` | `event` | `a` | `result` | `-` |
+| `rising_pct` | `event` | `a, pct` | `result` | `-` |
+| `rolling_argmax` | `primitive` | `period, field` | `result` | `argmax` |
+| `rolling_argmin` | `primitive` | `period, field` | `result` | `argmin` |
+| `rolling_ema` | `primitive` | `period, field` | `result` | `-` |
+| `rolling_mean` | `primitive` | `period, field` | `result` | `mean, average, avg` |
+| `rolling_median` | `primitive` | `period, field` | `result` | `median, med` |
+| `rolling_rma` | `primitive` | `period, field` | `result` | `rma` |
+| `rolling_std` | `primitive` | `period, field` | `result` | `std, stddev` |
+| `rolling_sum` | `primitive` | `period, field` | `result` | `sum` |
+| `rsi` | `momentum` | `period` | `result` | `-` |
+| `select` | `selector` | `field` | `result` | `-` |
+| `shift` | `primitive` | `periods, field` | `result` | `-` |
+| `sign` | `primitive` | `field` | `result` | `-` |
+| `sma` | `trend` | `period, source` | `result` | `-` |
+| `stoch_d` | `momentum` | `k_period, d_period` | `result` | `-` |
+| `stoch_k` | `momentum` | `k_period, d_period` | `result` | `-` |
+| `stochastic` | `momentum` | `k_period, d_period` | `result` | `stoch` |
+| `swing_highs` | `pattern` | `left, right, return_mode` | `result` | `-` |
+| `swing_lows` | `pattern` | `left, right, return_mode` | `result` | `-` |
+| `swing_points` | `pattern` | `left, right, return_mode` | `result` | `-` |
+| `sync_timeframe` | `primitive` | `reference, fill` | `result` | `-` |
+| `true_range` | `primitive` | `-` | `result` | `tr` |
+| `typical_price` | `primitive` | `-` | `result` | `-` |
+| `upsample` | `primitive` | `factor, method` | `result` | `-` |
+| `vwap` | `volume` | `-` | `result` | `-` |

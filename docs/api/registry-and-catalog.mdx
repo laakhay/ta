@@ -1,0 +1,30 @@
+# Registry & Catalog
+
+The registry stores indicator metadata and callable handles.
+
+## Registry APIs
+
+- `register(...)`
+- `indicator(name, **params)`
+- `describe_indicator(name)`
+- `describe_all()`
+- `indicator_info(name)`
+- `list_indicators()`
+- `list_all_names()`
+
+## Catalog APIs
+
+- `list_catalog()`
+- `describe_indicator(name)` from `laakhay.ta.catalog`
+- parameter coercion utilities in `laakhay.ta.catalog.params`
+- serializer helpers in `laakhay.ta.catalog.serializer`
+
+## Metadata Driven Planning
+
+`IndicatorMetadata` is used by the planner for:
+
+- required fields
+- optional fields
+- lookback parameter extraction
+- default lookback behavior
+- explicit `input_series` support metadata

@@ -1,0 +1,45 @@
+# Quickstart
+
+```python
+from datetime import UTC, datetime
+from decimal import Decimal
+
+import laakhay.ta as ta
+from laakhay.ta.core import OHLCV
+from laakhay.ta.data.dataset import dataset_from_bars
+
+bars = [
+    {
+        'timestamp': datetime(2024, 1, 1, tzinfo=UTC),
+        'open': Decimal('100'),
+        'high': Decimal('103'),
+        'low': Decimal('99'),
+        'close': Decimal('102'),
+        'volume': Decimal('1200'),
+        'is_closed': True,
+    },
+    {
+        'timestamp': datetime(2024, 1, 1, 1, tzinfo=UTC),
+        'open': Decimal('102'),
+        'high': Decimal('104'),
+        'low': Decimal('101'),
+        'close': Decimal('103'),
+        'volume': Decimal('1300'),
+        'is_closed': True,
+    },
+]
+
+market = dataset_from_bars(bars, symbol='BTCUSDT', timeframe='1h')
+
+sma_fast = ta.sma(period=5)
+rsi = ta.rsi(period=14)
+
+expr = (sma_fast > 100) & (rsi < 70)
+out = expr.run(market)
+```
+
+## What This Demonstrates
+
+- Dataset normalization from raw bar payloads.
+- Indicator handle creation via namespace shortcuts.
+- Expression composition with boolean operators.

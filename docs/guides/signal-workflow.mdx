@@ -1,0 +1,26 @@
+# Signal Workflow
+
+## Typical Flow
+
+1. Build or load a `Dataset`.
+2. Compose indicator expression.
+3. Run `validate(...)`.
+4. Run `analyze(...)` and inspect requirements.
+5. Use `preview(...)` to inspect output/triggers.
+6. Deploy expression execution.
+
+## Minimal Pattern
+
+```python
+from laakhay.ta.expr import validate, analyze, preview
+from laakhay.ta.expr.dsl import compile_expression
+
+expr_text = '(sma(20) > sma(50)) and (rsi(14) < 30)'
+
+v = validate(expr_text)
+a = analyze(expr_text)
+p = preview(expr_text, dataset=dataset)
+
+compiled = compile_expression(expr_text)
+out = compiled.run(dataset)
+```

@@ -1,0 +1,38 @@
+# Filters, Aggregations & Time Shifts
+
+## Filters
+
+```python
+BTC.trades.filter(amount > 1000000).count > 10
+```
+
+## Aggregations
+
+```python
+BTC.trades.sum(amount) > 50000000
+BTC.trades.avg(price) > 50000
+BTC.trades.count > 100
+```
+
+Supported aggregate operations in attribute-call style:
+
+- `sum`
+- `avg`
+- `max`
+- `min`
+- `count` (as property)
+
+## Time Shift Patterns
+
+Supported suffix families:
+
+- `24h_ago`, `1h_ago`, `15m_ago`
+- `change_pct_24h`, `change_1h`
+- `roc_24`
+
+Examples:
+
+```python
+BTC.price.24h_ago < BTC.price
+BTC.volume.change_pct_24h > 10
+```

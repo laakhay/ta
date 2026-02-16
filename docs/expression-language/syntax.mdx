@@ -1,0 +1,26 @@
+# Syntax
+
+## Entry Points
+
+```python
+from laakhay.ta.expr.dsl import parse_expression_text, compile_expression
+
+parsed = parse_expression_text('sma(20) > sma(50)')
+compiled = compile_expression(parsed)
+```
+
+## Literals And Identifiers
+
+- numeric literals are supported (`1`, `2.5`)
+- boolean words are accepted (`true`, `false`)
+- bare field identifiers map to select fields (`close`, `high`, `volume`, `hlc3`, ...)
+
+## Indicator Parameters
+
+- positional and keyword parameters are supported
+- parameter alias `lookback` maps to canonical `period` where applicable
+- unknown parameters fail validation
+
+## Output Selection
+
+Selecting named tuple outputs directly from indicator calls is not supported yet in DSL compile path.

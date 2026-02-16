@@ -1,0 +1,32 @@
+# Bar & OHLCV
+
+## `Bar`
+
+`Bar` enforces:
+
+- `high >= low`
+- `high >= max(open, close)`
+- `low <= min(open, close)`
+- `volume >= 0`
+
+Derived properties include:
+
+- `hlc3`, `ohlc4`, `hl2`
+- `body_size`, `upper_wick`, `lower_wick`, `total_range`
+
+## `OHLCV`
+
+`OHLCV` stores aligned tuples:
+
+- `timestamps`, `opens`, `highs`, `lows`, `closes`, `volumes`, `is_closed`
+
+Key operations:
+
+- `slice_by_time(start, end)`
+- `to_series(field)` for one field or all fields
+- `from_bars()` and `from_dict()`
+
+```python
+oh = OHLCV.from_bars(bars, symbol='BTCUSDT', timeframe='1h')
+close_series = oh.to_series('close')
+```

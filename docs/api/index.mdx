@@ -1,0 +1,15 @@
+# API Reference
+
+This section documents the public API that consumers should build against.
+
+Primary imports:
+
+- `import laakhay.ta as ta`
+- `from laakhay.ta import dataset`
+- `from laakhay.ta.expr import preview, validate, analyze`
+
+The API is intentionally split across:
+
+- high-level conveniences (`ta.sma`, `ta.rsi`, ...)
+- composition primitives (`ta.indicator`, `ta.literal`, `ta.source`)
+- registry/catalog tooling (`describe_indicator`, `list_catalog`)

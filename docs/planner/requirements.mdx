@@ -1,0 +1,32 @@
+# Requirements Model
+
+`SignalRequirements` currently contains:
+
+- `data_requirements: tuple[DataRequirement, ...]`
+- `time_based_queries: tuple[str, ...]`
+
+Each `DataRequirement` includes:
+
+- `source`, `field`
+- optional `symbol`, `exchange`, `timeframe`
+- `min_lookback`
+- optional aggregation params
+
+## Example
+
+```python
+from laakhay.ta.expr.dsl import compile_expression
+from laakhay.ta.expr.planner import plan_expression
+
+expr = compile_expression('sma(BTC.trades.volume, period=20) > 1000000')
+plan = plan_expression(expr._node)
+print(plan.to_dict())
+```
+
+## Alignment Policy
+
+Planner reads the current alignment policy from algebra alignment context:
+
+- `how`: default `inner`
+- `fill`: default `none`
+- optional fill values

@@ -1,0 +1,29 @@
+# Multi-Source Datasets
+
+`dataset_from_multisource(...)` builds a `Dataset` from normalized source payloads.
+
+Supported inputs:
+
+- `bars`
+- `trades`
+- `orderbooks`
+- `liquidations`
+- optional `exchange`
+
+## Example
+
+```python
+from laakhay.ta.data.dataset import dataset_from_multisource
+
+ds = dataset_from_multisource(
+    symbol='BTCUSDT',
+    timeframe='1h',
+    bars=bars,
+    trades=trade_aggs,
+    orderbooks=ob_aggs,
+    liquidations=liq_aggs,
+    exchange='binance',
+)
+```
+
+The helper maps known aggregation fields into series and assigns source-qualified keys in the dataset.

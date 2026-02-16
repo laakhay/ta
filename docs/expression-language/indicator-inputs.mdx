@@ -1,0 +1,26 @@
+# Indicator Inputs
+
+Indicators such as `sma`, `ema`, and `rsi` support explicit input expressions.
+
+## Examples
+
+```python
+sma(BTC.price, period=20)
+sma(BTC.trades.volume, period=20)
+rsi(BTC.orderbook.imbalance, period=14)
+sma(BTC.high + BTC.low, period=5)
+```
+
+## Mental Model
+
+- First argument can be a source/expression input for the indicator.
+- If no explicit input is provided, indicator defaults are used.
+- You can still use standard parameter styles.
+
+## Backward Compatible Forms
+
+```python
+sma(20)
+sma(period=20)
+rsi(14)
+```

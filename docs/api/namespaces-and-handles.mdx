@@ -1,0 +1,27 @@
+# Namespaces & Handles
+
+## `IndicatorHandle`
+
+`IndicatorHandle` is composable and runnable:
+
+- `handle(dataset_or_series)` direct call
+- `handle.run(dataset_or_series)` expression-engine evaluation
+- arithmetic/boolean operators for DAG composition
+- `handle.requirements()` planner requirements
+
+## Namespace Helpers
+
+- `ta.indicator(name, **params)`
+- `ta.literal(value)`
+- `ta.source(field)`
+- `ta.ref(dataset, timeframe=..., field=..., reference=...)`
+- `ta.resample(dataset, from_timeframe=..., to_timeframe=..., field=...)`
+
+## `ta.source(...)` vs `select`
+
+`ta.source('close')` emits a selector expression equivalent to `select(field='close')`.
+
+```python
+close = ta.source('close')
+expr = ta.sma(period=20) > close
+```

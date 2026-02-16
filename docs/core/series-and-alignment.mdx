@@ -1,0 +1,31 @@
+# Series & Alignment
+
+## `Series[T]`
+
+`Series` is generic and immutable:
+
+- `timestamps`: sorted tuple
+- `values`: tuple of payload values
+- `symbol`, `timeframe`
+- optional `availability_mask`
+
+It supports element-wise arithmetic and scalar arithmetic:
+
+- `+`, `-`, `*`, `/`, `%`, `**`
+- comparisons and boolean-style expression usage through expression wrappers
+
+## Alignment
+
+Use `align_series(left, right, how=..., fill=...)` when timestamps differ.
+
+Common options:
+
+- `how`: `inner`, `left`, `right`, `outer`
+- `fill`: `none`, `ffill`, `bfill`, `value`
+
+```python
+from laakhay.ta.core import align_series
+
+a, b = align_series(series_a, series_b, how='inner', fill='none')
+spread = a - b
+```

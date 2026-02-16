@@ -1,0 +1,28 @@
+# Preview
+
+`preview(...)` provides an end-to-end execution helper for strategy exploration.
+
+## Inputs
+
+- expression string or parsed expression
+- either raw `bars` with `symbol/timeframe` or a prepared `Dataset`
+
+## Output
+
+`PreviewResult` includes:
+
+- `series`
+- `triggers` (boolean trigger points)
+- `indicators`
+- `trim` (lookback trim)
+- `indicator_series`
+- optional `requirements` and `plan`
+
+## Example
+
+```python
+from laakhay.ta.expr import preview
+
+res = preview('sma(20) > sma(50)', bars=bars, symbol='BTCUSDT', timeframe='1h')
+print(res.trim, len(res.triggers))
+```

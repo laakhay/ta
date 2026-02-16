@@ -1,0 +1,36 @@
+# Dataset & Contexts
+
+`Dataset` stores data by `DatasetKey(symbol, timeframe, source)`.
+
+Standard source identifiers:
+
+- `ohlcv`
+- `trades`
+- `orderbook`
+- `liquidation`
+- `default`
+
+## Add Data
+
+```python
+dataset.add_series('BTCUSDT', '1h', ohlcv, source='ohlcv')
+dataset.add_trade_series('BTCUSDT', '1m', trade_volume_series, exchange='binance')
+dataset.add_orderbook_series('BTCUSDT', '1m', imbalance_series)
+dataset.add_liquidation_series('BTCUSDT', '15m', liq_series)
+```
+
+## Resolve Data
+
+- `dataset.series(symbol, timeframe, source='default')`
+- `dataset.resolve(source, field, symbol=..., timeframe=...)`
+- `dataset.select(...)`
+- `dataset.to_context()`
+
+## Typed Source Contexts
+
+Context classes enforce required fields:
+
+- `OHLCVContext`: `price/close/open/high/low/volume`
+- `TradeContext`: `volume/count/buy_volume/sell_volume/...`
+- `OrderBookContext`: `best_bid/best_ask/spread/imbalance/...`
+- `LiquidationContext`: `count/volume/value/long_count/...`

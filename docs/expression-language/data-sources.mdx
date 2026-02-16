@@ -1,0 +1,32 @@
+# Data Sources
+
+Source chains resolve to `SourceExpression` nodes.
+
+## Supported Source Types
+
+- `ohlcv`
+- `trades`
+- `orderbook`
+- `liquidation`
+
+## Common Forms
+
+```text
+BTC.price
+BTC.trades.volume
+BTC.orderbook.imbalance
+binance.BTC.orderbook.spread_bps
+BTC.USDT.perp.price
+binance.BTC.USDT.perp.h1.trades.volume
+```
+
+## Timeframe Token Note
+
+Because the DSL parser uses Python AST, attribute identifiers like `1h` are not valid in dotted chains.
+Use `h1`, `m15`, `d1`, etc. Parser normalizes these to standard forms (`1h`, `15m`, `1d`).
+
+## Symbol Forms
+
+- Simple symbol: `BTC` or `BTCUSDT`
+- Base/quote chain: `BTC.USDT` -> normalized symbol `BTC/USDT`
+- Optional instrument type: `spot`, `perp`, `futures`, `option`

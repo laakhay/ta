@@ -1,0 +1,14 @@
+# Performance
+
+Benchmarks live under `tests/performance` and target expression compilation/evaluation paths.
+
+## Practical Guidance
+
+- Reuse compiled expressions in hot paths.
+- Use planner requirements to fetch only required fields/sources.
+- Keep dataset source keys normalized for fast resolution.
+- Avoid unnecessary conversions between raw payloads and core structures.
+
+## Benchmark Entry Points
+
+- `tests/performance/test_evaluation_benchmarks.py`

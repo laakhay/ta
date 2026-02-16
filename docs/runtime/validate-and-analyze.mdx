@@ -1,0 +1,35 @@
+# Validate & Analyze
+
+## `validate(...)`
+
+Validation checks:
+
+- expression parse validity
+- indicator existence
+- parameter/schema consistency
+- select-field validity
+- optional capability warnings via planner validation
+
+```python
+from laakhay.ta.expr import validate
+
+result = validate('sma(BTC.trades.volume, period=20)', exchange='binance')
+print(result.valid, result.errors, result.warnings)
+```
+
+## `analyze(...)`
+
+Analysis enriches validation with:
+
+- indicator inventory
+- data requirements
+- required sources/exchanges/timeframes
+- minimum lookback
+- capability-specific warnings
+
+```python
+from laakhay.ta.expr import analyze
+
+a = analyze('sma(BTC.trades.volume, period=20) > 1_000_000', exchange='binance')
+print(a.required_sources, a.min_lookback)
+```

@@ -1,0 +1,23 @@
+# First Expression
+
+`laakhay-ta` supports a Python-like DSL compiled into expression nodes.
+
+## Compile And Run
+
+```python
+from laakhay.ta.expr.dsl import compile_expression
+
+expr = compile_expression('(sma(20) > sma(50)) and (rsi(14) < 30)')
+result = expr.run(dataset)
+```
+
+## Preflight Checks
+
+```python
+from laakhay.ta.expr import validate, analyze
+
+v = validate('(sma(20) > sma(50)) and (rsi(14) < 30)')
+a = analyze('sma(BTC.trades.volume, period=20) > 1_000_000', exchange='binance')
+```
+
+Use `validate` for syntax/schema errors and `analyze` for requirements and capability warnings.

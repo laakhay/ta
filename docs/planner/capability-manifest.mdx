@@ -1,0 +1,23 @@
+# Capability Manifest
+
+`generate_capability_manifest()` provides strategy capability metadata suitable for service APIs.
+
+Manifest includes:
+
+- sources and source fields
+- indicator inventory and aliases
+- operator families
+- expression examples
+- feature flags (`multi_source`, `filters`, `aggregations`, `time_shifts`)
+
+## Example
+
+```python
+from laakhay.ta.expr.planner import generate_capability_manifest
+
+manifest = generate_capability_manifest()
+print(manifest['version'])
+print(manifest['sources'].keys())
+```
+
+Use this to drive frontend expression builders and backend capability checks.

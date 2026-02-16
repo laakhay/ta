@@ -1,20 +1,24 @@
-# Introduction
+# Laakhay TA
 
-`laakhay-ta` is a stateless technical analysis library focused on composability, explicit metadata, and multi-source strategy expression.
+`laakhay-ta` is a stateless technical analysis engine for indicator computation, expression evaluation, and multi-source signal logic.
 
-It is designed as the TA engine used by Laakhay systems, but shaped as a standalone library with clear contracts for backend integration.
+## Recommended Reading Order
 
-## What This Library Is For
+1. `getting-started/*`
+2. `guides/*`
+3. `expression-language/*`
+4. `runtime/*`
+5. `api/*` and `indicators/*` as reference
 
-- Indicator execution over immutable series
-- Algebraic expression composition for signals
-- Multi-source data access (OHLCV, trades, orderbook, liquidations)
-- Streaming-compatible evaluation with deterministic behavior
+## What You Can Build Quickly
 
-## Read First
+- single and multi-indicator signals
+- multi-source expressions (`ohlcv`, `trades`, `orderbook`, `liquidation`)
+- validation/analysis gates before deployment
+- requirement-aware execution plans
 
-- [Core Concepts](/core)
-- [Expression Language](/expression-language)
-- [Streaming Model](/streaming)
-- [Integration Notes](/integration)
-- [Documentation Status](/status)
+## Ecosystem Fit
+
+- `laakhay-data` for ingestion/normalization
+- `laakhay-ta` for indicator + signal logic
+- `laakhay-quantlab` for simulation and stochastic analysis

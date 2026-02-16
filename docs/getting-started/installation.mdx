@@ -1,0 +1,29 @@
+# Installation
+
+## Requirements
+
+- Python `3.12+`
+
+## Install
+
+```bash
+pip install laakhay-ta
+```
+
+## Verify
+
+```python
+import laakhay.ta as ta
+print('sma' in ta.list_indicators())
+```
+
+## Development Setup
+
+```bash
+git clone https://github.com/laakhay/ta.git
+cd ta
+python -m venv .venv
+source .venv/bin/activate
+pip install -e .[dev]
+pytest
+```

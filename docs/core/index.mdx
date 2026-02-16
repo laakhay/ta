@@ -1,0 +1,11 @@
+# Core Data Model
+
+Core types are immutable and timestamp-ordered. This makes expression evaluation deterministic and safer to reason about in concurrent systems.
+
+## Main Types
+
+- `Bar`: single OHLCV bar with validation and derived price helpers.
+- `OHLCV`: columnar immutable container of bars.
+- `Series[T]`: generic immutable time series with arithmetic and transformations.
+- `Dataset`: multi-symbol, multi-timeframe, multi-source container.
+- Source contexts: `OHLCVContext`, `TradeContext`, `OrderBookContext`, `LiquidationContext`.

@@ -1,0 +1,16 @@
+# Multi-Source Patterns
+
+## Example Patterns
+
+```text
+sma(BTC.price, period=20)
+sma(BTC.trades.volume, period=20)
+BTC.orderbook.imbalance > 0.6
+BTC.liquidation.volume > 100000
+```
+
+## Recommended Practice
+
+- keep expressions explicit about source fields
+- validate against target exchange capabilities
+- use planner output to fetch only required source fields

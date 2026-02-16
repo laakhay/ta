@@ -1,0 +1,29 @@
+# Custom Indicators
+
+You can register custom indicators at runtime.
+
+## Example
+
+```python
+from laakhay.ta import register
+from laakhay.ta.core import Series
+from laakhay.ta.registry.models import SeriesContext
+
+@register('my_indicator', description='Example custom indicator')
+def my_indicator(ctx: SeriesContext, period: int = 10) -> Series[float]:
+    close = ctx.close
+    # return a Series with same timestamps/symbol/timeframe
+    return close
+```
+
+## Requirements
+
+- First argument must be `SeriesContext` (or equivalent annotation/name semantics accepted by registry).
+- Return annotation should be `Series[...]`, tuple of series, or dict of series.
+- Avoid mutable state in indicator functions.
+
+## Best Practices
+
+- Provide clear docstring and parameter defaults.
+- Keep output metadata meaningful for downstream chart/render systems.
+- Include unit tests for parameter validation and edge cases.

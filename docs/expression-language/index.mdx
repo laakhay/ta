@@ -1,0 +1,14 @@
+# Expression Language
+
+The DSL compiles Python-like expressions into a typed expression graph.
+
+Supported constructs:
+
+- arithmetic: `+ - * / % **`
+- comparisons: `> >= < <= == !=`
+- logical composition: `and`, `or`, `not`
+- indicator calls: `sma(20)`, `rsi(14)`
+- explicit source inputs: `sma(BTC.trades.volume, period=20)`
+- source attribute chains: `binance.BTC.orderbook.imbalance`
+- filter/aggregate forms: `trades.filter(...).count`, `trades.sum(amount)`
+- time shifts: `price.24h_ago`, `volume.change_pct_24h`

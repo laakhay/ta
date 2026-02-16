@@ -1,0 +1,23 @@
+# Top-Level API
+
+`laakhay.ta` re-exports common types and helpers:
+
+- Core: `Bar`, `Series`, `OHLCV`, `dataset`
+- Data IO: `from_csv`, `to_csv`
+- Registry: `register`, `describe_indicator`, `describe_all`, `list_indicators`, `list_all_names`
+- Namespace: `indicator`, `literal`, `source`, `ref`, `resample`, `ta`
+- Lazy exports: `Engine`, algebra expression types
+- Indicator convenience wrappers: `sma`, `ema`, `macd`, `bbands`, `rsi`, `stochastic`, `atr`, `obv`, `vwap`
+
+## Function/Handle Dual Mode
+
+Many convenience calls support both forms:
+
+```python
+# Handle mode
+sma_handle = ta.sma(period=20)
+
+# Immediate evaluation mode
+sma_series = ta.sma(series, period=20)
+sma_from_dataset = ta.sma(dataset, period=20)
+```
