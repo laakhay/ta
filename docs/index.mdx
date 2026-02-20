@@ -1,24 +1,62 @@
 # Laakhay TA
 
-`laakhay-ta` is a stateless technical analysis engine for indicator computation, expression evaluation, and multi-source signal logic.
+`laakhay-ta` is a stateless technical analysis and expression runtime for building trading signals from one or many market data sources.
+
+It gives you four core capabilities:
+
+1. Typed market data model (`Bar`, `OHLCV`, `Series`, `Dataset`).
+2. Indicator registry with built-in indicators, aliases, and custom registration.
+3. Expression system (Pythonic algebra API + DSL compiler).
+4. Runtime tooling (`preview`, `validate`, `analyze`, planner, evaluator, streaming hooks).
+
+## What This Library Is Good At
+
+- Fast iteration on signal ideas with plain Python expressions.
+- Multi-source signals that combine `ohlcv`, `trades`, `orderbook`, and `liquidation` data.
+- Backend-friendly preflight checks: detect missing data requirements before live execution.
+- Consistent flow from research to production APIs.
+
+## Architecture At A Glance
+
+```txt
+Raw Data -> Dataset/Series -> Indicators -> Expression Graph -> Plan -> Runtime Evaluation
+                             \-> validate/analyze/preview
+```
+
+- `core/`: data types and alignment.
+- `indicators/`: built-ins (trend, momentum, volatility, volume, pattern, events).
+- `expr/`: parser/compiler/planner/evaluator/runtime helpers.
+- `registry/` + `catalog/`: discoverability and metadata.
 
 ## Recommended Reading Order
 
-1. `getting-started/*`
-2. `guides/*`
-3. `expression-language/*`
-4. `runtime/*`
-5. `api/*` and `indicators/*` as reference
+1. `getting-started/installation`
+2. `getting-started/quickstart`
+3. `core/*`
+4. `expression-language/*`
+5. `runtime/*`
+6. `indicators/catalog`
+7. `api/*`
+8. `guides/*`
 
-## What You Can Build Quickly
+## Compatibility Notes
 
-- single and multi-indicator signals
-- multi-source expressions (`ohlcv`, `trades`, `orderbook`, `liquidation`)
-- validation/analysis gates before deployment
-- requirement-aware execution plans
+- Expression DSL currently does not support selecting named tuple outputs directly from indicator calls (for example `macd(...).signal`). Use dedicated single-output wrappers where available.
+- For pattern/fibonacci strategy expressions, prefer single-series indicators:
+  - `fib_level_down`, `fib_level_up`, `fib_anchor_high`, `fib_anchor_low`
 
-## Ecosystem Fit
+## Quick Example
 
-- `laakhay-data` for ingestion/normalization
-- `laakhay-ta` for indicator + signal logic
-- `laakhay-quantlab` for simulation and stochastic analysis
+```python
+from laakhay.ta.expr.dsl import compile_expression
+from laakhay.ta.data.dataset import dataset_from_bars
+
+expr = compile_expression(
+    "close > sma(20) and rsi(14) > 50 and close < fib_level_down(level=0.618, left=3, right=3)"
+)
+
+dataset = dataset_from_bars(bars, symbol="BTCUSDT", timeframe="1h")
+result = expr.run(dataset)
+```
+
+If you can read and run everything in this docs set, you will have full working knowledge of the library surface.

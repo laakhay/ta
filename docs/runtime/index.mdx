@@ -1,9 +1,20 @@
-# Runtime Tools
+# Runtime
 
-This section covers the main production guardrails:
+Runtime tools help you safely execute expressions in research and production workflows.
 
-- `preview`: evaluate and inspect trigger points
-- `validate`: catch syntax/schema/capability issues early
-- `analyze`: compute required sources/timeframes/lookback
+## Main Components
 
-Most teams should rely on these tools in CI and deploy gates.
+- `Engine`: minimal node evaluator.
+- `Evaluator`: graph evaluator with plan-aware caching and dataset fan-out.
+- `RuntimeEvaluator`: dataset-integrated runtime evaluator.
+- `preview(...)`: parse/compile/run helper with triggers and indicator extraction.
+- `validate(...)`: fast static validation.
+- `analyze(...)`: comprehensive requirements/capability analysis.
+- `Stream`: incremental update helper with availability transitions.
+
+## Typical Pre-Execution Pipeline
+
+1. `validate(expression)`
+2. `analyze(expression, exchange=...)`
+3. `preview(expression, dataset=...)`
+4. production `compiled_expr.run(dataset)` or stream mode

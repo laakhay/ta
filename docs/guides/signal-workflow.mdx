@@ -1,26 +1,33 @@
 # Signal Workflow
 
-## Typical Flow
+A robust workflow for strategy signals in this library:
 
-1. Build or load a `Dataset`.
-2. Compose indicator expression.
-3. Run `validate(...)`.
-4. Run `analyze(...)` and inspect requirements.
-5. Use `preview(...)` to inspect output/triggers.
-6. Deploy expression execution.
+1. Write expression text.
+2. Validate and analyze requirements.
+3. Preview on historical data.
+4. Integrate evaluator/stream path.
+5. Add tests for expected trigger behavior.
 
-## Minimal Pattern
+## Reference Flow
 
 ```python
-from laakhay.ta.expr import validate, analyze, preview
+from laakhay.ta.expr.runtime import validate, analyze, preview
 from laakhay.ta.expr.dsl import compile_expression
 
-expr_text = '(sma(20) > sma(50)) and (rsi(14) < 30)'
+expr_text = "close > sma(50) and rsi(14) > 55"
 
-v = validate(expr_text)
-a = analyze(expr_text)
+v = validate(expr_text, exchange="binance")
+if not v.valid:
+    raise ValueError(v.errors)
+
+a = analyze(expr_text, exchange="binance")
 p = preview(expr_text, dataset=dataset)
-
 compiled = compile_expression(expr_text)
-out = compiled.run(dataset)
+result = compiled.run(dataset)
 ```
+
+## Interpretation Tips
+
+- Use `preview.triggers` for fast event sanity checks.
+- Compare `analyze.min_lookback` with bars loaded into dataset.
+- If output is unexpectedly sparse, inspect indicator availability masks and warmup windows.

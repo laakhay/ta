@@ -1,74 +1,99 @@
 # Catalog
 
-Auto-generated from the current runtime registry (full indicator set).
+This page is generated from the live registry and catalog metadata.
 
-- Registered indicator names: `52`
-- Total names including aliases: `71`
+- Canonical indicators: `58`
+- Names including aliases: `83`
 
 ## Category Summary
 
-- `event`: `11`
+- `custom`: `8`
 - `momentum`: `4`
-- `pattern`: `4`
+- `pattern`: `10`
 - `primitive`: `23`
-- `selector`: `1`
-- `trend`: `6`
+- `trend`: `10`
 - `volatility`: `1`
 - `volume`: `2`
 
-## Indicator Inventory
+## Full Indicator Reference
 
-| Name | Category | Parameters | Outputs | Aliases |
-| --- | --- | --- | --- | --- |
-| `atr` | `volatility` | `period` | `result` | `-` |
-| `bb_lower` | `trend` | `period, std_dev` | `result` | `-` |
-| `bb_upper` | `trend` | `period, std_dev` | `result` | `-` |
-| `bbands` | `trend` | `period, std_dev` | `result` | `bb` |
-| `cross` | `event` | `a, b` | `result` | `-` |
-| `crossdown` | `event` | `a, b` | `result` | `-` |
-| `crossup` | `event` | `a, b` | `result` | `-` |
-| `cumulative_sum` | `primitive` | `field` | `result` | `cumsum` |
-| `diff` | `primitive` | `field` | `result` | `-` |
-| `downsample` | `primitive` | `factor, agg, target, target_timeframe` | `result` | `-` |
-| `elementwise_max` | `primitive` | `other_series` | `result` | `-` |
-| `elementwise_min` | `primitive` | `other_series` | `result` | `-` |
-| `ema` | `trend` | `period, source` | `result` | `-` |
-| `enter` | `event` | `price, upper, lower` | `result` | `-` |
-| `exit` | `event` | `price, upper, lower` | `result` | `-` |
-| `falling` | `event` | `a` | `result` | `-` |
-| `falling_pct` | `event` | `a, pct` | `result` | `-` |
-| `fib_retracement` | `pattern` | `left, right, levels, mode` | `result` | `-` |
-| `in` | `event` | `price, upper, lower` | `result` | `-` |
-| `macd` | `trend` | `fast_period, slow_period, signal_period` | `result` | `-` |
-| `max` | `primitive` | `period, field` | `result` | `-` |
-| `min` | `primitive` | `period, field` | `result` | `-` |
-| `negative_values` | `primitive` | `field` | `result` | `neg, negative` |
-| `obv` | `volume` | `-` | `result` | `-` |
-| `out` | `event` | `price, upper, lower` | `result` | `-` |
-| `positive_values` | `primitive` | `field` | `result` | `pos, positive` |
-| `rising` | `event` | `a` | `result` | `-` |
-| `rising_pct` | `event` | `a, pct` | `result` | `-` |
-| `rolling_argmax` | `primitive` | `period, field` | `result` | `argmax` |
-| `rolling_argmin` | `primitive` | `period, field` | `result` | `argmin` |
-| `rolling_ema` | `primitive` | `period, field` | `result` | `-` |
-| `rolling_mean` | `primitive` | `period, field` | `result` | `mean, average, avg` |
-| `rolling_median` | `primitive` | `period, field` | `result` | `median, med` |
-| `rolling_rma` | `primitive` | `period, field` | `result` | `rma` |
-| `rolling_std` | `primitive` | `period, field` | `result` | `std, stddev` |
-| `rolling_sum` | `primitive` | `period, field` | `result` | `sum` |
-| `rsi` | `momentum` | `period` | `result` | `-` |
-| `select` | `selector` | `field` | `result` | `-` |
-| `shift` | `primitive` | `periods, field` | `result` | `-` |
-| `sign` | `primitive` | `field` | `result` | `-` |
-| `sma` | `trend` | `period, source` | `result` | `-` |
-| `stoch_d` | `momentum` | `k_period, d_period` | `result` | `-` |
-| `stoch_k` | `momentum` | `k_period, d_period` | `result` | `-` |
-| `stochastic` | `momentum` | `k_period, d_period` | `result` | `stoch` |
-| `swing_highs` | `pattern` | `left, right, return_mode` | `result` | `-` |
-| `swing_lows` | `pattern` | `left, right, return_mode` | `result` | `-` |
-| `swing_points` | `pattern` | `left, right, return_mode` | `result` | `-` |
-| `sync_timeframe` | `primitive` | `reference, fill` | `result` | `-` |
-| `true_range` | `primitive` | `-` | `result` | `tr` |
-| `typical_price` | `primitive` | `-` | `result` | `-` |
-| `upsample` | `primitive` | `factor, method` | `result` | `-` |
-| `vwap` | `volume` | `-` | `result` | `-` |
+| Name | Category | Parameters | Outputs | Aliases | Description |
+| --- | --- | --- | --- | --- | --- |
+| `atr` | `volatility` | `period` | `result` | `-` | Average True Range indicator |
+| `bb_lower` | `trend` | `period, std_dev` | `result` | `-` | Lower Bollinger Band |
+| `bb_upper` | `trend` | `period, std_dev` | `result` | `-` | Upper Bollinger Band |
+| `bbands` | `trend` | `period, std_dev` | `upper, middle, lower` | `bb` | Bollinger Bands with upper, middle, and lower bands |
+| `cross` | `custom` | `a, b` | `result` | `-` | Detect when series a crosses series b in either direction |
+| `crossdown` | `custom` | `a, b` | `result` | `-` | Detect when series a crosses below series b |
+| `crossup` | `custom` | `a, b` | `result` | `-` | Detect when series a crosses above series b |
+| `cumulative_sum` | `primitive` | `field` | `result` | `cumsum` | Cumulative sum of a series |
+| `diff` | `primitive` | `field` | `result` | `-` | Difference between consecutive values |
+| `downsample` | `primitive` | `factor, agg, target, target_timeframe` | `result` | `-` | Downsample by factor with aggregation. For OHLCV, uses O/H/L/C/V rules. |
+| `elementwise_max` | `primitive` | `other_series` | `result` | `-` | Element-wise maximum of two series |
+| `elementwise_min` | `primitive` | `other_series` | `result` | `-` | Element-wise minimum of two series |
+| `ema` | `trend` | `period, source` | `result` | `-` | Exponential Moving Average over a price series |
+| `enter` | `custom` | `price, upper, lower` | `result` | `-` | Detect when price enters channel (was outside, now inside) |
+| `exit` | `custom` | `price, upper, lower` | `result` | `-` | Detect when price exits channel (was inside, now outside) |
+| `falling` | `trend` | `a` | `result` | `-` | Detect when series is moving down (current < previous) |
+| `falling_pct` | `trend` | `a, pct` | `result` | `-` | Detect when series has fallen by at least pct percent |
+| `fib_anchor_high` | `pattern` | `left, right, leg, pairing_mode, max_leg_age_bars, min_leg_size_pct, allow_equal_extremes, freeze_until_new_leg` | `result` | `fib_high_anchor` | High anchor from the selected confirmed Fibonacci leg |
+| `fib_anchor_low` | `pattern` | `left, right, leg, pairing_mode, max_leg_age_bars, min_leg_size_pct, allow_equal_extremes, freeze_until_new_leg` | `result` | `fib_low_anchor` | Low anchor from the selected confirmed Fibonacci leg |
+| `fib_level_down` | `pattern` | `level, left, right, leg, pairing_mode, max_leg_age_bars, min_leg_size_pct, allow_equal_extremes, freeze_until_new_leg` | `result` | `fib_down_level, fib_down` | Single downward Fibonacci retracement level from a selected low->high leg |
+| `fib_level_up` | `pattern` | `level, left, right, leg, pairing_mode, max_leg_age_bars, min_leg_size_pct, allow_equal_extremes, freeze_until_new_leg` | `result` | `fib_up_level, fib_up` | Single upward Fibonacci retracement level from a selected high->low leg |
+| `fib_retracement` | `pattern` | `left, right, levels, mode, leg, pairing_mode, max_leg_age_bars, min_leg_size_pct, allow_equal_extremes, freeze_until_new_leg` | `anchor_high, anchor_low, down, up` | `-` | Compute Fibonacci retracement bands from recent swing structure |
+| `in` | `custom` | `price, upper, lower` | `result` | `-` | Detect when price is inside channel (between upper and lower bounds) |
+| `macd` | `trend` | `fast_period, slow_period, signal_period` | `macd, signal, histogram` | `-` | MACD (Moving Average Convergence Divergence) |
+| `max` | `primitive` | `period, field` | `result` | `-` | Maximum value in a rolling window |
+| `min` | `primitive` | `period, field` | `result` | `-` | Minimum value in a rolling window |
+| `negative_values` | `primitive` | `field` | `result` | `neg, negative` | Replace positives with 0 |
+| `obv` | `volume` | `-` | `result` | `-` | On-Balance Volume indicator |
+| `out` | `custom` | `price, upper, lower` | `result` | `-` | Detect when price is outside channel (above upper or below lower) |
+| `positive_values` | `primitive` | `field` | `result` | `pos, positive` | Replace negatives with 0 |
+| `rising` | `trend` | `a` | `result` | `-` | Detect when series is moving up (current > previous) |
+| `rising_pct` | `trend` | `a, pct` | `result` | `-` | Detect when series has risen by at least pct percent |
+| `rolling_argmax` | `primitive` | `period, field` | `result` | `argmax` | Offset of maximum value inside a rolling window |
+| `rolling_argmin` | `primitive` | `period, field` | `result` | `argmin` | Offset of minimum value inside a rolling window |
+| `rolling_ema` | `primitive` | `period, field` | `result` | `-` | Exponential Moving Average over a window |
+| `rolling_mean` | `primitive` | `period, field` | `result` | `mean, average, avg` | Rolling mean over a window |
+| `rolling_median` | `primitive` | `period, field` | `result` | `median, med` | Median over window (O(n*w)) |
+| `rolling_rma` | `primitive` | `period, field` | `result` | `rma` | Wilder's Moving Average (alpha=1/period) |
+| `rolling_std` | `primitive` | `period, field` | `result` | `std, stddev` | Rolling standard deviation over a window |
+| `rolling_sum` | `primitive` | `period, field` | `result` | `sum` | Rolling sum over a window |
+| `rsi` | `momentum` | `period` | `result` | `-` | Relative Strength Index |
+| `select` | `custom` | `field` | `result` | `-` | Select a field from the evaluation context |
+| `shift` | `primitive` | `periods, field` | `result` | `-` | Shift series by n periods |
+| `sign` | `primitive` | `field` | `result` | `-` | Sign of price changes (1, 0, -1) |
+| `sma` | `trend` | `period, source` | `result` | `-` | Simple Moving Average over a price series |
+| `stoch_d` | `momentum` | `k_period, d_period` | `result` | `-` | Stochastic %D line |
+| `stoch_k` | `momentum` | `k_period, d_period` | `result` | `-` | Stochastic %K line |
+| `stochastic` | `momentum` | `k_period, d_period` | `k, d` | `stoch` | Stochastic Oscillator (%K and %D) |
+| `swing_high_at` | `pattern` | `index, left, right, allow_equal_extremes` | `result` | `-` | Price series for the nth latest confirmed swing high |
+| `swing_highs` | `pattern` | `left, right, return_mode, allow_equal_extremes` | `result` | `-` | Detect swing highs using fractal-style lookbacks |
+| `swing_low_at` | `pattern` | `index, left, right, allow_equal_extremes` | `result` | `-` | Price series for the nth latest confirmed swing low |
+| `swing_lows` | `pattern` | `left, right, return_mode, allow_equal_extremes` | `result` | `-` | Detect swing lows using fractal-style lookbacks |
+| `swing_points` | `pattern` | `left, right, return_mode, allow_equal_extremes` | `swing_high, swing_low` | `-` | Detect swing highs and lows using fractal-style lookbacks |
+| `sync_timeframe` | `primitive` | `reference, fill` | `result` | `-` | Align a series to a reference's timestamps with ffill or linear interpolation |
+| `true_range` | `primitive` | `-` | `result` | `tr` | True Range for ATR |
+| `typical_price` | `primitive` | `-` | `result` | `-` | (H+L+C)/3 |
+| `upsample` | `primitive` | `factor, method` | `result` | `-` | Upsample a series by integer factor with forward-fill |
+| `vwap` | `volume` | `-` | `result` | `-` | Volume Weighted Average Price |
+
+
+## Usage Notes
+
+- Prefer single-output wrappers in DSL roots (for example `stoch_k`, `bb_upper`, `fib_level_down`).
+- Multi-output indicators are still valuable in Python-level usage and catalog metadata.
+- For Fibonacci strategy logic, use `fib_level_down/up` and `fib_anchor_high/low` with leg and pairing controls.
+
+## High-Value Strategy Examples
+
+```python
+# Trend continuation
+"close > ema(200) and crossup(ema(20), ema(50))"
+
+# Volatility expansion filter
+"close > bb_upper(period=20, std_dev=2) and atr(14) > sma(atr(14), 20)"
+
+# Fib pullback zone (Option A)
+"close <= fib_level_down(level=0.618, left=3, right=3, leg=1) and close >= fib_level_down(level=0.786, left=3, right=3, leg=1)"
+```

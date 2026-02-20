@@ -1,36 +1,54 @@
 # Dataset & Contexts
 
-`Dataset` stores data by `DatasetKey(symbol, timeframe, source)`.
+`Dataset` is the runtime container for all series used in expression evaluation.
 
-Standard source identifiers:
+## Dataset Keys
+
+A series is identified by:
+
+- `symbol`
+- `timeframe`
+- `source`
+
+Examples of sources:
 
 - `ohlcv`
 - `trades`
 - `orderbook`
 - `liquidation`
-- `default`
+- exchange-qualified sources like `trades_binance`
 
 ## Add Data
 
 ```python
-dataset.add_series('BTCUSDT', '1h', ohlcv, source='ohlcv')
-dataset.add_trade_series('BTCUSDT', '1m', trade_volume_series, exchange='binance')
-dataset.add_orderbook_series('BTCUSDT', '1m', imbalance_series)
-dataset.add_liquidation_series('BTCUSDT', '15m', liq_series)
+from laakhay.ta.core import Dataset
+
+ds = Dataset()
+ds.add_series("BTCUSDT", "1h", ohlcv, source="ohlcv")
 ```
 
-## Resolve Data
+Convenience helpers:
 
-- `dataset.series(symbol, timeframe, source='default')`
-- `dataset.resolve(source, field, symbol=..., timeframe=...)`
-- `dataset.select(...)`
-- `dataset.to_context()`
+- `add_trade_series(...)`
+- `add_orderbook_series(...)`
+- `add_liquidation_series(...)`
 
-## Typed Source Contexts
+## Context Builders
 
-Context classes enforce required fields:
+`Dataset` can produce:
 
-- `OHLCVContext`: `price/close/open/high/low/volume`
-- `TradeContext`: `volume/count/buy_volume/sell_volume/...`
-- `OrderBookContext`: `best_bid/best_ask/spread/imbalance/...`
-- `LiquidationContext`: `count/volume/value/long_count/...`
+- generic context (`to_context`) for indicator evaluation,
+- filtered views (`select(...)`),
+- multi-source contexts (`to_multisource_context`) used by evaluator pathways.
+
+`SeriesContext` is flexible and field-driven; indicators read required fields by name.
+
+## Source Resolution
+
+Runtime tries multiple lookup forms (`source.field`, field-only fallback, symbol-qualified variants). Prefer explicit source references in DSL for clarity.
+
+## Common Pitfalls
+
+- Missing source/field combinations in dataset.
+- Mixed timeframe assumptions.
+- Forgetting that some indicators need `high`/`low`/`volume`, not just `close`.

@@ -1,14 +1,6 @@
 # Multi-Source Datasets
 
-`dataset_from_multisource(...)` builds a `Dataset` from normalized source payloads.
-
-Supported inputs:
-
-- `bars`
-- `trades`
-- `orderbooks`
-- `liquidations`
-- optional `exchange`
+`dataset_from_multisource(...)` creates a single `Dataset` from normalized bars + trades + orderbook + liquidation payloads.
 
 ## Example
 
@@ -16,14 +8,29 @@ Supported inputs:
 from laakhay.ta.data.dataset import dataset_from_multisource
 
 ds = dataset_from_multisource(
-    symbol='BTCUSDT',
-    timeframe='1h',
-    bars=bars,
-    trades=trade_aggs,
-    orderbooks=ob_aggs,
-    liquidations=liq_aggs,
-    exchange='binance',
+    symbol="BTCUSDT",
+    timeframe="1h",
+    bars=bars_payload,
+    trades=trades_payload,
+    orderbooks=orderbook_payload,
+    liquidations=liquidation_payload,
+    exchange="binance",
 )
 ```
 
-The helper maps known aggregation fields into series and assigns source-qualified keys in the dataset.
+## Expected Input Shape
+
+- `bars`: `timestamp, open, high, low, close, volume, is_closed?`
+- `trades`: aggregate fields like `volume`, `count`, `buy_volume`, `sell_volume`, `avg_price`, `vwap`
+- `orderbooks`: `best_bid`, `best_ask`, `spread`, `imbalance`, `pressure`, etc.
+- `liquidations`: `count`, `value`, `long_count`, `short_count`, etc.
+
+## Source Naming Behavior
+
+When `exchange` is supplied, source keys are exchange-qualified where applicable (for example `trades_binance`), and additional field-level sources are stored for resolver flexibility.
+
+## Practical Advice
+
+- Keep all payloads on the same timeframe before constructing dataset.
+- Validate timestamps and missing fields upstream.
+- Use `analyze(...)` to verify required sources/fields before runtime execution.

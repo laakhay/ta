@@ -1,23 +1,37 @@
 # CSV IO
 
-Use `from_csv(...)` and `to_csv(...)` for OHLCV or generic Series snapshots.
+Use CSV helpers when bootstrapping from flat files.
 
-## Load
-
-```python
-from laakhay.ta.data.csv import from_csv
-
-data = from_csv('btc.csv', symbol='BTCUSDT', timeframe='1h')
-```
-
-If OHLCV columns are present, returns `OHLCV`; otherwise returns `Series` using value column mapping.
-
-## Dump
+## Read CSV
 
 ```python
-from laakhay.ta.data.csv import to_csv
+from laakhay.ta.data import from_csv
 
-to_csv(data, 'out.csv')
+ohlcv = from_csv(
+    "./btc_1h.csv",
+    symbol="BTCUSDT",
+    timeframe="1h",
+    timestamp_col="timestamp",
+    open_col="open",
+    high_col="high",
+    low_col="low",
+    close_col="close",
+    volume_col="volume",
+)
 ```
 
-Column mapping can be customized via keyword arguments.
+If OHLCV columns are missing but `value_col` exists, loader returns a generic `Series`.
+
+## Write CSV
+
+```python
+from laakhay.ta.data import to_csv
+
+to_csv(ohlcv, "./out/btc_1h.csv")
+```
+
+## Mapping Tips
+
+- Always map the timestamp column explicitly when source files vary.
+- Keep consistent decimal precision at upstream ETL where possible.
+- Sort and deduplicate timestamps before writing if data is merged from multiple vendors.

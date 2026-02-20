@@ -2,26 +2,35 @@
 
 ## `IndicatorHandle`
 
-`IndicatorHandle` is composable and runnable:
+`IndicatorHandle` represents an indicator + params and supports algebraic composition.
 
-- `handle(dataset_or_series)` direct call
-- `handle.run(dataset_or_series)` expression-engine evaluation
-- arithmetic/boolean operators for DAG composition
-- `handle.requirements()` planner requirements
+```python
+from laakhay.ta.api import indicator
+
+fast = indicator("sma", period=20)
+slow = indicator("sma", period=50)
+expr = fast > slow
+```
 
 ## Namespace Helpers
 
-- `ta.indicator(name, **params)`
-- `ta.literal(value)`
-- `ta.source(field)`
-- `ta.ref(dataset, timeframe=..., field=..., reference=...)`
-- `ta.resample(dataset, from_timeframe=..., to_timeframe=..., field=...)`
+From `laakhay.ta.api.namespace` (also reachable via `ta` namespace):
 
-## `ta.source(...)` vs `select`
+- `indicator(name, **params)`
+- `literal(value)`
+- `source(field)`
+- `ref(dataset, timeframe=..., field=..., reference=...)`
+- `resample(dataset, from_timeframe=..., to_timeframe=...)`
 
-`ta.source('close')` emits a selector expression equivalent to `select(field='close')`.
+## `TASeries`
+
+Adapter for method-style indicator calls on a base series.
 
 ```python
-close = ta.source('close')
-expr = ta.sma(period=20) > close
+series_api = ta.ta(close_series)
+expr = series_api.sma(period=20) > series_api.ema(period=50)
 ```
+
+## When To Use Handles
+
+Use handles when building expression graphs programmatically rather than from DSL text.

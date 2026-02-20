@@ -2,28 +2,34 @@
 
 ## Requirements
 
-- Python `3.12+`
+- Python `>=3.11`
+- `pip` or `uv`
 
-## Install
+## Install From Source
 
 ```bash
-pip install laakhay-ta
+pip install -e .
+```
+
+Or with `uv`:
+
+```bash
+uv sync
 ```
 
 ## Verify
 
-```python
-import laakhay.ta as ta
-print('sma' in ta.list_indicators())
+```bash
+python -c "import laakhay.ta as ta; print('ok')"
 ```
 
-## Development Setup
+## Optional Dev Dependencies
 
 ```bash
-git clone https://github.com/laakhay/ta.git
-cd ta
-python -m venv .venv
-source .venv/bin/activate
-pip install -e .[dev]
-pytest
+uv run --with pytest python -m pytest -q
 ```
+
+## Common Setup Issues
+
+- Import errors for `laakhay.ta`: verify you installed from repository root containing the `ta` package.
+- Missing indicators in registry after test isolation: re-import `laakhay.ta.indicators` (registry is rebuilt on import).

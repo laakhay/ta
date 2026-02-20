@@ -1,11 +1,50 @@
 # Indicators
 
-`laakhay-ta` currently registers trend, momentum, volatility, volume, pattern, event, and primitive indicators.
+`laakhay-ta` indicators are registry-driven and grouped into categories:
 
-This section contains:
+- trend
+- momentum
+- volatility
+- volume
+- pattern
+- primitive
+- custom (includes event-style indicators and selector helpers in current catalog classification)
 
-- complete current inventory (generated from the live registry)
-- alias map
-- extension pattern for custom indicators
+## Built-In Highlights
 
-Indicator registration is schema-driven and thread-safe via registry locks.
+Trend and momentum:
+
+- `sma`, `ema`, `macd`, `bbands`, `rsi`, `stochastic`
+
+Pattern and structure:
+
+- `swing_points`, `swing_highs`, `swing_lows`
+- `swing_high_at`, `swing_low_at`
+- `fib_retracement`, `fib_level_down`, `fib_level_up`, `fib_anchor_high`, `fib_anchor_low`
+
+Events:
+
+- `crossup`, `crossdown`, `cross`, `rising`, `falling`, `in`, `out`, `enter`, `exit`
+
+Primitives:
+
+- `rolling_mean`, `rolling_std`, `rolling_sum`, `diff`, `shift`, `true_range`, and more.
+
+## Pattern/Fib Option A Surface
+
+Fibonacci and swing indicators now support advanced leg configuration for multi-swing workflows:
+
+- `leg`
+- `pairing_mode`
+- `max_leg_age_bars`
+- `min_leg_size_pct`
+- `allow_equal_extremes`
+- `freeze_until_new_leg`
+
+Use these to build robust pullback and continuation logic without requiring multi-output object selection in DSL.
+
+## Next Pages
+
+- `catalog`: complete generated indicator reference.
+- `aliases`: all alias mappings.
+- `custom-indicators`: how to register your own.

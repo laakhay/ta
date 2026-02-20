@@ -1,8 +1,21 @@
 # Data IO
 
-Data IO utilities convert external payloads into immutable core types.
+`laakhay.ta.data` provides pragmatic ingestion helpers for research and service endpoints.
 
-Main modules:
+## Main Helpers
 
-- `laakhay.ta.data.csv`
-- `laakhay.ta.data.dataset`
+- `from_csv(...)` / `to_csv(...)`
+- `dataset_from_bars(...)`
+- `dataset_from_multisource(...)`
+- `trim_dataset(...)`
+
+## Philosophy
+
+- Accept practical payload shapes from APIs.
+- Normalize to core immutable types early.
+- Keep source labels explicit for deterministic expression resolution.
+
+See:
+
+- `csv` for file-oriented workflows.
+- `multisource-datasets` for API payload ingestion.

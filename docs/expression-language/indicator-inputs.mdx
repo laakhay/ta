@@ -1,26 +1,36 @@
 # Indicator Inputs
 
-Indicators such as `sma`, `ema`, and `rsi` support explicit input expressions.
+Indicators can accept either default context fields or an explicit input expression.
 
-## Examples
-
-```python
-sma(BTC.price, period=20)
-sma(BTC.trades.volume, period=20)
-rsi(BTC.orderbook.imbalance, period=14)
-sma(BTC.high + BTC.low, period=5)
-```
-
-## Mental Model
-
-- First argument can be a source/expression input for the indicator.
-- If no explicit input is provided, indicator defaults are used.
-- You can still use standard parameter styles.
-
-## Backward Compatible Forms
+## Default Input Pattern
 
 ```python
-sma(20)
-sma(period=20)
-rsi(14)
+"sma(20)"          # uses close by default
+"rsi(14)"          # uses close
 ```
+
+## Explicit Input Expression
+
+```python
+"sma(BTCUSDT.price, period=20)"
+"sma(BTCUSDT.trades.volume, period=20)"
+"sma(BTCUSDT.high + BTCUSDT.low, period=10)"
+```
+
+The compiler places explicit input into `input_series` for runtime evaluation.
+
+## Field Shorthand Pattern
+
+For indicators that support a `field` param, shorthand forms like `rolling_mean(volume, period=20)` are normalized.
+
+## Practical Pattern
+
+Use explicit input expression when you want full control over source and preprocessing:
+
+```python
+"ema(BTCUSDT.orderbook.imbalance, period=21) > 0"
+```
+
+## Guardrail
+
+If indicator parameter requires literals, nested expression values are rejected during parse.

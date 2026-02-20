@@ -1,8 +1,8 @@
 # Data Sources
 
-Source chains resolve to `SourceExpression` nodes.
+Source attributes let expressions explicitly target dataset feeds.
 
-## Supported Source Types
+## Source Types
 
 - `ohlcv`
 - `trades`
@@ -11,22 +11,36 @@ Source chains resolve to `SourceExpression` nodes.
 
 ## Common Forms
 
-```text
-BTC.price
-BTC.trades.volume
-BTC.orderbook.imbalance
-binance.BTC.orderbook.spread_bps
-BTC.USDT.perp.price
-binance.BTC.USDT.perp.h1.trades.volume
+```python
+"BTCUSDT.price"                         # defaults to ohlcv source
+"BTCUSDT.trades.volume"
+"binance.BTCUSDT.orderbook.imbalance"
+"BTC.USDT.perp.price"                  # base/quote + instrument style
+"BTC.USDT.perp.trades.volume"
+"BTCUSDT.h1.trades.volume"             # timeframe token in chain
 ```
 
-## Timeframe Token Note
+## Valid Field Families
 
-Because the DSL parser uses Python AST, attribute identifiers like `1h` are not valid in dotted chains.
-Use `h1`, `m15`, `d1`, etc. Parser normalizes these to standard forms (`1h`, `15m`, `1d`).
+`ohlcv` fields:
 
-## Symbol Forms
+- `price`, `close`, `open`, `high`, `low`, `volume`
+- derived: `hlc3`, `ohlc4`, `hl2`, `typical_price`, `weighted_close`, `median_price`, `range`, `upper_wick`, `lower_wick`
 
-- Simple symbol: `BTC` or `BTCUSDT`
-- Base/quote chain: `BTC.USDT` -> normalized symbol `BTC/USDT`
-- Optional instrument type: `spot`, `perp`, `futures`, `option`
+`trades` fields:
+
+- `volume`, `count`, `buy_volume`, `sell_volume`, `large_count`, `whale_count`, `avg_price`, `vwap`, `amount`
+
+`orderbook` fields:
+
+- `best_bid`, `best_ask`, `spread`, `spread_bps`, `mid_price`, `bid_depth`, `ask_depth`, `imbalance`, `pressure`
+
+`liquidation` fields:
+
+- `count`, `volume`, `value`, `long_count`, `short_count`, `long_value`, `short_value`, `large_count`, `large_value`
+
+## Best Practices
+
+- Prefer explicit source references in multi-source strategies.
+- Keep symbol naming consistent with dataset keys.
+- Validate expression against target exchange capabilities before execution.

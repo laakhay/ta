@@ -3,36 +3,41 @@
 ## Filters
 
 ```python
-BTC.trades.filter(amount > 1000000).count > 10
+"BTCUSDT.trades.filter(amount > 1000000).count > 5"
 ```
+
+`filter(...)` keeps points where condition is true.
 
 ## Aggregations
 
-```python
-BTC.trades.sum(amount) > 50000000
-BTC.trades.avg(price) > 50000
-BTC.trades.count > 100
-```
+Supported operations:
 
-Supported aggregate operations in attribute-call style:
-
-- `sum`
-- `avg`
-- `max`
-- `min`
-- `count` (as property)
-
-## Time Shift Patterns
-
-Supported suffix families:
-
-- `24h_ago`, `1h_ago`, `15m_ago`
-- `change_pct_24h`, `change_1h`
-- `roc_24`
+- property: `.count`
+- function-style: `.sum(field)`, `.avg(field)`, `.max(field)`, `.min(field)`
 
 Examples:
 
 ```python
-BTC.price.24h_ago < BTC.price
-BTC.volume.change_pct_24h > 10
+"BTCUSDT.trades.count > 100"
+"BTCUSDT.trades.sum(amount) > 50000000"
+"BTCUSDT.orderbook.avg(imbalance) > 0.1"
 ```
+
+## Time Shift Suffixes
+
+Supported suffix styles include:
+
+- simple ago: `24h_ago`, `1h_ago`
+- operation-based: `change_pct_24h`, `change_1h`, `roc_24`
+
+Examples:
+
+```python
+"BTCUSDT.price.24h_ago < BTCUSDT.price"
+"BTCUSDT.volume.change_pct_24h > 10"
+```
+
+## Notes
+
+- Time-shift behavior is represented as `TimeShiftExpression` in planning/runtime.
+- Ensure your dataset coverage includes the shift horizon; otherwise values may be unavailable or invalid.

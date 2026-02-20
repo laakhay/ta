@@ -1,12 +1,40 @@
 # Engine & Evaluator
 
-This page is optional for most users.
+## `Engine`
 
-For day-to-day strategy work, prefer:
+`Engine` is a minimal evaluator for direct expression-node evaluation:
 
-- `compile_expression(...).run(dataset)`
-- `preview(...)`
-- `validate(...)`
-- `analyze(...)`
+```python
+from laakhay.ta.expr.runtime import Engine
 
-`Engine` and `RuntimeEvaluator` are useful when you need explicit execution orchestration or are integrating TA evaluation into a custom service runtime.
+engine = Engine()
+out = engine.evaluate(expression_node, dataset_map)
+```
+
+Useful for simple internal use, but most applications should use expression `.run(...)` with planner/evaluator.
+
+## Planner-Evaluator Path
+
+`Expression.run(dataset)` uses planned graph evaluation:
+
+- build canonical graph
+- compute node order
+- evaluate dependencies first
+- cache node outputs keyed by graph hash/alignment/symbol/timeframe
+
+This is the default robust path for strategy execution.
+
+## RuntimeEvaluator
+
+`RuntimeEvaluator` is dataset-aware and resolves multi-source contexts with source expression support.
+
+It is suitable for service-layer execution where dataset composition and source resolution are explicit concerns.
+
+## Alignment Behavior
+
+For binary numeric/comparison operations:
+
+- non-scalar series are aligned according to active alignment policy,
+- scalar-literal series use scalar broadcasting semantics.
+
+Control alignment via planner alignment context.

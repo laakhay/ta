@@ -1,15 +1,15 @@
 # API Reference
 
-This section documents the public API that consumers should build against.
+The API is intentionally layered:
 
-Primary imports:
+1. high-level `laakhay.ta` convenience functions,
+2. namespace/handle APIs for composability,
+3. registry/catalog APIs for metadata-driven systems.
 
-- `import laakhay.ta as ta`
-- `from laakhay.ta import dataset`
-- `from laakhay.ta.expr import preview, validate, analyze`
+## Which API Should You Use?
 
-The API is intentionally split across:
+- Strategy authoring and research scripts: top-level API + DSL.
+- Platform/service code: namespace + handles + runtime validate/analyze.
+- UI/schema generation: registry + catalog + capability manifest.
 
-- high-level conveniences (`ta.sma`, `ta.rsi`, ...)
-- composition primitives (`ta.indicator`, `ta.literal`, `ta.source`)
-- registry/catalog tooling (`describe_indicator`, `list_catalog`)
+See subpages for each layer.

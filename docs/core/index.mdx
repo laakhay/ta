@@ -1,11 +1,22 @@
 # Core Data Model
 
-Core types are immutable and timestamp-ordered. This makes expression evaluation deterministic and safer to reason about in concurrent systems.
+`laakhay-ta` works on immutable typed structures. Understanding these is key to writing reliable indicators and expressions.
 
 ## Main Types
 
-- `Bar`: single OHLCV bar with validation and derived price helpers.
-- `OHLCV`: columnar immutable container of bars.
-- `Series[T]`: generic immutable time series with arithmetic and transformations.
-- `Dataset`: multi-symbol, multi-timeframe, multi-source container.
-- Source contexts: `OHLCVContext`, `TradeContext`, `OrderBookContext`, `LiquidationContext`.
+- `Bar`: one OHLCV candle.
+- `OHLCV`: columnar immutable candle container.
+- `Series[T]`: generic timestamp-aligned immutable vector.
+- `Dataset`: multi-symbol, multi-timeframe, multi-source store.
+- `SeriesContext`: dynamic named series container used by indicators.
+
+## Design Principles
+
+- Immutability for deterministic evaluation.
+- Explicit timestamp alignment.
+- Data-source neutrality (`ohlcv`, `trades`, `orderbook`, `liquidation`).
+- Strong separation between data representation and expression runtime.
+
+## Why This Matters
+
+Most errors in strategy systems come from hidden alignment or missing-field assumptions. The core model makes those assumptions explicit and testable.

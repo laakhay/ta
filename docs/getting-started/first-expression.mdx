@@ -1,23 +1,51 @@
-# First Expression
+# First Expression Walkthrough
 
-`laakhay-ta` supports a Python-like DSL compiled into expression nodes.
-
-## Compile And Run
+This page shows the full lifecycle: parse -> validate -> compile -> preview -> run.
 
 ```python
-from laakhay.ta.expr.dsl import compile_expression
+from laakhay.ta.expr.dsl import parse_expression_text, compile_expression
+from laakhay.ta.expr.runtime import validate, analyze, preview
 
-expr = compile_expression('(sma(20) > sma(50)) and (rsi(14) < 30)')
-result = expr.run(dataset)
+expr_text = "close < fib_level_down(level=0.618, left=3, right=3, leg=1) and rsi(14) < 45"
+
+ast_expr = parse_expression_text(expr_text)
+validation = validate(ast_expr)
+analysis = analyze(ast_expr)
+compiled = compile_expression(ast_expr)
 ```
 
-## Preflight Checks
+## Validation and Analysis
 
 ```python
-from laakhay.ta.expr import validate, analyze
-
-v = validate('(sma(20) > sma(50)) and (rsi(14) < 30)')
-a = analyze('sma(BTC.trades.volume, period=20) > 1_000_000', exchange='binance')
+assert validation.valid, validation.errors
+print(validation.warnings)
+print(analysis.required_sources)
+print(analysis.min_lookback)
 ```
 
-Use `validate` for syntax/schema errors and `analyze` for requirements and capability warnings.
+- `validate(...)` checks syntax, indicator existence, params, and optional capability warnings.
+- `analyze(...)` reports requirements and lookback implications.
+
+## Preview Execution
+
+```python
+out = preview(expr_text, dataset=dataset)
+print(out.trim)
+print(len(out.triggers))
+print(out.indicator_series.keys())
+```
+
+Use `preview` when you need:
+
+- signal output series,
+- trigger timestamps,
+- extracted indicator output series,
+- computed trim.
+
+## Production Tip
+
+Treat `validate` and `analyze` as deployment gates:
+
+1. block if `valid=False`,
+2. review warnings,
+3. verify requirements match available data feeds.

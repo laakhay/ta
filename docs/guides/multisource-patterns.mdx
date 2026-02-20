@@ -1,16 +1,26 @@
 # Multi-Source Patterns
 
-## Example Patterns
+## Pattern 1: Trend + Orderbook Confirmation
 
-```text
-sma(BTC.price, period=20)
-sma(BTC.trades.volume, period=20)
-BTC.orderbook.imbalance > 0.6
-BTC.liquidation.volume > 100000
+```python
+"close > ema(100) and BTCUSDT.orderbook.imbalance > 0.2"
 ```
 
-## Recommended Practice
+## Pattern 2: Pullback + Trade Flow
 
-- keep expressions explicit about source fields
-- validate against target exchange capabilities
-- use planner output to fetch only required source fields
+```python
+"close < fib_level_down(level=0.618, left=3, right=3) and BTCUSDT.trades.buy_volume > BTCUSDT.trades.sell_volume"
+```
+
+## Pattern 3: Liquidation Shock Filter
+
+```python
+"BTCUSDT.liquidation.value > sma(BTCUSDT.liquidation.value, period=20) * 2"
+```
+
+## Assembly Checklist
+
+- Confirm every referenced source/field exists in dataset.
+- Run `analyze(..., exchange=...)` for capability warnings.
+- Keep symbol and timeframe explicit in multi-asset scenarios.
+- Use stable source naming conventions in ingestion pipelines.

@@ -1,32 +1,35 @@
 # Requirements Model
 
-`SignalRequirements` currently contains:
+## Core Requirement Types
 
-- `data_requirements: tuple[DataRequirement, ...]`
-- `time_based_queries: tuple[str, ...]`
+`DataRequirement` fields:
 
-Each `DataRequirement` includes:
-
-- `source`, `field`
-- optional `symbol`, `exchange`, `timeframe`
+- `source` (`ohlcv`, `trades`, `orderbook`, `liquidation`)
+- `field`
+- `symbol` (optional)
+- `exchange` (optional)
+- `timeframe` (optional)
 - `min_lookback`
-- optional aggregation params
+
+`SignalRequirements` contains:
+
+- `data_requirements`
+- `time_based_queries`
+
+## How Lookback Is Derived
+
+- planner starts from root requirement,
+- propagates through indicator windows and dependencies,
+- merges per-source/field maximum lookback.
+
+Indicator metadata (`lookback_params`, `default_lookback`) is used for deterministic trim inference.
 
 ## Example
 
 ```python
-from laakhay.ta.expr.dsl import compile_expression
-from laakhay.ta.expr.planner import plan_expression
+from laakhay.ta.expr.runtime import analyze
 
-expr = compile_expression('sma(BTC.trades.volume, period=20) > 1000000')
-plan = plan_expression(expr._node)
-print(plan.to_dict())
+result = analyze("close > sma(50) and BTCUSDT.trades.volume > sma(20)")
+for req in result.data_requirements:
+    print(req.source, req.field, req.min_lookback)
 ```
-
-## Alignment Policy
-
-Planner reads the current alignment policy from algebra alignment context:
-
-- `how`: default `inner`
-- `fill`: default `none`
-- optional fill values

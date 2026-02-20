@@ -1,11 +1,24 @@
-# Advanced Planning
+# Planning & Requirements
 
-This section covers planning concepts used for advanced orchestration.
+Planner components convert expression graphs into execution plans and data requirements.
 
-Read this when you need to:
+## Why Planning Exists
 
-- understand expression execution planning outputs
-- inspect data requirements before evaluation
-- use capability metadata in external services
+A strategy expression is not only math. It also implies:
 
-For normal strategy authoring, `guides` + `runtime` are usually enough.
+- required data sources and fields,
+- lookback windows,
+- alignment policy,
+- execution order.
+
+Planner output makes these explicit before runtime.
+
+## Main Objects
+
+- `Graph` / `GraphNode`
+- `PlanResult`
+- `SignalRequirements`
+- `DataRequirement`
+- `AlignmentPolicy`
+
+See `requirements` and `capability-manifest` for details.

@@ -1,29 +1,54 @@
 # Custom Indicators
 
-You can register custom indicators at runtime.
+You can register any Python function that accepts a `SeriesContext` and returns either:
 
-## Example
+- a `Series`,
+- a tuple of `Series`,
+- or a dict of named outputs.
+
+## Basic Example
 
 ```python
-from laakhay.ta import register
+from laakhay.ta.registry import register, SeriesContext
 from laakhay.ta.core import Series
-from laakhay.ta.registry.models import SeriesContext
+from laakhay.ta.core.types import Price
 
-@register('my_indicator', description='Example custom indicator')
-def my_indicator(ctx: SeriesContext, period: int = 10) -> Series[float]:
+@register("double_close", description="Close multiplied by 2")
+def double_close(ctx: SeriesContext) -> Series[Price]:
     close = ctx.close
-    # return a Series with same timestamps/symbol/timeframe
-    return close
+    return Series[
+        Price
+    ](
+        timestamps=close.timestamps,
+        values=tuple(v * 2 for v in close.values),
+        symbol=close.symbol,
+        timeframe=close.timeframe,
+    )
 ```
 
-## Requirements
+## Rich Output Metadata Example
 
-- First argument must be `SeriesContext` (or equivalent annotation/name semantics accepted by registry).
-- Return annotation should be `Series[...]`, tuple of series, or dict of series.
-- Avoid mutable state in indicator functions.
+```python
+@register(
+    "my_bands",
+    output_metadata={
+        "upper": {"role": "band_upper"},
+        "middle": {"role": "band_middle"},
+        "lower": {"role": "band_lower"},
+    },
+)
+def my_bands(ctx: SeriesContext, period: int = 20):
+    ...
+```
 
-## Best Practices
+## Guidelines
 
-- Provide clear docstring and parameter defaults.
-- Keep output metadata meaningful for downstream chart/render systems.
-- Include unit tests for parameter validation and edge cases.
+- Validate parameter ranges (`period > 0`, etc.).
+- Keep return metadata (`symbol`, `timeframe`) intact.
+- Set `availability_mask` when warmup/confirmation delays exist.
+- Provide concise `description` and `output_metadata` for catalog/UI quality.
+
+## Compatibility Tips
+
+- If DSL users should consume one line only, also provide single-output wrappers.
+- Add aliases thoughtfully; avoid ambiguous shorthand.

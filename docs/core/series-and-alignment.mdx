@@ -2,30 +2,41 @@
 
 ## `Series[T]`
 
-`Series` is generic and immutable:
+`Series` is the fundamental runtime vector:
 
-- `timestamps`: sorted tuple
-- `values`: tuple of payload values
-- `symbol`, `timeframe`
+- immutable tuples of `timestamps` and `values`
 - optional `availability_mask`
+- attached `symbol` and `timeframe` metadata
 
-It supports element-wise arithmetic and scalar arithmetic:
+```python
+from decimal import Decimal
+from datetime import UTC, datetime
+from laakhay.ta.core import Series
 
-- `+`, `-`, `*`, `/`, `%`, `**`
-- comparisons and boolean-style expression usage through expression wrappers
+s = Series[
+    Decimal
+](
+    timestamps=(datetime(2026, 1, 1, tzinfo=UTC),),
+    values=(Decimal("100"),),
+    symbol="BTCUSDT",
+    timeframe="1h",
+)
+```
+
+## Arithmetic & Logical Composition
+
+`Series` supports elementwise algebra (`+`, `-`, `*`, `/`, comparisons, unary ops).
+
+Availability masks are combined where relevant to preserve validity boundaries.
 
 ## Alignment
 
-Use `align_series(left, right, how=..., fill=...)` when timestamps differ.
+Before binary operations on two non-scalar series, runtime aligners synchronize timestamps according to alignment policy.
 
-Common options:
+Alignment policy is configured via planner alignment context (`inner`/fill strategy).
 
-- `how`: `inner`, `left`, `right`, `outer`
-- `fill`: `none`, `ffill`, `bfill`, `value`
+## Operational Guidance
 
-```python
-from laakhay.ta.core import align_series
-
-a, b = align_series(series_a, series_b, how='inner', fill='none')
-spread = a - b
-```
+- Treat `availability_mask=False` as "do not trust this bar yet".
+- Inspect masks when debugging indicator warmup or pattern confirmation lag.
+- Keep `symbol`/`timeframe` consistent across composed series to avoid accidental cross-joins.

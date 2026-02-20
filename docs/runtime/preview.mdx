@@ -1,28 +1,36 @@
 # Preview
 
-`preview(...)` provides an end-to-end execution helper for strategy exploration.
+`preview(...)` is the fastest way to inspect expression behavior on historical bars or an existing dataset.
 
-## Inputs
-
-- expression string or parsed expression
-- either raw `bars` with `symbol/timeframe` or a prepared `Dataset`
-
-## Output
-
-`PreviewResult` includes:
-
-- `series`
-- `triggers` (boolean trigger points)
-- `indicators`
-- `trim` (lookback trim)
-- `indicator_series`
-- optional `requirements` and `plan`
-
-## Example
+## Signature
 
 ```python
-from laakhay.ta.expr import preview
+from laakhay.ta.expr.runtime import preview
 
-res = preview('sma(20) > sma(50)', bars=bars, symbol='BTCUSDT', timeframe='1h')
-print(res.trim, len(res.triggers))
+out = preview(
+    expression,
+    bars=bars,                # optional if dataset is provided
+    dataset=dataset,          # optional if bars+symbol+timeframe provided
+    symbol="BTCUSDT",
+    timeframe="1h",
+)
 ```
+
+## Output (`PreviewResult`)
+
+- `series`: evaluated root series
+- `triggers`: list of true indices/timestamps for boolean outputs
+- `indicators`: extracted indicator nodes
+- `trim`: computed lookback trim
+- `indicator_series`: indicator output map by node id key
+- `requirements`, `plan`: when available
+
+## Good Use Cases
+
+- strategy prototyping UI
+- debugging signal behavior
+- extracting trigger markers for chart overlays
+
+## Important Constraint
+
+Root output must be a single series. If expression root resolves to non-series structure, preview raises with guidance.

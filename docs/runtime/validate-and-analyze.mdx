@@ -2,34 +2,42 @@
 
 ## `validate(...)`
 
-Validation checks:
-
-- expression parse validity
-- indicator existence
-- parameter/schema consistency
-- select-field validity
-- optional capability warnings via planner validation
-
 ```python
-from laakhay.ta.expr import validate
+from laakhay.ta.expr.runtime import validate
 
-result = validate('sma(BTC.trades.volume, period=20)', exchange='binance')
-print(result.valid, result.errors, result.warnings)
+v = validate("close > sma(20)", exchange="binance")
+print(v.valid, v.errors, v.warnings)
 ```
+
+Checks include:
+
+- parse correctness,
+- indicator existence,
+- parameter sanity,
+- select field whitelist,
+- compile viability,
+- optional capability warnings.
 
 ## `analyze(...)`
 
-Analysis enriches validation with:
-
-- indicator inventory
-- data requirements
-- required sources/exchanges/timeframes
-- minimum lookback
-- capability-specific warnings
-
 ```python
-from laakhay.ta.expr import analyze
+from laakhay.ta.expr.runtime import analyze
 
-a = analyze('sma(BTC.trades.volume, period=20) > 1_000_000', exchange='binance')
-print(a.required_sources, a.min_lookback)
+a = analyze("BTCUSDT.trades.volume > sma(20)", exchange="binance")
+print(a.required_sources)
+print(a.required_timeframes)
+print(a.min_lookback)
 ```
+
+Adds:
+
+- required source/field metadata,
+- inferred lookback,
+- plan information when available.
+
+## Recommended Deployment Gate
+
+1. reject if `valid` is false,
+2. inspect warnings,
+3. compare `required_sources` and fields with your live feed contract,
+4. ensure lookback coverage exists before first signal.

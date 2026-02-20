@@ -1,23 +1,32 @@
 # Top-Level API
 
-`laakhay.ta` re-exports common types and helpers:
-
-- Core: `Bar`, `Series`, `OHLCV`, `dataset`
-- Data IO: `from_csv`, `to_csv`
-- Registry: `register`, `describe_indicator`, `describe_all`, `list_indicators`, `list_all_names`
-- Namespace: `indicator`, `literal`, `source`, `ref`, `resample`, `ta`
-- Lazy exports: `Engine`, algebra expression types
-- Indicator convenience wrappers: `sma`, `ema`, `macd`, `bbands`, `rsi`, `stochastic`, `atr`, `obv`, `vwap`
-
-## Function/Handle Dual Mode
-
-Many convenience calls support both forms:
+Import surface:
 
 ```python
-# Handle mode
-sma_handle = ta.sma(period=20)
-
-# Immediate evaluation mode
-sma_series = ta.sma(series, period=20)
-sma_from_dataset = ta.sma(dataset, period=20)
+import laakhay.ta as ta
 ```
+
+Top-level exports include:
+
+- core types (`Series`, `Dataset`, `Bar`, etc.)
+- indicator shortcuts (`sma`, `ema`, `rsi`, `fib_level_down`, ...)
+- helper primitives (`rolling_mean`, `diff`, `shift`, ...)
+- registry helpers (`register`, `describe_indicator`, ...)
+
+## Dual Mode Pattern
+
+Many wrappers support both:
+
+1. handle mode (no dataset/series first arg),
+2. immediate evaluation mode (dataset/series as first arg).
+
+```python
+h = ta.sma(period=20)            # handle
+s = ta.sma(series, period=20)    # immediate series evaluation
+```
+
+## Important Wrapper Notes
+
+- `fib_level_down/up` wrappers accept positional order `(level, left, right, leg)`.
+- `fib_anchor_high/low` wrappers accept `(left, right, leg)`.
+- `swing_high_at/swing_low_at` wrappers accept `(index, left, right)`.

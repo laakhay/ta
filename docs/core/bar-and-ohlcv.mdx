@@ -2,31 +2,48 @@
 
 ## `Bar`
 
-`Bar` enforces:
+`Bar` is an immutable single-candle record with validation:
 
-- `high >= low`
 - `high >= max(open, close)`
 - `low <= min(open, close)`
+- `high >= low`
 - `volume >= 0`
 
-Derived properties include:
+```python
+from laakhay.ta.core import Bar
 
-- `hlc3`, `ohlc4`, `hl2`
-- `body_size`, `upper_wick`, `lower_wick`, `total_range`
+bar = Bar.from_raw(
+    ts="2026-01-01T00:00:00Z",
+    open=100,
+    high=103,
+    low=99,
+    close=102,
+    volume=1200,
+    is_closed=True,
+)
+```
+
+Derived properties include `hlc3`, `ohlc4`, `hl2`, `upper_wick`, `lower_wick`, and `total_range`.
 
 ## `OHLCV`
 
-`OHLCV` stores aligned tuples:
+`OHLCV` stores bars in columnar tuples (`opens`, `highs`, `lows`, `closes`, `volumes`, `timestamps`).
 
-- `timestamps`, `opens`, `highs`, `lows`, `closes`, `volumes`, `is_closed`
+```python
+from laakhay.ta.core import OHLCV
+
+ohlcv = OHLCV.from_bars([bar], symbol="BTCUSDT", timeframe="1h")
+```
 
 Key operations:
 
-- `slice_by_time(start, end)`
-- `to_series(field)` for one field or all fields
-- `from_bars()` and `from_dict()`
+- `ohlcv[i]` -> `Bar`
+- `ohlcv[a:b]` -> sliced `OHLCV`
+- `ohlcv.slice_by_time(start, end)`
+- `ohlcv.to_series("close")`
 
-```python
-oh = OHLCV.from_bars(bars, symbol='BTCUSDT', timeframe='1h')
-close_series = oh.to_series('close')
-```
+## Best Practices
+
+- Keep timestamps timezone-aware.
+- Ensure bars are sorted before construction.
+- Preserve `is_closed` semantics when mixing live/incomplete candles.

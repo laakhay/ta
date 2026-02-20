@@ -1,13 +1,13 @@
 export default {
   index: { title: 'Overview' },
   'getting-started': { title: 'Getting Started' },
-  guides: { title: 'Guides' },
+  core: { title: 'Core Data Model' },
+  'data-io': { title: 'Data IO' },
   'expression-language': { title: 'Expression Language' },
-  runtime: { title: 'Runtime Tools' },
+  runtime: { title: 'Runtime' },
+  planner: { title: 'Planning & Requirements' },
   api: { title: 'API Reference' },
   indicators: { title: 'Indicators' },
-  'data-io': { title: 'Data IO' },
-  core: { title: 'Core Data Model' },
-  planner: { title: 'Advanced Planning' },
+  guides: { title: 'Guides' },
   testing: { title: 'Testing & Performance' },
 }

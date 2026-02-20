@@ -1,23 +1,32 @@
 # Test Matrix
 
-Auto-generated test inventory snapshot from `tests/`.
+Use this matrix to ensure strategy reliability before release.
 
-- Total test files: `63`
+## Parser / Compiler
 
-## By Top-Level Test Package
+- valid DSL expression parse coverage
+- invalid syntax and unknown indicator rejection
+- parameter alias and conflict handling
+- source attribute chain forms
 
-- `e2e`: `1` files
-- `integration`: `9` files
-- `performance`: `1` files
-- `unit`: `52` files
+## Indicators
 
-## Notable Suites
+- window warmup behavior
+- availability mask correctness
+- alias and canonical name parity
+- multi-output indicator wrappers
 
-- `unit/core`: `7` files
-- `unit/registry`: `4` files
-- `unit/expr`: `15` files
-- `unit/primitives`: `3` files
-- `unit/indicators`: `13` files
-- `integration`: `9` files
-- `e2e`: `1` files
-- `performance`: `1` files
+## Runtime
+
+- evaluate single symbol + multi symbol
+- preview trigger extraction
+- validate/analyze consistency
+- missing-source failure modes
+
+## Pattern/Fibonacci (Recommended)
+
+- `leg` indexing determinism
+- `pairing_mode` behavior differences
+- `max_leg_age_bars` invalidation
+- `min_leg_size_pct` filtering
+- `allow_equal_extremes` edge handling

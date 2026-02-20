@@ -1,27 +1,33 @@
 # Aliases
 
-Auto-generated alias map from registry resolution.
+Aliases are alternate indicator names resolved by the global registry.
 
-- Alias count: `19`
+Use aliases for ergonomics, but prefer canonical names in shared code and docs.
 
-| Alias | Canonical Indicator |
+## Alias Map
+
+| Canonical | Aliases |
 | --- | --- |
-| `argmax` | `rolling_argmax` |
-| `argmin` | `rolling_argmin` |
-| `average` | `rolling_mean` |
-| `avg` | `rolling_mean` |
-| `bb` | `bbands` |
-| `cumsum` | `cumulative_sum` |
-| `mean` | `rolling_mean` |
-| `med` | `rolling_median` |
-| `median` | `rolling_median` |
-| `neg` | `negative_values` |
-| `negative` | `negative_values` |
-| `pos` | `positive_values` |
-| `positive` | `positive_values` |
-| `rma` | `rolling_rma` |
-| `std` | `rolling_std` |
-| `stddev` | `rolling_std` |
-| `stoch` | `stochastic` |
-| `sum` | `rolling_sum` |
-| `tr` | `true_range` |
+| `bbands` | `bb` |
+| `cumulative_sum` | `cumsum` |
+| `fib_anchor_high` | `fib_high_anchor` |
+| `fib_anchor_low` | `fib_low_anchor` |
+| `fib_level_down` | `fib_down, fib_down_level` |
+| `fib_level_up` | `fib_up, fib_up_level` |
+| `negative_values` | `neg, negative` |
+| `positive_values` | `pos, positive` |
+| `rolling_argmax` | `argmax` |
+| `rolling_argmin` | `argmin` |
+| `rolling_mean` | `average, avg, mean` |
+| `rolling_median` | `med, median` |
+| `rolling_rma` | `rma` |
+| `rolling_std` | `std, stddev` |
+| `rolling_sum` | `sum` |
+| `stochastic` | `stoch` |
+| `true_range` | `tr` |
+
+
+## Recommendations
+
+- Keep production strategy expressions on canonical names for readability.
+- Reserve aliases for exploratory notebooks or short-form experimentation.

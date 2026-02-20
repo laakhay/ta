@@ -1,9 +1,32 @@
 # Runtime Guardrails
 
-Use runtime helpers before promoting expressions:
+Production systems should enforce guardrails around expression execution.
 
-- `validate(...)`: syntax/schema/capability checks
-- `analyze(...)`: sources/timeframes/lookback requirements
-- `preview(...)`: output + trigger sanity checks
+## Required Guards
 
-This is the fastest way to catch invalid/expensive expressions before runtime deployment.
+1. Validation gate:
+- reject invalid expressions.
+
+2. Capability gate:
+- block unsupported source/exchange combinations.
+
+3. Lookback gate:
+- ensure loaded bars >= required min lookback.
+
+4. Missing data handling:
+- convert `MissingDataError` into structured operational alerts.
+
+5. Versioned expression storage:
+- persist expression text + hash + plan metadata.
+
+## Error Classes To Handle
+
+- parse/compile `StrategyError`
+- runtime `MissingDataError`
+- evaluation type/alignment errors
+
+## Operational Advice
+
+- Track expression-level latency and cache hit rates.
+- Keep per-expression test fixtures for regression checks.
+- Use streaming transitions only as event notifications, not as sole state store.

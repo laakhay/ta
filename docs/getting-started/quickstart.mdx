@@ -1,45 +1,54 @@
 # Quickstart
 
+This is the shortest practical script that creates a dataset, compiles a DSL expression, and runs it.
+
 ```python
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 
-import laakhay.ta as ta
-from laakhay.ta.core import OHLCV
 from laakhay.ta.data.dataset import dataset_from_bars
+from laakhay.ta.expr.dsl import compile_expression
 
-bars = [
-    {
-        'timestamp': datetime(2024, 1, 1, tzinfo=UTC),
-        'open': Decimal('100'),
-        'high': Decimal('103'),
-        'low': Decimal('99'),
-        'close': Decimal('102'),
-        'volume': Decimal('1200'),
-        'is_closed': True,
-    },
-    {
-        'timestamp': datetime(2024, 1, 1, 1, tzinfo=UTC),
-        'open': Decimal('102'),
-        'high': Decimal('104'),
-        'low': Decimal('101'),
-        'close': Decimal('103'),
-        'volume': Decimal('1300'),
-        'is_closed': True,
-    },
-]
+start = datetime(2026, 1, 1, tzinfo=UTC)
+bars = []
+price = Decimal("100")
+for i in range(120):
+    ts = start + timedelta(hours=i)
+    drift = Decimal("0.1") if i % 7 else Decimal("-0.3")
+    open_ = price
+    close = open_ + drift
+    high = max(open_, close) + Decimal("0.2")
+    low = min(open_, close) - Decimal("0.2")
+    volume = Decimal("1000") + Decimal(i)
+    bars.append(
+        {
+            "timestamp": ts,
+            "open": open_,
+            "high": high,
+            "low": low,
+            "close": close,
+            "volume": volume,
+            "is_closed": True,
+        }
+    )
+    price = close
 
-market = dataset_from_bars(bars, symbol='BTCUSDT', timeframe='1h')
+dataset = dataset_from_bars(bars, symbol="BTCUSDT", timeframe="1h")
 
-sma_fast = ta.sma(period=5)
-rsi = ta.rsi(period=14)
+expr = compile_expression(
+    "close > sma(20) and rsi(14) > 50 and crossup(close, ema(9))"
+)
 
-expr = (sma_fast > 100) & (rsi < 70)
-out = expr.run(market)
+result = expr.run(dataset)
 ```
 
-## What This Demonstrates
+## What You Get
 
-- Dataset normalization from raw bar payloads.
-- Indicator handle creation via namespace shortcuts.
-- Expression composition with boolean operators.
+- `result` is a dict keyed by `(symbol, timeframe, source)`.
+- For a single-symbol OHLCV dataset, key is usually `("BTCUSDT", "1h", "default")`.
+- Value is a `Series[bool]` for boolean strategy expressions.
+
+## Next Steps
+
+- Use `runtime.preview()` when you want trigger points and indicator series in one call.
+- Use `runtime.validate()` and `runtime.analyze()` before deployment.

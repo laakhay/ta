@@ -1,14 +1,22 @@
 # Performance
 
-Benchmarks live under `tests/performance` and target expression compilation/evaluation paths.
+## Core Levers
 
-## Practical Guidance
+- compile once, run many times.
+- keep dataset scoped to required symbol/timeframe combinations.
+- prefer canonical source naming to reduce resolver ambiguity.
+- use planner/evaluator path for repeated expression execution.
 
-- Reuse compiled expressions in hot paths.
-- Use planner requirements to fetch only required fields/sources.
-- Keep dataset source keys normalized for fast resolution.
-- Avoid unnecessary conversions between raw payloads and core structures.
+## Typical Hotspots
 
-## Benchmark Entry Points
+- large fan-out over many symbol/timeframe keys,
+- repeated graph rebuilds for identical expressions,
+- expensive indicators on very long windows,
+- heavy multi-source merge logic at ingestion boundary.
 
-- `tests/performance/test_evaluation_benchmarks.py`
+## Practical Optimization Steps
+
+1. Cache compiled expressions by expression hash.
+2. Cache plans and alignment policy decisions.
+3. Pre-trim datasets using lookback requirements.
+4. Use profiling around evaluator node-order execution when scaling to many symbols.
