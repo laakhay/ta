@@ -50,3 +50,9 @@ def test_parse_sma_positional_period():
     indicators = extract_indicator_nodes(expr)
     assert indicators[0].params.get("period") == 20
     assert "ctx" not in indicators[0].params
+
+
+def test_parse_in_channel_expression():
+    expr = parse_expression_text("in_channel(close, bb_upper(20, 2), bb_lower(20, 2))")
+    indicators = extract_indicator_nodes(expr)
+    assert indicators[0].name == "in_channel"

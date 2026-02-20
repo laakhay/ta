@@ -37,7 +37,14 @@ class _SwingSeries:
     mask_eval: tuple[bool, ...]
 
 
-def _compute_swings(high: Series[Price], low: Series[Price], left: int, right: int) -> _SwingSeries:
+def _compute_swings(
+    high: Series[Price],
+    low: Series[Price],
+    left: int,
+    right: int,
+    *,
+    allow_equal_extremes: bool = False,
+) -> _SwingSeries:
     n = len(high)
     if n == 0:
         empty_flags: tuple[bool, ...] = tuple()
@@ -68,11 +75,15 @@ def _compute_swings(high: Series[Price], low: Series[Price], left: int, right: i
         cur_high = hi_vals[idx]
         cur_low = lo_vals[idx]
 
-        if cur_high == max(hi_window) and hi_window.count(cur_high) == 1:
+        high_is_extreme = cur_high == max(hi_window)
+        high_is_unique = hi_window.count(cur_high) == 1
+        if high_is_extreme and (allow_equal_extremes or high_is_unique):
             flags_high[idx] = True
             have_confirmed_high = True
 
-        if have_confirmed_high and cur_low == min(lo_window) and lo_window.count(cur_low) == 1:
+        low_is_extreme = cur_low == min(lo_window)
+        low_is_unique = lo_window.count(cur_low) == 1
+        if have_confirmed_high and low_is_extreme and (allow_equal_extremes or low_is_unique):
             flags_low[idx] = True
 
     return _SwingSeries(tuple(flags_high), tuple(flags_low), tuple(mask_eval))
@@ -112,9 +123,10 @@ def _build_result(
     *,
     return_mode: Literal["flags", "levels"],
     subset: Literal["both", "high", "low"],
+    allow_equal_extremes: bool = False,
 ) -> Dict[str, Series]:
     high, low = _validate_inputs(ctx, left, right)
-    result = _compute_swings(high, low, left, right)
+    result = _compute_swings(high, low, left, right, allow_equal_extremes=allow_equal_extremes)
 
     if return_mode not in {"flags", "levels"}:
         raise ValueError("return_mode must be 'flags' or 'levels'")
@@ -146,6 +158,7 @@ def swing_points(
     left: int = 2,
     right: int = 2,
     return_mode: Literal["flags", "levels"] = "flags",
+    allow_equal_extremes: bool = False,
 ) -> Dict[str, Series]:
     """
     Identify swing highs and lows using configurable lookback widths.
@@ -159,7 +172,14 @@ def swing_points(
     Returns:
         Dictionary containing `swing_high` and `swing_low` series.
     """
-    return _build_result(ctx, left, right, return_mode=return_mode, subset="both")
+    return _build_result(
+        ctx,
+        left,
+        right,
+        return_mode=return_mode,
+        subset="both",
+        allow_equal_extremes=allow_equal_extremes,
+    )
 
 
 @register(
@@ -173,8 +193,16 @@ def swing_highs(
     left: int = 2,
     right: int = 2,
     return_mode: Literal["flags", "levels"] = "flags",
+    allow_equal_extremes: bool = False,
 ) -> Series[Price] | Series[bool]:
-    result = _build_result(ctx, left, right, return_mode=return_mode, subset="high")
+    result = _build_result(
+        ctx,
+        left,
+        right,
+        return_mode=return_mode,
+        subset="high",
+        allow_equal_extremes=allow_equal_extremes,
+    )
     return result["swing_high"]
 
 
@@ -189,9 +217,87 @@ def swing_lows(
     left: int = 2,
     right: int = 2,
     return_mode: Literal["flags", "levels"] = "flags",
+    allow_equal_extremes: bool = False,
 ) -> Series[Price] | Series[bool]:
-    result = _build_result(ctx, left, right, return_mode=return_mode, subset="low")
+    result = _build_result(
+        ctx,
+        left,
+        right,
+        return_mode=return_mode,
+        subset="low",
+        allow_equal_extremes=allow_equal_extremes,
+    )
     return result["swing_low"]
 
 
-__all__ = ["swing_points", "swing_highs", "swing_lows"]
+def _build_indexed_level_series(
+    base: Series[Price],
+    flags: tuple[bool, ...],
+    *,
+    index: int,
+) -> Series[Price]:
+    if index < 1:
+        raise ValueError("index must be a positive integer")
+
+    selected_values: list[Decimal] = []
+    selected_mask: list[bool] = []
+    confirmed_levels: list[Decimal] = []
+    base_values = tuple(Decimal(v) for v in base.values)
+
+    for idx, is_confirmed in enumerate(flags):
+        if is_confirmed:
+            confirmed_levels.append(base_values[idx])
+
+        if len(confirmed_levels) >= index:
+            selected_values.append(confirmed_levels[-index])
+            selected_mask.append(True)
+        else:
+            selected_values.append(base_values[idx])
+            selected_mask.append(False)
+
+    return CoreSeries[Price](
+        timestamps=base.timestamps,
+        values=tuple(selected_values),
+        symbol=base.symbol,
+        timeframe=base.timeframe,
+        availability_mask=tuple(selected_mask),
+    )
+
+
+@register(
+    "swing_high_at",
+    description="Price series for the nth latest confirmed swing high",
+    output_metadata={"result": {"type": "price", "role": "level", "polarity": "high"}},
+)
+def swing_high_at(
+    ctx: SeriesContext,
+    *,
+    index: int = 1,
+    left: int = 2,
+    right: int = 2,
+    allow_equal_extremes: bool = False,
+) -> Series[Price]:
+    high, low = _validate_inputs(ctx, left, right)
+    swings = _compute_swings(high, low, left, right, allow_equal_extremes=allow_equal_extremes)
+    return _build_indexed_level_series(high, swings.flags_high, index=index)
+
+
+@register(
+    "swing_low_at",
+    description="Price series for the nth latest confirmed swing low",
+    output_metadata={"result": {"type": "price", "role": "level", "polarity": "low"}},
+)
+def swing_low_at(
+    ctx: SeriesContext,
+    *,
+    index: int = 1,
+    left: int = 2,
+    right: int = 2,
+    allow_equal_extremes: bool = False,
+) -> Series[Price]:
+    high, low = _validate_inputs(ctx, left, right)
+    swings = _compute_swings(high, low, left, right, allow_equal_extremes=allow_equal_extremes)
+    return _build_indexed_level_series(low, swings.flags_low, index=index)
+
+
+__all__ = ["swing_points", "swing_highs", "swing_lows", "swing_high_at", "swing_low_at"]

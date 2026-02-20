@@ -2,6 +2,8 @@
 
 PY ?= python3
 UV ?= uv
+UV_PYTHON ?= 3.12
+UV_RUN := $(UV) run --python $(UV_PYTHON)
 
 install: install-dev ## Install dependencies (dev mode)
 
@@ -10,25 +12,25 @@ install-dev: ## Install dependencies (dev mode)
 	$(UV) pip install -e .
 
 test: ## Run tests (without coverage)
-	@$(UV) run pytest tests/ -q
+	@$(UV_RUN) --with pytest python -m pytest tests/ -q
 
 test-cov: ## Run tests with coverage (HTML report)
-	$(UV) run pytest tests/unit/ --cov=laakhay.ta --cov-report=term-missing --cov-report=html -v
+	$(UV_RUN) --with pytest --with pytest-cov python -m pytest tests/unit/ --cov=laakhay.ta --cov-report=term-missing --cov-report=html -v
 
 test-cov-xml: ## Run tests with coverage (XML report for CI)
-	$(UV) run pytest tests/unit/ --cov=laakhay.ta --cov-report=term-missing --cov-report=xml -v
+	$(UV_RUN) --with pytest --with pytest-cov python -m pytest tests/unit/ --cov=laakhay.ta --cov-report=term-missing --cov-report=xml -v
 
 lint: ## Run ruff linter to check code quality
-	$(UV) run ruff check laakhay/ tests/
+	$(UV_RUN) --with ruff ruff check laakhay/ tests/
 
 lint-fix: ## Run ruff linter and auto-fix issues
-	$(UV) run ruff check --fix laakhay/ tests/
+	$(UV_RUN) --with ruff ruff check --fix laakhay/ tests/
 
 format: ## Format code with ruff formatter
-	$(UV) run ruff format laakhay/ tests/
+	$(UV_RUN) --with ruff ruff format laakhay/ tests/
 
 format-check: ## Check if code is formatted correctly
-	$(UV) run ruff format --check laakhay/ tests/
+	$(UV_RUN) --with ruff ruff format --check laakhay/ tests/
 
 check: lint format-check ## Run all checks (lint + format check)
 
@@ -41,4 +43,3 @@ build: ## Build the package
 
 help: ## Show this help
 	@awk 'BEGIN {FS=":.*##"} /^[a-zA-Z_-]+:.*?##/ {printf "\033[36m%-12s\033[0m %s\n", $$1, $$2}' $(MAKEFILE_LIST)
-

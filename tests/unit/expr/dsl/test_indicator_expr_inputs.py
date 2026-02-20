@@ -169,3 +169,37 @@ def test_indicator_with_timeframe_in_source():
     assert len(indicators) == 1
     assert indicators[0].input_expr is not None
     # Timeframe support would require additional parser changes for bracket notation
+
+
+def test_compile_expression_with_fib_level_down_indicator():
+    expr = compile_expression("close < fib_level_down(level=0.618, left=2, right=2)")
+    result = expr.run(dataset())
+    assert isinstance(result, dict)
+    series = result[("BTCUSDT", "1h", "default")]
+    assert len(series) > 0
+
+
+def test_compile_expression_with_fib_alias_indicator():
+    expr = compile_expression("close < fib_down(level=0.5, left=2, right=2)")
+    result = expr.run(dataset())
+    assert isinstance(result, dict)
+    series = result[("BTCUSDT", "1h", "default")]
+    assert len(series) > 0
+
+
+def test_compile_expression_with_swing_index_indicator():
+    expr = compile_expression("close > swing_high_at(index=1, left=2, right=2)")
+    result = expr.run(dataset())
+    assert isinstance(result, dict)
+    series = result[("BTCUSDT", "1h", "default")]
+    assert len(series) > 0
+
+
+def test_compile_expression_with_fib_leg_and_pairing_mode():
+    expr = compile_expression(
+        "close < fib_level_down(level=0.618, left=2, right=2, leg=1, pairing_mode='latest_valid')"
+    )
+    result = expr.run(dataset())
+    assert isinstance(result, dict)
+    series = result[("BTCUSDT", "1h", "default")]
+    assert len(series) > 0

@@ -88,9 +88,15 @@ _METADATA_HINTS: dict[str, IndicatorMetadata] = {
     "vwap": IndicatorMetadata(required_fields=("high", "low", "close", "volume"), default_lookback=1),
     # Pattern indicators
     "swing_points": IndicatorMetadata(required_fields=("high", "low"), lookback_params=("left", "right")),
-    "fib_retracement": IndicatorMetadata(required_fields=("high", "low"), lookback_params=("left", "right")),
+    "fib_retracement": IndicatorMetadata(required_fields=("high", "low"), lookback_params=("left", "right", "leg")),
     "swing_highs": IndicatorMetadata(required_fields=("high", "low"), lookback_params=("left", "right")),
     "swing_lows": IndicatorMetadata(required_fields=("high", "low"), lookback_params=("left", "right")),
+    "swing_high_at": IndicatorMetadata(required_fields=("high", "low"), lookback_params=("left", "right", "index")),
+    "swing_low_at": IndicatorMetadata(required_fields=("high", "low"), lookback_params=("left", "right", "index")),
+    "fib_anchor_high": IndicatorMetadata(required_fields=("high", "low"), lookback_params=("left", "right", "leg")),
+    "fib_anchor_low": IndicatorMetadata(required_fields=("high", "low"), lookback_params=("left", "right", "leg")),
+    "fib_level_down": IndicatorMetadata(required_fields=("high", "low"), lookback_params=("left", "right", "leg")),
+    "fib_level_up": IndicatorMetadata(required_fields=("high", "low"), lookback_params=("left", "right", "leg")),
 }
 
 

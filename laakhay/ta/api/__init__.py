@@ -189,6 +189,40 @@ def vwap(*args: Any, **kwargs: Any):
     return _call_indicator("vwap", args, kwargs)
 
 
+def swing_high_at(*args: Any, **kwargs: Any):
+    return _call_indicator("swing_high_at", args, kwargs, param_order=("index", "left", "right"))
+
+
+def swing_low_at(*args: Any, **kwargs: Any):
+    return _call_indicator("swing_low_at", args, kwargs, param_order=("index", "left", "right"))
+
+
+def fib_level_down(*args: Any, **kwargs: Any):
+    return _call_indicator(
+        "fib_level_down",
+        args,
+        kwargs,
+        param_order=("level", "left", "right", "leg"),
+    )
+
+
+def fib_level_up(*args: Any, **kwargs: Any):
+    return _call_indicator(
+        "fib_level_up",
+        args,
+        kwargs,
+        param_order=("level", "left", "right", "leg"),
+    )
+
+
+def fib_anchor_high(*args: Any, **kwargs: Any):
+    return _call_indicator("fib_anchor_high", args, kwargs, param_order=("left", "right", "leg"))
+
+
+def fib_anchor_low(*args: Any, **kwargs: Any):
+    return _call_indicator("fib_anchor_low", args, kwargs, param_order=("left", "right", "leg"))
+
+
 # Trigger indicator registrations
 from .. import indicators  # noqa: F401,E402
 
@@ -286,4 +320,10 @@ __all__ = [
     "atr",
     "obv",
     "vwap",
+    "swing_high_at",
+    "swing_low_at",
+    "fib_level_down",
+    "fib_level_up",
+    "fib_anchor_high",
+    "fib_anchor_low",
 ]

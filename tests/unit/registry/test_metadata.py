@@ -39,9 +39,15 @@ from laakhay.ta.registry import describe_indicator, get_global_registry
         ("vwap", ("high", "low", "close", "volume"), (), (), 1),
         ("select", ("close",), ("field",), (), 1),
         ("swing_points", ("high", "low"), (), ("left", "right"), None),
-        ("fib_retracement", ("high", "low"), (), ("left", "right"), None),
+        ("fib_retracement", ("high", "low"), (), ("left", "right", "leg"), None),
         ("swing_highs", ("high", "low"), (), ("left", "right"), None),
         ("swing_lows", ("high", "low"), (), ("left", "right"), None),
+        ("swing_high_at", ("high", "low"), (), ("left", "right", "index"), None),
+        ("swing_low_at", ("high", "low"), (), ("left", "right", "index"), None),
+        ("fib_anchor_high", ("high", "low"), (), ("left", "right", "leg"), None),
+        ("fib_anchor_low", ("high", "low"), (), ("left", "right", "leg"), None),
+        ("fib_level_down", ("high", "low"), (), ("left", "right", "leg"), None),
+        ("fib_level_up", ("high", "low"), (), ("left", "right", "leg"), None),
     ],
 )
 def test_indicator_metadata(name, required_fields, optional_fields, lookback_params, default_lookback):

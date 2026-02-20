@@ -138,6 +138,42 @@ class TestOut:
         # Third: True (70 > 60)
         assert result.values[2] is True
 
+    def test_out_alignment_uses_same_timestamps_for_bounds(self):
+        """Regression: upper/lower must be aligned to the exact same timestamps as price."""
+        timestamps = [
+            datetime(2024, 1, 1, tzinfo=UTC),
+            datetime(2024, 1, 2, tzinfo=UTC),
+            datetime(2024, 1, 3, tzinfo=UTC),
+            datetime(2024, 1, 4, tzinfo=UTC),
+            datetime(2024, 1, 5, tzinfo=UTC),
+        ]
+        price_series = Series[Price](
+            timestamps=tuple(timestamps),
+            values=(Decimal("10"), Decimal("20"), Decimal("30"), Decimal("40"), Decimal("50")),
+            symbol="BTCUSDT",
+            timeframe="1h",
+        )
+        upper_series = Series[Price](
+            timestamps=tuple(timestamps),
+            values=(Decimal("15"), Decimal("25"), Decimal("35"), Decimal("45"), Decimal("55")),
+            symbol="BTCUSDT",
+            timeframe="1h",
+        )
+        # Lower starts one bar later to force re-alignment.
+        lower_series = Series[Price](
+            timestamps=tuple(timestamps[1:]),
+            values=(Decimal("18"), Decimal("28"), Decimal("38"), Decimal("48")),
+            symbol="BTCUSDT",
+            timeframe="1h",
+        )
+
+        ctx = SeriesContext(price=price_series)
+        result = out(ctx, price=price_series, upper=upper_series, lower=lower_series)
+
+        assert len(result) == 4
+        # At 2024-01-02: 20 is between 18 and 25, so not outside.
+        assert result.values[0] is False
+
 
 class TestEnter:
     """Test enter pattern - detect when price enters channel."""

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import ast
 import inspect
+import keyword
 from dataclasses import fields
 from typing import Any
 
@@ -43,6 +44,10 @@ def generate_capability_manifest() -> dict[str, Any]:
         if handle:
             # Determine if this is an alias by comparing name with handle.name
             is_alias = name != handle.name
+            if is_alias and keyword.iskeyword(name):
+                # Skip aliases that are Python keywords (e.g. "in") because they
+                # cannot be called in expression text syntax.
+                continue
 
             # Use CatalogBuilder logic to get rich metadata
             try:

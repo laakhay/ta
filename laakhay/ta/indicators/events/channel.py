@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from decimal import Decimal
+from typing import Any, cast
 
 from ...api.handle import IndicatorNode as TAIndicatorNode
 from ...core import Series
@@ -84,7 +85,66 @@ def _extract_series(
         raise TypeError(f"Unsupported type for series extraction: {type(value)}")
 
 
-@register("in", description="Detect when price is inside channel (between upper and lower bounds)")
+def _extract_channel_tuple(
+    value: Series[Price] | Expression | float | int | Decimal | tuple[Any, ...] | None,
+    ctx: SeriesContext,
+) -> tuple[Series[Price], Series[Price]] | None:
+    """Extract (upper, lower) from a tuple-returning indicator (e.g. bbands)."""
+    if isinstance(value, tuple):
+        if len(value) < 3:
+            return None
+        upper = value[0]
+        lower = value[2]
+        if isinstance(upper, Series) and isinstance(lower, Series):
+            return cast(Series[Price], upper), cast(Series[Price], lower)
+        return None
+
+    if not isinstance(value, Expression | TAIndicatorNode):
+        return None
+
+    base_series = _select(ctx)
+    context_dict: dict[str, Series[Price]] = {}
+    for field_name in ctx.available_series:
+        series = getattr(ctx, field_name)
+        if len(series) != len(base_series):
+            try:
+                _, aligned_series = align_series(base_series, series, how="inner")
+                context_dict[field_name] = aligned_series
+            except ValueError:
+                context_dict[field_name] = series
+        else:
+            context_dict[field_name] = series
+
+    result = value.evaluate(context_dict)
+    if not isinstance(result, tuple) or len(result) < 3:
+        return None
+    upper = result[0]
+    lower = result[2]
+    if not isinstance(upper, Series) or not isinstance(lower, Series):
+        return None
+    return cast(Series[Price], upper), cast(Series[Price], lower)
+
+
+def _align_price_upper_lower(
+    price_series: Series[Price],
+    upper_series: Series[Price],
+    lower_series: Series[Price],
+) -> tuple[Series[Price], Series[Price], Series[Price]] | None:
+    """Align price/upper/lower against the same timestamp set."""
+    try:
+        price_aligned, upper_aligned = align_series(price_series, upper_series, how="inner")
+        price_aligned, lower_aligned = align_series(price_aligned, lower_series, how="inner")
+        price_aligned, upper_aligned = align_series(price_aligned, upper_aligned, how="inner")
+    except ValueError:
+        return None
+    return price_aligned, upper_aligned, lower_aligned
+
+
+@register(
+    "in_channel",
+    aliases=["in"],
+    description="Detect when price is inside channel (between upper and lower bounds)",
+)
 def in_channel(
     ctx: SeriesContext,
     price: Series[Price] | Expression | None = None,
@@ -107,26 +167,28 @@ def in_channel(
 
     Examples:
         # Price inside Bollinger Bands
-        in(close, bb(20, 2).upper, bb(20, 2).lower)
+        in_channel(close, bb(20, 2).upper, bb(20, 2).lower)
 
         # Price in range
-        in(close, 51000, 49000)
+        in_channel(close, 51000, 49000)
     """
-    # Extract series
-    price_series = _extract_series(price, ctx)
+    channel_bounds = _extract_channel_tuple(price, ctx) if upper is None and lower is None else None
+
+    if channel_bounds is not None:
+        upper_series, lower_series = channel_bounds
+        price_series = _extract_series(None, ctx, reference_series=upper_series)
+    else:
+        price_series = _extract_series(price, ctx)
+        upper_series = _extract_series(upper, ctx, reference_series=price_series)
+        lower_series = _extract_series(lower, ctx, reference_series=price_series)
 
     if len(price_series) == 0:
         return Series[bool](timestamps=(), values=(), symbol=price_series.symbol, timeframe=price_series.timeframe)
 
-    upper_series = _extract_series(upper, ctx, reference_series=price_series)
-    lower_series = _extract_series(lower, ctx, reference_series=price_series)
-
-    # Align all three series
-    try:
-        price_aligned, upper_aligned = align_series(price_series, upper_series, how="inner")
-        price_aligned, lower_aligned = align_series(price_aligned, lower_series, how="inner")
-    except ValueError:
+    aligned = _align_price_upper_lower(price_series, upper_series, lower_series)
+    if aligned is None:
         return Series[bool](timestamps=(), values=(), symbol=price_series.symbol, timeframe=price_series.timeframe)
+    price_aligned, upper_aligned, lower_aligned = aligned
 
     # Check: price >= lower AND price <= upper
     result_values = tuple(
@@ -167,19 +229,23 @@ def out(
         # Price outside Bollinger Bands
         out(close, bb(20, 2).upper, bb(20, 2).lower)
     """
-    price_series = _extract_series(price, ctx)
+    channel_bounds = _extract_channel_tuple(price, ctx) if upper is None and lower is None else None
+
+    if channel_bounds is not None:
+        upper_series, lower_series = channel_bounds
+        price_series = _extract_series(None, ctx, reference_series=upper_series)
+    else:
+        price_series = _extract_series(price, ctx)
+        upper_series = _extract_series(upper, ctx, reference_series=price_series)
+        lower_series = _extract_series(lower, ctx, reference_series=price_series)
 
     if len(price_series) == 0:
         return Series[bool](timestamps=(), values=(), symbol=price_series.symbol, timeframe=price_series.timeframe)
 
-    upper_series = _extract_series(upper, ctx, reference_series=price_series)
-    lower_series = _extract_series(lower, ctx, reference_series=price_series)
-
-    try:
-        price_aligned, upper_aligned = align_series(price_series, upper_series, how="inner")
-        price_aligned, lower_aligned = align_series(price_aligned, lower_series, how="inner")
-    except ValueError:
+    aligned = _align_price_upper_lower(price_series, upper_series, lower_series)
+    if aligned is None:
         return Series[bool](timestamps=(), values=(), symbol=price_series.symbol, timeframe=price_series.timeframe)
+    price_aligned, upper_aligned, lower_aligned = aligned
 
     # Check: price > upper OR price < lower
     result_values = tuple(
@@ -205,7 +271,7 @@ def enter(
     """
     Detect when price enters the channel (was outside, now inside).
 
-    Logic: in(price, upper, lower) and out(shift(price, 1), upper, lower)
+    Logic: in_channel(price, upper, lower) and out(shift(price, 1), upper, lower)
 
     Args:
         ctx: Series context (used if price/upper/lower not provided)
@@ -220,7 +286,15 @@ def enter(
         # Price enters Bollinger Bands
         enter(close, bb(20, 2).upper, bb(20, 2).lower)
     """
-    price_series = _extract_series(price, ctx)
+    channel_bounds = _extract_channel_tuple(price, ctx) if upper is None and lower is None else None
+
+    if channel_bounds is not None:
+        upper_series, lower_series = channel_bounds
+        price_series = _extract_series(None, ctx, reference_series=upper_series)
+    else:
+        price_series = _extract_series(price, ctx)
+        upper_series = _extract_series(upper, ctx, reference_series=price_series)
+        lower_series = _extract_series(lower, ctx, reference_series=price_series)
 
     if len(price_series) == 0:
         return Series[bool](timestamps=(), values=(), symbol=price_series.symbol, timeframe=price_series.timeframe)
@@ -234,20 +308,15 @@ def enter(
             timeframe=price_series.timeframe,
         )
 
-    upper_series = _extract_series(upper, ctx, reference_series=price_series)
-    lower_series = _extract_series(lower, ctx, reference_series=price_series)
-
-    # Align all series first
-    try:
-        price_aligned, upper_aligned = align_series(price_series, upper_series, how="inner")
-        price_aligned, lower_aligned = align_series(price_aligned, lower_series, how="inner")
-    except ValueError:
+    aligned = _align_price_upper_lower(price_series, upper_series, lower_series)
+    if aligned is None:
         return Series[bool](
             timestamps=price_series.timestamps,
             values=tuple(False for _ in price_series.values),
             symbol=price_series.symbol,
             timeframe=price_series.timeframe,
         )
+    price_aligned, upper_aligned, lower_aligned = aligned
 
     # Build result: first value is always False (no previous)
     result_values: list[bool] = [False]
@@ -292,7 +361,7 @@ def exit(
     """
     Detect when price exits the channel (was inside, now outside).
 
-    Logic: out(price, upper, lower) and in(shift(price, 1), upper, lower)
+    Logic: out(price, upper, lower) and in_channel(shift(price, 1), upper, lower)
 
     Args:
         ctx: Series context (used if price/upper/lower not provided)
@@ -307,7 +376,15 @@ def exit(
         # Price exits Bollinger Bands
         exit(close, bb(20, 2).upper, bb(20, 2).lower)
     """
-    price_series = _extract_series(price, ctx)
+    channel_bounds = _extract_channel_tuple(price, ctx) if upper is None and lower is None else None
+
+    if channel_bounds is not None:
+        upper_series, lower_series = channel_bounds
+        price_series = _extract_series(None, ctx, reference_series=upper_series)
+    else:
+        price_series = _extract_series(price, ctx)
+        upper_series = _extract_series(upper, ctx, reference_series=price_series)
+        lower_series = _extract_series(lower, ctx, reference_series=price_series)
 
     if len(price_series) == 0:
         return Series[bool](timestamps=(), values=(), symbol=price_series.symbol, timeframe=price_series.timeframe)
@@ -320,20 +397,15 @@ def exit(
             timeframe=price_series.timeframe,
         )
 
-    upper_series = _extract_series(upper, ctx, reference_series=price_series)
-    lower_series = _extract_series(lower, ctx, reference_series=price_series)
-
-    # Align all series first
-    try:
-        price_aligned, upper_aligned = align_series(price_series, upper_series, how="inner")
-        price_aligned, lower_aligned = align_series(price_aligned, lower_series, how="inner")
-    except ValueError:
+    aligned = _align_price_upper_lower(price_series, upper_series, lower_series)
+    if aligned is None:
         return Series[bool](
             timestamps=price_series.timestamps,
             values=tuple(False for _ in price_series.values),
             symbol=price_series.symbol,
             timeframe=price_series.timeframe,
         )
+    price_aligned, upper_aligned, lower_aligned = aligned
 
     # Build result: first value is always False (no previous)
     result_values: list[bool] = [False]

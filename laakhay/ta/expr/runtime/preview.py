@@ -16,6 +16,7 @@ from ..dsl import (
     extract_indicator_nodes,
     parse_expression_text,
 )
+from .emission import IndicatorEmission, build_indicator_emissions
 
 
 @dataclass
@@ -38,6 +39,7 @@ class PreviewResult:
     indicators: list[Any]
     trim: int
     indicator_series: dict[str, Series[Any]] | None = None  # Mapping of indicator "name_nodeid" -> Series
+    indicator_emissions: list[IndicatorEmission] | None = None  # Rich per-output emission metadata for chart rendering
     requirements: Any | None = None  # SignalRequirements from planner
     plan: Any | None = None  # PlanResult if available
 
@@ -118,6 +120,10 @@ def preview(
                 # Key format: "indicator_nodeid" (e.g., "sma_25")
                 key = f"{n.name}_{node_id}"
                 indicator_series[key] = node_outputs[node_id]
+    indicator_emissions = build_indicator_emissions(
+        graph_nodes=plan.graph.nodes,
+        node_outputs=node_outputs,
+    )
 
     # Extract series and triggers
     if isinstance(result, dict):
@@ -127,7 +133,14 @@ def preview(
         if not series_keys:
             raise ValueError("Expression evaluation returned no series")
         main_key = series_keys[0]
-        series = result[main_key]
+        series_candidate = result[main_key]
+        if not isinstance(series_candidate, Series):
+            raise ValueError(
+                "Expression root returned a non-series structure. "
+                "Select a single-output indicator (for Fibonacci use fib_level_down/fib_level_up/"
+                "fib_anchor_high/fib_anchor_low)."
+            )
+        series = series_candidate
     elif isinstance(result, Series):
         series = result
     else:
@@ -152,6 +165,7 @@ def preview(
         indicators=indicator_nodes,
         trim=trim,
         indicator_series=indicator_series,
+        indicator_emissions=indicator_emissions,
         requirements=requirements,
         plan=plan,
     )

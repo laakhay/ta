@@ -7,7 +7,7 @@ import pytest
 
 from laakhay.ta.core.series import Series
 from laakhay.ta.core.types import Price
-from laakhay.ta.indicators.pattern import swing_highs, swing_lows, swing_points
+from laakhay.ta.indicators.pattern import swing_high_at, swing_highs, swing_low_at, swing_lows, swing_points
 from laakhay.ta.registry.models import SeriesContext
 
 
@@ -132,6 +132,42 @@ def test_swing_points_equal_highs_not_flagged():
     assert all(not flag for flag in result["swing_high"].values)
     # lows still have no unique minima: both -1 duplicates
     assert all(not flag for flag in result["swing_low"].values)
+
+
+def test_swing_points_equal_extremes_allowed():
+    high = _make_price_series([1, 3, 3, 2, 1])
+    low = _make_price_series([0, -1, -1, 0, 1])
+    ctx = SeriesContext(high=high, low=low)
+
+    result = swing_points(ctx, left=1, right=1, allow_equal_extremes=True)
+
+    assert any(result["swing_high"].values)
+
+
+def test_swing_at_indexed_levels():
+    high = _make_price_series([1, 2, 3, 2, 1, 2, 4, 2, 1, 2, 5, 2])
+    low = _make_price_series([1, 0, 1, 0, -1, 0, 1, 0, -1, 0, 1, 0])
+    ctx = SeriesContext(high=high, low=low)
+
+    latest_high = swing_high_at(ctx, index=1, left=1, right=1)
+    prev_high = swing_high_at(ctx, index=2, left=1, right=1)
+    latest_low = swing_low_at(ctx, index=1, left=1, right=1)
+
+    assert latest_high.availability_mask[-1]
+    assert prev_high.availability_mask[-1]
+    assert latest_low.availability_mask[-1]
+    assert latest_high.values[-1] == Decimal("5")
+    assert prev_high.values[-1] == Decimal("4")
+    assert latest_low.values[-1] == Decimal("-1")
+
+
+def test_swing_at_invalid_index():
+    high = _make_price_series([1, 2, 3, 2, 1])
+    low = _make_price_series([1, 0, 1, 0, -1])
+    ctx = SeriesContext(high=high, low=low)
+
+    with pytest.raises(ValueError):
+        swing_high_at(ctx, index=0, left=1, right=1)
 
 
 def test_swing_highs_direct_api_levels():

@@ -134,6 +134,14 @@ class TestPreviewTriggers:
             assert "index" in trigger
             assert isinstance(trigger["value"], bool)
 
+    def test_preview_enter_with_bbands_shorthand(self):
+        """enter(bbands(...)) should evaluate as enter(close, bb_upper, bb_lower)."""
+        bars = create_sample_bars(120)
+        result = preview("enter(bbands(20, 2))", bars=bars, symbol="BTCUSDT", timeframe="1h")
+
+        assert isinstance(result, PreviewResult)
+        assert result.series is not None
+
 
 class TestPreviewTrim:
     """Test dataset trimming functionality."""
@@ -156,3 +164,36 @@ class TestPreviewTrim:
         result = preview("sma(20) > sma(50)", bars=bars, symbol="BTCUSDT", timeframe="1h")
 
         assert result.trim >= 50
+
+
+class TestIndicatorEmissions:
+    """Test indicator emission metadata for chart rendering."""
+
+    def test_volume_input_binding_and_pane_hint(self):
+        bars = create_sample_bars(80)
+        result = preview("sma(volume, 50)", bars=bars, symbol="BTCUSDT", timeframe="1h")
+
+        assert result.indicator_emissions is not None
+        assert len(result.indicator_emissions) >= 1
+        sma_emission = next((item for item in result.indicator_emissions if item.indicator == "sma"), None)
+        assert sma_emission is not None
+        assert sma_emission.input_binding.field == "volume"
+        assert sma_emission.render.pane_hint == "volume"
+
+    def test_explicit_source_binding_for_trades(self, multi_source_dataset):
+        result = preview("sma(BTC.trades.volume, period=10)", dataset=multi_source_dataset)
+
+        assert result.indicator_emissions is not None
+        sma_emission = next((item for item in result.indicator_emissions if item.indicator == "sma"), None)
+        assert sma_emission is not None
+        assert sma_emission.input_binding.source == "trades"
+        assert sma_emission.input_binding.field == "volume"
+
+    def test_oscillator_emission_has_pane_hint(self):
+        bars = create_sample_bars(120)
+        result = preview("rsi(14)", bars=bars, symbol="BTCUSDT", timeframe="1h")
+
+        assert result.indicator_emissions is not None
+        rsi_emission = next((item for item in result.indicator_emissions if item.indicator == "rsi"), None)
+        assert rsi_emission is not None
+        assert rsi_emission.render.pane_hint == "pane"

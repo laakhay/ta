@@ -52,8 +52,8 @@ from .events import (
 )
 from .momentum.rsi import rsi
 from .momentum.stochastic import stochastic
-from .pattern.fib import fib_retracement
-from .pattern.swing import swing_highs, swing_lows, swing_points
+from .pattern.fib import fib_anchor_high, fib_anchor_low, fib_level_down, fib_level_up, fib_retracement
+from .pattern.swing import swing_high_at, swing_highs, swing_low_at, swing_lows, swing_points
 from .trend.bbands import bbands
 from .trend.ema import ema
 from .trend.macd import macd
@@ -104,7 +104,13 @@ __all__ = [
     "swing_points",
     "swing_highs",
     "swing_lows",
+    "swing_high_at",
+    "swing_low_at",
     "fib_retracement",
+    "fib_anchor_high",
+    "fib_anchor_low",
+    "fib_level_down",
+    "fib_level_up",
     # Event patterns
     "crossup",
     "crossdown",

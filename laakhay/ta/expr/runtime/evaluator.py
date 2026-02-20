@@ -511,7 +511,6 @@ class RuntimeEvaluator:
         # If indicator has input_series and it was evaluated as a child, use that result
         if hasattr(node, "input_series") and node.input_series is not None and len(children_outputs) >= 1:
             input_series_result = children_outputs[0]
-            ctx = {"close": input_series_result}
             if node.name not in node._registry._indicators:
                 from ...exceptions import UnsupportedIndicatorError
 
@@ -522,7 +521,23 @@ class RuntimeEvaluator:
                 )
             indicator_func = node._registry._indicators[node.name]
             params_without_input = {k: v for k, v in node.params.items() if k != "input_series"}
-            return indicator_func(SeriesContext(**ctx), **params_without_input)
+            if isinstance(input_series_result, Series):
+                # Standard nested-series flow (e.g. sma(close, 20)).
+                return indicator_func(SeriesContext(close=input_series_result), **params_without_input)
+
+            # Multi-output flow (e.g. enter(bbands(...))). Preserve original context
+            # and pass nested result as the first positional indicator argument.
+            series_context = SeriesContext(
+                close=context.get("close"),
+                open=context.get("open"),
+                high=context.get("high"),
+                low=context.get("low"),
+                volume=context.get("volume"),
+                trades=context.get("trades"),
+                orderbook=context.get("orderbook"),
+                liquidation=context.get("liquidation"),
+            )
+            return indicator_func(series_context, input_series_result, **params_without_input)
 
         # Otherwise, use standard evaluation
         return node.run(context)

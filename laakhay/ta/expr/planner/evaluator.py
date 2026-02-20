@@ -277,8 +277,6 @@ class Evaluator:
                 if child_output_index < len(children_outputs):
                     # Use the pre-evaluated input_series from children
                     input_series_result = children_outputs[child_output_index]
-                    # Create context with the input series as 'close'
-                    ctx = SeriesContext(close=input_series_result)
 
                     # Remove input_series from params if present
                     if "input_series" in params:
@@ -288,7 +286,14 @@ class Evaluator:
                     if n.name not in n._registry._indicators:
                         raise ValueError(f"Indicator '{n.name}' not found in registry")
                     indicator_func = n._registry._indicators[n.name]
-                    return indicator_func(ctx, **params)
+                    if isinstance(input_series_result, Series):
+                        # Standard nested-series flow.
+                        return indicator_func(SeriesContext(close=input_series_result), **params)
+
+                    # Multi-output flow (e.g. enter(bbands(...))): preserve context
+                    # and pass nested result as first positional indicator argument.
+                    base_ctx = SeriesContext(**context)
+                    return indicator_func(base_ctx, input_series_result, **params)
 
             # Use standard context if no input_series
             if n.name not in n._registry._indicators:

@@ -1,6 +1,7 @@
 """Runtime utilities for expression evaluation, preview, validation, and streaming."""
 
 from .analyze import AnalysisResult, analyze
+from .emission import IndicatorEmission, IndicatorInputBinding, IndicatorRenderHints
 from .engine import Engine
 from .evaluator import RuntimeEvaluator
 from .preview import PreviewResult, preview
@@ -12,6 +13,9 @@ __all__ = [
     "RuntimeEvaluator",
     "preview",
     "PreviewResult",
+    "IndicatorEmission",
+    "IndicatorInputBinding",
+    "IndicatorRenderHints",
     "validate",
     "ValidationResult",
     "ExprValidationError",
