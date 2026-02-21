@@ -13,7 +13,7 @@ for all node execution, with `batch` and `incremental` as two runners over the s
 - Source/field schema unified (parser/typecheck/validate/manifest).
 - Initial parity harness added (`tests/parity/test_batch_vs_incremental.py` + utils).
 - [~] Canonical step contract module introduced (`expr/execution/contracts.py`) with initial tests.
-- [~] Incremental backend adapterization started; still needs full node-level convergence.
+- [~] Incremental backend adapterization started; source/literal/binary step logic moved to `expr/execution/node_adapters.py`.
 - Single step runner used by both batch and incremental modes.
 
 ## Phase A: Canonical Step Contract
@@ -36,8 +36,10 @@ Exit gate:
 
 Goal: remove backend-specific node behavior and route through one adapter registry.
 
-- Create `expr/execution/node_adapters.py` (or similar).
-- Move binary/unary/source/call/timeshift/filter/aggregate step logic into adapters.
+- [x] Create `expr/execution/node_adapters.py` (or similar).
+- [~] Move binary/unary/source/call/timeshift/filter/aggregate step logic into adapters.
+  - done: `source`, `literal`, `binary`
+  - pending: `unary`, `call`, `timeshift`, `filter`, `aggregate`
 - Keep indicator-to-kernel binding inside primitives adapter layer only.
 - Remove residual hardcoded branching from incremental backend loop.
 

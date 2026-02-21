@@ -1,8 +1,8 @@
-from decimal import Decimal
 from typing import Any
 
 from laakhay.ta.core.dataset import Dataset
 from laakhay.ta.core.series import Series
+from laakhay.ta.expr.execution.node_adapters import eval_binary_step, eval_literal_step, eval_source_ref_step
 from laakhay.ta.expr.ir.nodes import BinaryOpNode, CallNode, LiteralNode, SourceRefNode
 from laakhay.ta.expr.planner.types import PlanResult
 from laakhay.ta.expr.runtime.state.models import KernelState
@@ -172,46 +172,13 @@ class IncrementalBackend(ExecutionBackend):
     def _eval_node_step(self, node: Any, children_vals: list[Any], tick: dict[str, Any], state: KernelState) -> Any:
         """Evaluate a single IR node incrementally."""
         if isinstance(node, SourceRefNode):
-            # Format: 'source', 'source.field', etc.
-            key1 = f"{node.source}.{node.field}"
-            key2 = node.field
-            if key1 in tick:
-                return Decimal(str(tick[key1]))
-            if key2 in tick:
-                return Decimal(str(tick[key2]))
-            return None  # Missing data for this tick
+            return eval_source_ref_step(node, tick)
 
         if isinstance(node, LiteralNode):
-            if isinstance(node.value, Series) and len(node.value) == 1:
-                return Decimal(str(node.value.values[0]))
-
-            # Mathematical ops or indicators might receive string literals (e.g. source="close")
-            if isinstance(node.value, str):
-                return node.value
-
-            return Decimal(str(node.value)) if node.value is not None else None
+            return eval_literal_step(node)
 
         if isinstance(node, BinaryOpNode):
-            if len(children_vals) < 2 or children_vals[0] is None or children_vals[1] is None:
-                return None
-            left, right = children_vals[0], children_vals[1]
-            op = node.operator
-            if op == "add":
-                return left + right
-            elif op == "sub":
-                return left - right
-            elif op == "mul":
-                return left * right
-            elif op == "div":
-                return left / right if right != 0 else Decimal(0)
-            elif op == "eq":
-                return Decimal(1) if left == right else Decimal(0)
-            elif op == "gt":
-                return Decimal(1) if left > right else Decimal(0)
-            elif op == "lt":
-                return Decimal(1) if left < right else Decimal(0)
-            # Other ops...
-            return None
+            return eval_binary_step(node, children_vals)
 
         from laakhay.ta.registry.registry import get_global_registry
 
