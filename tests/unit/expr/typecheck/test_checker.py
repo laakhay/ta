@@ -3,7 +3,16 @@
 import pytest
 
 from laakhay.ta.core.series import Series
-from laakhay.ta.expr.ir.nodes import BinaryOpNode, CallNode, LiteralNode, SourceRefNode, UnaryOpNode
+from laakhay.ta.expr.ir.nodes import (
+    AggregateNode,
+    BinaryOpNode,
+    CallNode,
+    FilterNode,
+    LiteralNode,
+    SourceRefNode,
+    TimeShiftNode,
+    UnaryOpNode,
+)
 from laakhay.ta.expr.typecheck.checker import TypeCheckError, typecheck_expression
 from laakhay.ta.registry.registry import SeriesContext, get_global_registry
 
@@ -117,3 +126,73 @@ def test_negative_period():
     expr = CallNode("test_rsi", args=[close, LiteralNode(-5)])
     with pytest.raises(TypeCheckError, match="must be positive"):
         typecheck_expression(expr)
+
+
+def test_filter_node_validation():
+    """Test validation for FilterNode."""
+    trades = SourceRefNode(symbol="BTC", source="trades", field="price")
+
+    # Valid filter: trades where price > 50000
+    cond = BinaryOpNode("gt", trades, LiteralNode(50000.0))
+    expr = FilterNode(series=trades, condition=cond)
+    assert typecheck_expression(expr) == expr
+
+    # Invalid filter: condition is a string literal (non-boolean)
+    invalid_expr = FilterNode(series=trades, condition=LiteralNode("high"))
+    with pytest.raises(TypeCheckError, match="Condition must be boolean"):
+        typecheck_expression(invalid_expr)
+
+    # Invalid filter: condition uses non-boolean operator
+    invalid_cond = BinaryOpNode("add", trades, LiteralNode(1.0))
+    invalid_expr2 = FilterNode(series=trades, condition=invalid_cond)
+    with pytest.raises(TypeCheckError, match="Condition uses non-boolean operator"):
+        typecheck_expression(invalid_expr2)
+
+
+def test_aggregate_node_validation():
+    """Test validation for AggregateNode."""
+    trades = SourceRefNode(symbol="BTC", source="trades", field="price")
+
+    # Valid aggregate: sum of amount in trades
+    expr = AggregateNode(series=trades, operation="sum", field="amount")
+    assert typecheck_expression(expr) == expr
+
+    # Invalid operation
+    with pytest.raises(TypeCheckError, match="Unknown operation"):
+        typecheck_expression(AggregateNode(series=trades, operation="unknown"))
+
+    # Invalid field for trades
+    with pytest.raises(TypeCheckError, match="Field 'invalid' is not valid for source 'trades'"):
+        typecheck_expression(AggregateNode(series=trades, operation="sum", field="invalid"))
+
+    # Invalid field for ohlcv
+    close = SourceRefNode(symbol="BTC", field="close")
+    with pytest.raises(TypeCheckError, match="Field 'amount' is not valid for source 'ohlcv'"):
+        typecheck_expression(AggregateNode(series=close, operation="avg", field="amount"))
+
+
+def test_timeshift_node_validation():
+    """Test validation for TimeShiftNode."""
+    close = SourceRefNode(symbol="BTC", field="close")
+
+    # Valid shift
+    expr = TimeShiftNode(series=close, shift="24h")
+    assert typecheck_expression(expr) == expr
+
+    # Missing shift
+    with pytest.raises(TypeCheckError, match="Missing shift value"):
+        typecheck_expression(TimeShiftNode(series=close, shift=""))
+
+
+def test_recursive_new_nodes():
+    """Test recursive validation for new node types."""
+    close = SourceRefNode(symbol="BTC", field="close")
+    invalid_inner = CallNode("test_sma", args=[LiteralNode(100)])  # Invalid
+
+    # Filter with invalid inner
+    with pytest.raises(TypeCheckError, match="expects a Series"):
+        typecheck_expression(FilterNode(series=invalid_inner, condition=LiteralNode(True)))
+
+    # Aggregate with invalid inner
+    with pytest.raises(TypeCheckError, match="expects a Series"):
+        typecheck_expression(AggregateNode(series=invalid_inner, operation="sum"))
