@@ -1,8 +1,6 @@
 """Tests for RuntimeEvaluator."""
 
 from datetime import UTC, datetime, timedelta
-
-UTC = UTC
 from decimal import Decimal
 
 import pytest

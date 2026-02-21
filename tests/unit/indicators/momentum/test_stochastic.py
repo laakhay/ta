@@ -1,8 +1,6 @@
 """Tests for Stochastic Oscillator indicator."""
 
 from datetime import UTC, datetime
-
-UTC = UTC
 from decimal import Decimal
 
 import pytest

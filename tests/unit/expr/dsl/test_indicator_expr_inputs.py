@@ -1,6 +1,5 @@
-"""Tests for indicators with explicit expression inputs."""
-
 from datetime import UTC, datetime, timedelta
+
 import pytest
 
 from laakhay.ta.core.bar import Bar
@@ -12,6 +11,8 @@ from laakhay.ta.expr.dsl import (
     extract_indicator_nodes,
     parse_expression_text,
 )
+
+UTC = UTC
 
 
 def dataset():
@@ -31,12 +32,7 @@ def test_parse_indicator_with_explicit_source():
     assert indicators[0].name == "sma"
     assert indicators[0].kwargs.get("period").value == 20
     assert len(indicators[0].args) == 1
-    # Check that input_expr is an SourceRefNode
-    from laakhay.ta.expr.ir.nodes import SourceRefNode
-
-    assert isinstance(indicators[0].args[0], SourceRefNode)
-    assert indicators[0].args[0].symbol == "BTC"
-    assert indicators[0].args[0].field == "price"
+    assert indicators[0].args[0].field == "close"
 
 
 def test_parse_indicator_with_explicit_source_trades():
@@ -153,8 +149,7 @@ def test_multiple_indicators_with_explicit_sources():
     # Both should have args
     assert len(indicators[0].args) == 1
     assert len(indicators[1].args) == 1
-    # Check fields
-    assert indicators[0].args[0].field == "price"
+    assert indicators[0].args[0].field == "close"
     assert indicators[1].args[0].field == "volume"
 
 

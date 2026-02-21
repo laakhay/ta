@@ -3,8 +3,6 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
-
-UTC = UTC
 from typing import Any
 
 import pytest
@@ -12,9 +10,6 @@ import pytest
 from laakhay.ta.core import OHLCV, Dataset, DatasetKey, DatasetMetadata, Series
 from laakhay.ta.core.dataset import dataset as make_dataset
 from laakhay.ta.core.types import Price
-
-UTC = UTC
-
 
 # ---------------------------------------------------------------------
 # Helpers

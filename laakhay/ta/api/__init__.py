@@ -245,10 +245,13 @@ def __getattr__(name: str) -> Any:
         "as_expression",
     ):
         from ..expr.algebra import (
+            BinaryOp,  # noqa: F401
             BinaryOpNode,
             Expression,
+            Literal,  # noqa: F401
             LiteralNode,
-            TimeShiftNode,
+            OperatorType,  # noqa: F401
+            UnaryOp,  # noqa: F401
             UnaryOpNode,
             as_expression,
         )

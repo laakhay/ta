@@ -1,28 +1,17 @@
-"""Minimal compile-time type checks for the canonical IR."""
+"""Type checking of strategy expression IR."""
 
 from ..ir.nodes import CanonicalExpression
 
 
 class TypeCheckError(ValueError):
-    """Error raised when static type checking fails for an expression."""
+    """Raised when an expression fails static type checking."""
+
+    pass
 
 
 def typecheck_expression(expr: CanonicalExpression) -> CanonicalExpression:
-    """Typecheck a canonical expression and ensure structural validity.
+    """Verify semantic correctness and type safety of an expression.
 
-    This performs minimal compile-time checks (e.g., ensuring both sides
-    of an arithmetic operator are numbers) before the expression proceeds
-    to the planner.
-
-    Args:
-        expr: The normalized canonical IR to check.
-
-    Returns:
-        The type-checked canonical expression.
-
-    Raises:
-        TypeCheckError: If type constraints are violated.
+    Currently a pass-through placeholder.
     """
-    # TODO: Implement full type check logic by traversing the tree.
-    # We will compute type_tag for each node dynamically based on children constraints.
     return expr

@@ -17,7 +17,7 @@ class TestBaseQuoteFormat:
         assert expr.base == "BTC"
         assert expr.quote == "USDT"
         assert expr.instrument_type is None  # Defaults to spot (implicit)
-        assert expr.field == "price"
+        assert expr.field == "close"
         assert expr.source == "ohlcv"
         assert expr.exchange is None
         assert expr.timeframe is None
@@ -30,7 +30,7 @@ class TestBaseQuoteFormat:
         assert expr.base == "BTC"
         assert expr.quote == "USDT"
         assert expr.instrument_type == "spot"
-        assert expr.field == "price"
+        assert expr.field == "close"
 
     def test_base_quote_with_perp(self):
         """Test Base/Quote with perpetual: BTC.USDT.perp.price"""
@@ -40,7 +40,7 @@ class TestBaseQuoteFormat:
         assert expr.base == "BTC"
         assert expr.quote == "USDT"
         assert expr.instrument_type == "perp"
-        assert expr.field == "price"
+        assert expr.field == "close"
 
     def test_base_quote_with_perpetual(self):
         """Test Base/Quote with 'perpetual' (normalized to 'perp'): BTC.USDT.perpetual.price"""
@@ -50,7 +50,7 @@ class TestBaseQuoteFormat:
         assert expr.base == "BTC"
         assert expr.quote == "USDT"
         assert expr.instrument_type == "perp"  # Normalized
-        assert expr.field == "price"
+        assert expr.field == "close"
 
     def test_base_quote_with_futures(self):
         """Test Base/Quote with futures: BTC.USDT.futures.price"""
@@ -60,7 +60,7 @@ class TestBaseQuoteFormat:
         assert expr.base == "BTC"
         assert expr.quote == "USDT"
         assert expr.instrument_type == "futures"
-        assert expr.field == "price"
+        assert expr.field == "close"
 
     def test_base_quote_with_future(self):
         """Test Base/Quote with 'future' (normalized to 'futures'): BTC.USDT.future.price"""
@@ -70,7 +70,7 @@ class TestBaseQuoteFormat:
         assert expr.base == "BTC"
         assert expr.quote == "USDT"
         assert expr.instrument_type == "futures"  # Normalized
-        assert expr.field == "price"
+        assert expr.field == "close"
 
     def test_base_quote_with_option(self):
         """Test Base/Quote with option: BTC.USDT.option.price"""
@@ -80,7 +80,7 @@ class TestBaseQuoteFormat:
         assert expr.base == "BTC"
         assert expr.quote == "USDT"
         assert expr.instrument_type == "option"
-        assert expr.field == "price"
+        assert expr.field == "close"
 
     def test_different_quote_assets(self):
         """Test different quote assets: BTC.USDC.price, ETH.USDT.price"""
@@ -88,11 +88,13 @@ class TestBaseQuoteFormat:
         assert expr1.symbol == "BTC/USDC"
         assert expr1.base == "BTC"
         assert expr1.quote == "USDC"
+        assert expr1.field == "close"
 
         expr2 = parse_expression_text("ETH.USDT.price")
         assert expr2.symbol == "ETH/USDT"
         assert expr2.base == "ETH"
         assert expr2.quote == "USDT"
+        assert expr2.field == "close"
 
     def test_base_quote_with_exchange(self):
         """Test Base/Quote with exchange: binance.BTC.USDT.price"""
@@ -102,7 +104,7 @@ class TestBaseQuoteFormat:
         assert expr.base == "BTC"
         assert expr.quote == "USDT"
         assert expr.exchange == "binance"
-        assert expr.field == "price"
+        assert expr.field == "close"
 
     def test_base_quote_with_exchange_and_instrument_type(self):
         """Test Base/Quote with exchange and instrument type: binance.BTC.USDT.perp.price"""
@@ -113,7 +115,7 @@ class TestBaseQuoteFormat:
         assert expr.quote == "USDT"
         assert expr.exchange == "binance"
         assert expr.instrument_type == "perp"
-        assert expr.field == "price"
+        assert expr.field == "close"
 
     def test_base_quote_with_timeframe(self):
         """Test Base/Quote with timeframe: BTC.USDT.h1.price (using h1 instead of 1h)"""
@@ -123,7 +125,7 @@ class TestBaseQuoteFormat:
         assert expr.base == "BTC"
         assert expr.quote == "USDT"
         assert expr.timeframe == "1h"  # Normalized from h1
-        assert expr.field == "price"
+        assert expr.field == "close"
 
     def test_base_quote_with_instrument_type_and_timeframe(self):
         """Test Base/Quote with instrument type and timeframe: BTC.USDT.perp.h1.price"""
@@ -134,7 +136,7 @@ class TestBaseQuoteFormat:
         assert expr.quote == "USDT"
         assert expr.instrument_type == "perp"
         assert expr.timeframe == "1h"  # Normalized from h1
-        assert expr.field == "price"
+        assert expr.field == "close"
 
     def test_base_quote_with_exchange_instrument_type_timeframe(self):
         """Test Base/Quote with exchange, instrument type, and timeframe: binance.BTC.USDT.perp.h1.price"""
@@ -146,7 +148,7 @@ class TestBaseQuoteFormat:
         assert expr.exchange == "binance"
         assert expr.instrument_type == "perp"
         assert expr.timeframe == "1h"  # Normalized from h1
-        assert expr.field == "price"
+        assert expr.field == "close"
 
     def test_base_quote_with_trades_source(self):
         """Test Base/Quote with trades source: BTC.USDT.trades.volume"""
@@ -335,7 +337,7 @@ class TestSimpleSymbolStillWorks:
         assert expr.base is None
         assert expr.quote is None
         assert expr.instrument_type is None
-        assert expr.field == "price"
+        assert expr.field == "close"
 
     def test_simple_symbol_with_exchange(self):
         """Test simple symbol with exchange: binance.BTC.price"""
@@ -345,6 +347,7 @@ class TestSimpleSymbolStillWorks:
         assert expr.exchange == "binance"
         assert expr.base is None
         assert expr.quote is None
+        assert expr.field == "close"
 
     def test_simple_symbol_with_timeframe(self):
         """Test simple symbol with timeframe: BTC.h1.price (using h1 instead of 1h)"""
@@ -354,6 +357,7 @@ class TestSimpleSymbolStillWorks:
         assert expr.timeframe == "1h"  # Normalized from h1
         assert expr.base is None
         assert expr.quote is None
+        assert expr.field == "close"
 
     def test_simple_symbol_with_source(self):
         """Test simple symbol with source: BTC.trades.volume"""

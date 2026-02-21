@@ -5,8 +5,6 @@ trade, orderbook, and liquidation data.
 """
 
 from datetime import UTC, datetime, timedelta
-
-UTC = UTC
 from decimal import Decimal
 
 from laakhay.ta.core.bar import Bar

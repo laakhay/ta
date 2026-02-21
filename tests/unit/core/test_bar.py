@@ -3,17 +3,12 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
-
-UTC = UTC
 from decimal import Decimal
 from typing import Any
 
 import pytest
 
 from laakhay.ta.core.bar import Bar
-
-UTC = UTC
-
 
 # ---------------------------------------------------------------------
 # Core model

@@ -17,7 +17,6 @@ from laakhay.ta.core.types import Price
 from laakhay.ta.expr.algebra.operators import Expression, as_expression
 from laakhay.ta.expr.ir.nodes import BinaryOpNode, LiteralNode, UnaryOpNode
 
-
 # ---------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------

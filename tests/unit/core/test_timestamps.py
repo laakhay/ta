@@ -2,8 +2,6 @@
 
 from datetime import UTC, date, datetime
 
-UTC = UTC
-
 import pytest
 
 from laakhay.ta.core.timestamps import coerce_timestamp

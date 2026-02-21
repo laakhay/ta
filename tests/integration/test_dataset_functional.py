@@ -1,8 +1,6 @@
 """Functional tests for the Dataset API."""
 
 from datetime import UTC, datetime
-
-UTC = UTC
 from decimal import Decimal
 
 import pytest

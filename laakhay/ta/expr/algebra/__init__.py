@@ -19,8 +19,15 @@ from .alignment import alignment as alignment_func
 from .alignment import get_policy
 from .operators import Expression, as_expression
 
+try:
+    from enum import StrEnum
+except ImportError:
+    # Python < 3.11 fallback
+    class StrEnum(str, Enum):  # noqa: UP042
+        pass
 
-class OperatorType(str, Enum):
+
+class OperatorType(StrEnum):
     """Legacy operator enum kept for backward compatibility."""
 
     ADD = "add"
@@ -71,18 +78,18 @@ def _to_node(value: Any) -> Any:
     return LiteralNode(value)
 
 
-def Literal(value: Any) -> LiteralNode:
+def Literal(value: Any) -> LiteralNode:  # noqa: N802
     """Legacy constructor alias for LiteralNode."""
     return LiteralNode(value)
 
 
-def BinaryOp(operator: OperatorType | str, left: Any, right: Any) -> BinaryOpNode:
+def BinaryOp(operator: OperatorType | str, left: Any, right: Any) -> BinaryOpNode:  # noqa: N802
     """Legacy constructor alias for BinaryOpNode."""
     op = operator.value if isinstance(operator, OperatorType) else str(operator).lower()
     return BinaryOpNode(op, _to_node(left), _to_node(right))
 
 
-def UnaryOp(operator: OperatorType | str, operand: Any) -> UnaryOpNode:
+def UnaryOp(operator: OperatorType | str, operand: Any) -> UnaryOpNode:  # noqa: N802
     """Legacy constructor alias for UnaryOpNode."""
     op = operator.value if isinstance(operator, OperatorType) else str(operator).lower()
     return UnaryOpNode(op, _to_node(operand))

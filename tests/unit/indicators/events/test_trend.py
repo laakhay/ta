@@ -1,8 +1,6 @@
 """Tests for trend event patterns."""
 
 from datetime import UTC, datetime
-
-UTC = UTC
 from decimal import Decimal
 
 from laakhay.ta.core.series import Series

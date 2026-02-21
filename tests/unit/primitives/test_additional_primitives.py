@@ -1,8 +1,6 @@
 """Tests for additional primitives added in Commit 9b."""
 
 from datetime import UTC, datetime, timedelta
-
-UTC = UTC
 from decimal import Decimal
 
 from laakhay.ta.core.series import Series

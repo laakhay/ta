@@ -2,8 +2,6 @@
 
 import tempfile
 from datetime import UTC, datetime
-
-UTC = UTC
 from decimal import Decimal
 from pathlib import Path
 

@@ -336,7 +336,7 @@ class Evaluator:
             eval_kwargs = n.kwargs.copy()
 
             kwarg_outputs = children_outputs[len(n.args) :]
-            for key, val in zip(sorted(n.kwargs.keys()), kwarg_outputs):
+            for key, val in zip(sorted(n.kwargs.keys()), kwarg_outputs, strict=True):
                 eval_kwargs[key] = val
 
             if n.input_expr is not None and len(eval_args) > 0:

@@ -3,8 +3,6 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
-
-UTC = UTC
 from decimal import Decimal
 from typing import Any
 
@@ -13,9 +11,6 @@ import pytest
 from laakhay.ta.core import OHLCV
 from laakhay.ta.core.bar import Bar
 from laakhay.ta.core.types import Timestamp
-
-UTC = UTC
-
 
 # ---------------------------------------------------------------------
 # Helpers & fixtures

@@ -17,8 +17,6 @@ If strict=True:
 from __future__ import annotations
 
 from datetime import UTC, date, datetime
-
-UTC = UTC
 from decimal import Decimal
 from typing import Any
 

@@ -625,7 +625,7 @@ class RuntimeEvaluator:
         eval_kwargs = {}
 
         kwarg_outputs = children_outputs[len(node.args) :]
-        for key, val in zip(sorted(node.kwargs.keys()), kwarg_outputs):
+        for key, val in zip(sorted(node.kwargs.keys()), kwarg_outputs, strict=True):
             eval_kwargs[key] = val
 
         if node.input_expr is not None and len(eval_args) > 0:
