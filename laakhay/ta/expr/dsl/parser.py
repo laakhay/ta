@@ -8,18 +8,22 @@ from typing import Any
 from ... import indicators as _indicators  # noqa: F401
 from ...api.namespace import ensure_namespace_registered
 from ...registry.registry import get_global_registry
-from .nodes import (
-    AggregateNode,
-    AttributeNode,
-    BinaryNode,
-    FilterNode,
-    IndicatorNode,
+from ..ir.nodes import (
+    CanonicalExpression,
     LiteralNode,
-    StrategyError,
-    StrategyExpression,
+    CallNode,
+    SourceRefNode,
+    BinaryOpNode,
+    UnaryOpNode,
+    FilterNode,
+    AggregateNode,
     TimeShiftNode,
-    UnaryNode,
 )
+
+class StrategyError(Exception):
+    """Exception raised for errors in strategy parsing."""
+    pass
+
 
 _BIN_OP_MAP = {
     ast.Add: "add",
@@ -63,10 +67,31 @@ _INDICATOR_ALIASES = {
     "negative": "negative_values",
     "tr": "true_range",
     "rma": "rolling_rma",
+    "fib_down": "fib_level_down",
+    "fib_up": "fib_level_up",
+    "fib_down_level": "fib_level_down",
+    "fib_up_level": "fib_level_up",
 }
 
 _PARAM_ALIASES = {
     "lookback": "period",
+}
+
+_DEFAULT_SOURCE_FIELDS = {
+    "close",
+    "high",
+    "low",
+    "open",
+    "volume",
+    "hlc3",
+    "ohlc4",
+    "hl2",
+    "typical_price",
+    "weighted_close",
+    "median_price",
+    "range",
+    "upper_wick",
+    "lower_wick",
 }
 
 
@@ -80,7 +105,7 @@ class ExpressionParser:
 
         self._registry = get_global_registry()
 
-    def parse_text(self, expression_text: str) -> StrategyExpression:
+    def parse_text(self, expression_text: str) -> CanonicalExpression:
         expression_text = expression_text.strip()
         if not expression_text:
             raise StrategyError("Expression text cannot be empty")
@@ -91,7 +116,7 @@ class ExpressionParser:
         return self._convert_node(node.body)
 
     # Node conversions -------------------------------------------------
-    def _convert_node(self, node: ast.AST) -> StrategyExpression:
+    def _convert_node(self, node: ast.AST) -> CanonicalExpression:
         if isinstance(node, ast.BoolOp):
             return self._convert_bool_op(node)
         if isinstance(node, ast.BinOp):
@@ -110,48 +135,48 @@ class ExpressionParser:
             return self._convert_attribute(node)
         raise StrategyError(f"Unsupported expression element '{ast.dump(node)}'")
 
-    def _convert_bool_op(self, node: ast.BoolOp) -> StrategyExpression:
+    def _convert_bool_op(self, node: ast.BoolOp) -> CanonicalExpression:
         operator = "and" if isinstance(node.op, ast.And) else "or"
         if len(node.values) < 2:
             raise StrategyError("Boolean operations require at least two operands")
         expr = self._convert_node(node.values[0])
         for value in node.values[1:]:
-            expr = BinaryNode(operator=operator, left=expr, right=self._convert_node(value))
+            expr = BinaryOpNode(operator=operator, left=expr, right=self._convert_node(value))
         return expr
 
-    def _convert_bin_op(self, node: ast.BinOp) -> StrategyExpression:
+    def _convert_bin_op(self, node: ast.BinOp) -> CanonicalExpression:
         operator = _BIN_OP_MAP.get(type(node.op))
         if not operator:
             raise StrategyError(f"Unsupported operator '{ast.dump(node.op)}'")
-        return BinaryNode(
+        return BinaryOpNode(
             operator=operator,
             left=self._convert_node(node.left),
             right=self._convert_node(node.right),
         )
 
-    def _convert_compare(self, node: ast.Compare) -> StrategyExpression:
+    def _convert_compare(self, node: ast.Compare) -> CanonicalExpression:
         if len(node.ops) != len(node.comparators):
             raise StrategyError("Malformed comparison expression")
         left = self._convert_node(node.left)
-        result: StrategyExpression | None = None
+        result: CanonicalExpression | None = None
         for op, comparator in zip(node.ops, node.comparators, strict=False):
             operator = _COMPARE_MAP.get(type(op))
             if not operator:
                 raise StrategyError(f"Unsupported comparison operator '{ast.dump(op)}'")
             right = self._convert_node(comparator)
-            comparison = BinaryNode(operator=operator, left=left, right=right)
-            result = comparison if result is None else BinaryNode(operator="and", left=result, right=comparison)
+            comparison = BinaryOpNode(operator=operator, left=left, right=right)
+            result = comparison if result is None else BinaryOpNode(operator="and", left=result, right=comparison)
             left = right
         assert result is not None
         return result
 
-    def _convert_unary_op(self, node: ast.UnaryOp) -> StrategyExpression:
+    def _convert_unary_op(self, node: ast.UnaryOp) -> CanonicalExpression:
         operator = _UNARY_MAP.get(type(node.op))
         if not operator:
             raise StrategyError(f"Unsupported unary operator '{ast.dump(node.op)}'")
-        return UnaryNode(operator=operator, operand=self._convert_node(node.operand))
+        return UnaryOpNode(operator=operator, operand=self._convert_node(node.operand))
 
-    def _convert_indicator_call(self, node: ast.Call) -> StrategyExpression:
+    def _convert_indicator_call(self, node: ast.Call) -> CanonicalExpression:
         # Check if this is a method call on an attribute (e.g., trades.filter(...), trades.sum(...))
         if isinstance(node.func, ast.Attribute):
             method_name = node.func.attr.lower()
@@ -207,7 +232,9 @@ class ExpressionParser:
             param for param in descriptor.schema.parameters.values() if param.name.lower() not in {"ctx", "context"}
         ]
         params: dict[str, Any] = {}
-        input_expr: StrategyExpression | None = None
+        positional_args: list[CanonicalExpression] = []
+        positional_param_names: set[str] = set()
+        input_expr: CanonicalExpression | None = None
 
         supports_nested = name in {
             "crossup",
@@ -229,6 +256,7 @@ class ExpressionParser:
         # This allows patterns like sma(BTC.price, period=20) or sma(trades.volume, period=20)
         if len(node.args) > 0:
             first_arg = node.args[0]
+            first_arg_consumed_as_positional = False
             # Try to convert as expression first - if it fails, fall back to literal
             # Check if this looks like an expression (attribute access, binary op, etc.)
             # Note: ast.Constant is NOT included - constants should be treated as literals first
@@ -247,8 +275,9 @@ class ExpressionParser:
                     try:
                         literal_val = self._literal_value(first_arg)
                         if len(param_defs) > 0:
-                            param_name = param_defs[0].name
-                            params[param_name] = literal_val
+                            positional_param_names.add(param_defs[0].name)
+                        positional_args.append(LiteralNode(literal_val))
+                        first_arg_consumed_as_positional = True
                     except StrategyError:
                         raise StrategyError(
                             f"Indicator '{name}' first argument must be a literal value or valid expression"
@@ -258,12 +287,16 @@ class ExpressionParser:
                 try:
                     literal_val = self._literal_value(first_arg)
                     if len(param_defs) > 0:
-                        param_name = param_defs[0].name
-                        params[param_name] = literal_val
+                        positional_param_names.add(param_defs[0].name)
+                    positional_args.append(LiteralNode(literal_val))
+                    first_arg_consumed_as_positional = True
                 except StrategyError:
                     # Literal failed - try as expression as fallback
                     try:
-                        input_expr = self._convert_node(first_arg)
+                        if isinstance(first_arg, ast.Name) and first_arg.id.lower() in _DEFAULT_SOURCE_FIELDS:
+                            input_expr = SourceRefNode(symbol=None, field=first_arg.id.lower(), source="ohlcv")
+                        else:
+                            input_expr = self._convert_node(first_arg)
                     except StrategyError:
                         raise StrategyError(
                             f"Indicator '{name}' first argument must be a literal value or valid expression"
@@ -272,37 +305,9 @@ class ExpressionParser:
             # Check if we should shift arguments due to field shorthand
             # Logic: If 1st arg is a field name AND indicator has 'field' param AND 1st param is NOT 'field' (e.g. period)
             # then we treat 1st arg as 'field' and shift others.
-            has_field_param = "field" in {p.name for p in param_defs}
-            first_param_is_not_field = len(param_defs) > 0 and param_defs[0].name != "field"
-
-            # Simple heuristic: if we have input_expr (from first arg) that is a simple Name,
-            # and the indicator accepts a field, we might want to map it to 'field' if it matches a known source.
-            # But wait, input_expr is already parsed. If it's a valid expression, it's stored in input_expr.
-            # The Primitives use _select_field(ctx, field) if field is passed.
-            # 'field' param is a string. `mean(volume)` -> volume is parsed as Name/Attribute/etc.
-            # If we pass `field='volume'`, it expects a string.
-
-            # Correction: primitives expect `field` to be a string name of the field, NOT an expression object.
-            # `input_expr` in IndicatorNode is for when we pipe an expression *into* the indicator (like source series).
-            # But the primitives we touched (rolling_mean) take `field: str`.
-
-            # So, if first arg is a Name (e.g. volume), `_convert_node` might have turned it into an IndicatorNode(select, field='volume')
-            # OR we might have caught it as a candidate for `field` string.
-
-            # Let's adjust the logic before the loop.
-
             arg_offset = 0
-
-            if len(node.args) > 0:
-                # Check for field shorthand
-                # If first arg is a Name, and we support field param, and first param is not field
-                first_arg = node.args[0]
-                if isinstance(first_arg, ast.Name) and has_field_param and first_param_is_not_field:
-                    # Treat as field name string
-                    params["field"] = first_arg.id
-                    arg_offset = 1
-                    # If we successfully consumed first arg as field, we don't treat it as input_expr or param[0]
-                    input_expr = None
+            if first_arg_consumed_as_positional:
+                arg_offset = 1
 
             # Process remaining positional arguments
             for arg_index in range(arg_offset, len(node.args)):
@@ -337,9 +342,8 @@ class ExpressionParser:
                     break
 
                 param_name = param_defs[param_index].name
-                params[param_name] = self._literal_or_expression(
-                    node.args[arg_index], supports_nested, name, param_name
-                )
+                positional_param_names.add(param_name)
+                positional_args.append(self._literal_or_expression(node.args[arg_index], supports_nested, name, param_name))
 
             # Validate argument count
             # If input_expr is present, we allow one extra positional arg (the expression)
@@ -365,6 +369,10 @@ class ExpressionParser:
                 raise StrategyError(
                     f"Indicator '{actual_name}' parameter '{param_name}' cannot be specified both as positional and keyword argument"
                 )
+            if param_name in positional_param_names:
+                raise StrategyError(
+                    f"Indicator '{actual_name}' parameter '{param_name}' cannot be specified both as positional and keyword argument"
+                )
             params[param_name] = self._literal_or_expression(keyword.value, supports_nested, actual_name, param_name)
 
         # Validate that all parameters are known
@@ -374,9 +382,15 @@ class ExpressionParser:
             if param_name not in valid_param_names:
                 raise StrategyError(f"Unknown parameter '{param_name}' for indicator '{actual_name}'")
 
-        return IndicatorNode(name=actual_name, params=params, input_expr=input_expr)
+        
+        # Build args list
+        args = list(positional_args)
+        if input_expr is not None:
+            args.insert(0, input_expr)
+            
+        return CallNode(name=actual_name, args=tuple(args), kwargs=params)
 
-    def _convert_select_call(self, node: ast.Call) -> IndicatorNode:
+    def _convert_select_call(self, node: ast.Call) -> CallNode:
         params: dict[str, Any] = {}
         if len(node.args) > 1:
             raise StrategyError("select() expects at most one positional argument")
@@ -384,12 +398,12 @@ class ExpressionParser:
             field_value = self._literal_value(node.args[0])
             if not isinstance(field_value, str):
                 raise StrategyError("select() field parameter must be a string literal")
-            params["field"] = field_value.lower()
+            params["field"] = LiteralNode(field_value.lower())
         for keyword in node.keywords:
             if keyword.arg is None:
                 raise StrategyError("Keyword arguments must specify parameter names")
-            params[keyword.arg] = self._literal_value(keyword.value)
-        return IndicatorNode(name="select", params=params)
+            params[keyword.arg] = LiteralNode(self._literal_value(keyword.value))
+        return CallNode(name="select", args=(), kwargs=params)
 
     def _convert_constant(self, node: ast.Constant) -> LiteralNode:
         value = node.value
@@ -399,31 +413,15 @@ class ExpressionParser:
             return LiteralNode(value=float(value))
         raise StrategyError(f"Unsupported literal value '{value}'")
 
-    def _convert_name(self, node: ast.Name) -> StrategyExpression:
+    def _convert_name(self, node: ast.Name) -> CanonicalExpression:
         lowered = node.id.lower()
         if lowered in {"true", "false"}:
             return LiteralNode(value=1.0 if lowered == "true" else 0.0)
-        valid_fields = {
-            "close",
-            "high",
-            "low",
-            "open",
-            "volume",
-            "hlc3",
-            "ohlc4",
-            "hl2",
-            "typical_price",
-            "weighted_close",
-            "median_price",
-            "range",
-            "upper_wick",
-            "lower_wick",
-        }
-        if lowered in valid_fields:
-            return IndicatorNode(name="select", params={"field": lowered})
+        if lowered in _DEFAULT_SOURCE_FIELDS:
+            return CallNode(name="select", args=(), kwargs={"field": LiteralNode(lowered)})
         raise StrategyError(f"Unknown identifier '{node.id}'")
 
-    def _convert_attribute(self, node: ast.Attribute) -> StrategyExpression:
+    def _convert_attribute(self, node: ast.Attribute) -> CanonicalExpression:
         """Convert attribute access like BTC.trades.volume or binance.BTC.orderbook.imbalance"""
         # Check if this might be an aggregation property (e.g., trades.count)
         # Aggregation properties: count
@@ -465,7 +463,7 @@ class ExpressionParser:
         # Validate the combination
         self._validate_attribute_combination(exchange, symbol, timeframe, source, field)
 
-        return AttributeNode(
+        return SourceRefNode(
             symbol=symbol,
             field=field,
             exchange=exchange,
@@ -943,9 +941,9 @@ class ExpressionParser:
 
         raise StrategyError("Only literal values are allowed inside indicator parameters")
 
-    def _literal_or_expression(self, node: ast.AST, allow_expression: bool, indicator: str, param: str) -> Any:
+    def _literal_or_expression(self, node: ast.AST, allow_expression: bool, indicator: str, param: str) -> CanonicalExpression:
         try:
-            return self._literal_value(node)
+            return LiteralNode(value=self._literal_value(node))
         except StrategyError:
             if allow_expression:
                 return self._convert_node(node)
