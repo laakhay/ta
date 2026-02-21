@@ -13,7 +13,7 @@ from ...core.series import Series as CoreSeries
 from ...core.types import Price
 from ...registry.models import SeriesContext
 from ...registry.registry import register
-from .swing import _compute_swings, _validate_inputs
+from .swing import _compute_swings, _ConfirmedPivot, _validate_inputs
 
 _PAIRING_MODES = ("strict_alternating", "latest_valid")
 
@@ -68,17 +68,15 @@ def _validate_fib_params(
 
 
 def _collect_pivots(
-    swings_high: tuple[bool, ...],
-    swings_low: tuple[bool, ...],
-    high_vals: tuple[Decimal, ...],
-    low_vals: tuple[Decimal, ...],
+    swings_high: tuple[_ConfirmedPivot, ...],
+    swings_low: tuple[_ConfirmedPivot, ...],
 ) -> list[_Pivot]:
     pivots: list[_Pivot] = []
-    for idx, (is_high, is_low) in enumerate(zip(swings_high, swings_low, strict=False)):
-        if is_high:
-            pivots.append(_Pivot(idx=idx, kind="high", price=high_vals[idx]))
-        if is_low:
-            pivots.append(_Pivot(idx=idx, kind="low", price=low_vals[idx]))
+    for pivot in swings_high:
+        pivots.append(_Pivot(idx=pivot.confirmed_idx, kind="high", price=pivot.price))
+    for pivot in swings_low:
+        pivots.append(_Pivot(idx=pivot.confirmed_idx, kind="low", price=pivot.price))
+    pivots.sort(key=lambda pivot: (pivot.idx, 0 if pivot.kind == "high" else 1))
     return pivots
 
 
@@ -333,7 +331,7 @@ def fib_retracement(
     swings = _compute_swings(high, low, left, right, allow_equal_extremes=allow_equal_extremes)
     hi_vals = tuple(Decimal(v) for v in high.values)
     lo_vals = tuple(Decimal(v) for v in low.values)
-    pivots = _collect_pivots(swings.flags_high, swings.flags_low, hi_vals, lo_vals)
+    pivots = _collect_pivots(swings.confirmed_high, swings.confirmed_low)
 
     level_decimals = tuple(_as_decimal(lvl) for lvl in levels)
     for level_decimal in level_decimals:

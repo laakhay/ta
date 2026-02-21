@@ -142,8 +142,8 @@ def test_fib_max_leg_age_bars_invalidates_old_legs():
 
     series = fib_level_down(ctx, left=1, right=1, level=0.5, max_leg_age_bars=0)
 
-    assert series.availability_mask[7]
-    assert not series.availability_mask[8]
+    assert not series.availability_mask[7]
+    assert series.availability_mask[8]
 
 
 def test_fib_min_leg_size_filter():
@@ -165,3 +165,17 @@ def test_fib_invalid_params():
 
     with pytest.raises(ValueError):
         fib_level_down(ctx, left=1, right=1, pairing_mode="unknown")  # type: ignore[arg-type]
+
+
+def test_fib_levels_respect_right_bar_confirmation_no_lookahead():
+    highs = _series([10, 12, 15, 14, 13, 16, 18, 17, 16, 15])
+    lows = _series([8, 9, 11, 10, 9, 12, 14, 13, 12, 11])
+    ctx = SeriesContext(high=highs, low=lows)
+
+    # With right=2:
+    # low pivot idx=4 -> confirms at 6
+    # high pivot idx=6 -> confirms at 8
+    # so the down leg becomes visible at idx=8.
+    series = fib_level_down(ctx, left=1, right=2, level=0.5, leg=1)
+    assert not series.availability_mask[7]
+    assert series.availability_mask[8]
