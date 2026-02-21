@@ -1,11 +1,21 @@
 """Serialization and deserialization of the canonical expression IR."""
 
 from typing import Any, cast
+
 from .nodes import (
-    CanonicalExpression, LiteralNode, SourceRefNode, CallNode,
-    BinaryOpNode, UnaryOpNode, FilterNode, AggregateNode,
-    TimeShiftNode, MemberAccessNode, IndexNode,
-    BinaryOperator, UnaryOperator
+    AggregateNode,
+    BinaryOperator,
+    BinaryOpNode,
+    CallNode,
+    CanonicalExpression,
+    FilterNode,
+    IndexNode,
+    LiteralNode,
+    MemberAccessNode,
+    SourceRefNode,
+    TimeShiftNode,
+    UnaryOperator,
+    UnaryOpNode,
 )
 from .types import ExprType
 

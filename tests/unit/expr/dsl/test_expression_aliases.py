@@ -87,7 +87,8 @@ def test_parse_mean_positional_field():
     # Note: 'volume' is parsed as a name, which heuristics map to field param
     assert indicators[0].name == "rolling_mean"
     # Positional args are now in indicators[0].args
-    from laakhay.ta.expr.ir.nodes import SourceRefNode, LiteralNode
+    from laakhay.ta.expr.ir.nodes import LiteralNode, SourceRefNode
+
     assert isinstance(indicators[0].args[0], SourceRefNode)
     assert indicators[0].args[0].field == "volume"
     assert isinstance(indicators[0].args[1], LiteralNode)
@@ -109,7 +110,7 @@ def test_parse_mean_explicit_field_kwarg():
     indicators = extract_indicator_nodes(expr)
     assert len(indicators) == 1
     assert indicators[0].name == "rolling_mean"
-    assert indicators[0].kwargs["field"].value == 'high'
+    assert indicators[0].kwargs["field"].value == "high"
     assert indicators[0].args[0].value == 10
 
 

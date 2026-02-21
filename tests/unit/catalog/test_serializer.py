@@ -1,7 +1,8 @@
 """Tests for output serialization functionality."""
 
-from datetime import timezone, datetime, timedelta
-UTC = timezone.utc
+from datetime import UTC, datetime, timedelta
+
+UTC = UTC
 from decimal import Decimal
 
 from laakhay.ta.catalog.serializer import OutputSerializer, serialize_series

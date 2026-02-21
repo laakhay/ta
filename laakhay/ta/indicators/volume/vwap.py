@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from ...core import Series
 from ...core.types import Price
-from ...expr.ir.nodes import LiteralNode as Literal
 from ...expr.algebra.operators import Expression
+from ...expr.ir.nodes import LiteralNode as Literal
 from ...primitives import cumulative_sum, typical_price
 from ...registry.models import SeriesContext
 from ...registry.registry import register

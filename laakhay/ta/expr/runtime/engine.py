@@ -46,6 +46,7 @@ class Engine:
                 return result
         if not isinstance(result, Series):
             from ..algebra.scalar_helpers import _make_scalar_series
+
             return _make_scalar_series(result)
         return result
 

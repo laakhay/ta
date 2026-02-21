@@ -3,4 +3,3 @@
 from .adapter import ParserAdapter
 
 __all__ = ["ParserAdapter"]
-

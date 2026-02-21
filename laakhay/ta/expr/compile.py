@@ -1,21 +1,22 @@
 """Expression compilation pipeline."""
 
-from .ir.nodes import CanonicalExpression
 from .dsl.parser import ExpressionParser
+from .ir.nodes import CanonicalExpression
 from .normalize.normalize import normalize_expression
 from .typecheck.checker import typecheck_expression
 
+
 def compile_to_ir(expression_text: str) -> CanonicalExpression:
     """Compile an expression string into a verified Canonical IR.
-    
+
     Pipeline:
     1. Parse text into raw IR (using ExpressionParser).
     2. Normalize IR (alias expansion, canonical args).
     3. Typecheck IR (static type safety).
-    
+
     Args:
         expression_text: The user's expression string.
-        
+
     Returns:
         The fully canonicalized, verified CanonicalExpression.
     """

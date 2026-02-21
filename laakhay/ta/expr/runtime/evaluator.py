@@ -15,6 +15,7 @@ from ...core.series import align_series
 from ...exceptions import MissingDataError
 from ...registry.models import SeriesContext
 from ..ir.nodes import (
+    SCALAR_SYMBOL,
     AggregateNode,
     BinaryOpNode,
     CallNode,
@@ -23,7 +24,6 @@ from ..ir.nodes import (
     SourceRefNode,
     TimeShiftNode,
     UnaryOpNode,
-    SCALAR_SYMBOL
 )
 from ..planner.types import PlanResult
 
@@ -288,32 +288,51 @@ class RuntimeEvaluator:
                 )
             elif left_is_scalar and not right_is_scalar:
                 from ..algebra.scalar_helpers import _broadcast_scalar_series
+
                 left_aligned = _broadcast_scalar_series(left_aligned, right_aligned)
             elif right_is_scalar and not left_is_scalar:
                 from ..algebra.scalar_helpers import _broadcast_scalar_series
+
                 right_aligned = _broadcast_scalar_series(right_aligned, left_aligned)
 
         op = n.operator
-        if op == "add": return left_aligned + right_aligned
-        elif op == "sub": return left_aligned - right_aligned
-        elif op == "mul": return left_aligned * right_aligned
-        elif op == "div": return left_aligned / right_aligned
-        elif op == "mod": return left_aligned % right_aligned
-        elif op == "pow": return left_aligned ** right_aligned
-        elif op == "eq": return self._comparison_series(left_aligned, right_aligned, lambda a, b: a == b)
-        elif op == "neq": return self._comparison_series(left_aligned, right_aligned, lambda a, b: a != b)
-        elif op == "lt": return self._comparison_series(left_aligned, right_aligned, lambda a, b: a < b)
-        elif op == "lte": return self._comparison_series(left_aligned, right_aligned, lambda a, b: a <= b)
-        elif op == "gt": return self._comparison_series(left_aligned, right_aligned, lambda a, b: a > b)
-        elif op == "gte": return self._comparison_series(left_aligned, right_aligned, lambda a, b: a >= b)
+        if op == "add":
+            return left_aligned + right_aligned
+        elif op == "sub":
+            return left_aligned - right_aligned
+        elif op == "mul":
+            return left_aligned * right_aligned
+        elif op == "div":
+            return left_aligned / right_aligned
+        elif op == "mod":
+            return left_aligned % right_aligned
+        elif op == "pow":
+            return left_aligned**right_aligned
+        elif op == "eq":
+            return self._comparison_series(left_aligned, right_aligned, lambda a, b: a == b)
+        elif op == "neq":
+            return self._comparison_series(left_aligned, right_aligned, lambda a, b: a != b)
+        elif op == "lt":
+            return self._comparison_series(left_aligned, right_aligned, lambda a, b: a < b)
+        elif op == "lte":
+            return self._comparison_series(left_aligned, right_aligned, lambda a, b: a <= b)
+        elif op == "gt":
+            return self._comparison_series(left_aligned, right_aligned, lambda a, b: a > b)
+        elif op == "gte":
+            return self._comparison_series(left_aligned, right_aligned, lambda a, b: a >= b)
         elif op in {"and", "or"}:
             from decimal import Decimal
+
             def _truthy(v: Any) -> bool:
-                if isinstance(v, bool): return v
-                if isinstance(v, (int, float, Decimal)): return bool(Decimal(str(v)))
-                try: return bool(Decimal(str(v)))
-                except Exception: return bool(v)
-            
+                if isinstance(v, bool):
+                    return v
+                if isinstance(v, (int, float, Decimal)):
+                    return bool(Decimal(str(v)))
+                try:
+                    return bool(Decimal(str(v)))
+                except Exception:
+                    return bool(v)
+
             values = tuple(
                 (_truthy(lv) and _truthy(rv)) if op == "and" else (_truthy(lv) or _truthy(rv))
                 for lv, rv in zip(left_aligned.values, right_aligned.values, strict=False)
@@ -330,9 +349,7 @@ class RuntimeEvaluator:
         # Debugging print
         print(f"\n_comparison_series left len: {len(left.timestamps)} vs {len(left.values)}")
         print(f"_comparison_series right len: {len(right.timestamps)} vs {len(right.values)}")
-        result_values = tuple(
-            bool(compare(lv, rv)) for lv, rv in zip(left.values, right.values, strict=False)
-        )
+        result_values = tuple(bool(compare(lv, rv)) for lv, rv in zip(left.values, right.values, strict=False))
         return Series[bool](
             timestamps=left.timestamps,
             values=result_values,
@@ -344,17 +361,26 @@ class RuntimeEvaluator:
         operand = children_outputs[0]
         if not isinstance(operand, Series):
             from ..algebra.scalar_helpers import _make_scalar_series
+
             operand = _make_scalar_series(operand)
         op = n.operator
-        if op == "neg": return -operand
-        elif op == "pos": return operand
+        if op == "neg":
+            return -operand
+        elif op == "pos":
+            return operand
         elif op == "not":
             from decimal import Decimal
+
             def _truthy(v: Any) -> bool:
-                if isinstance(v, bool): return v
-                if isinstance(v, (int, float, Decimal)): return bool(Decimal(str(v)))
-                try: return bool(Decimal(str(v)))
-                except Exception: return bool(v)
+                if isinstance(v, bool):
+                    return v
+                if isinstance(v, (int, float, Decimal)):
+                    return bool(Decimal(str(v)))
+                try:
+                    return bool(Decimal(str(v)))
+                except Exception:
+                    return bool(v)
+
             return Series[bool](
                 timestamps=operand.timestamps,
                 values=tuple(not _truthy(v) for v in operand.values),
@@ -581,6 +607,7 @@ class RuntimeEvaluator:
     ) -> Series[Any]:
         """Evaluate CallNode."""
         from ...registry.registry import get_global_registry
+
         registry = get_global_registry()
 
         if node.name not in registry._indicators:
@@ -594,10 +621,10 @@ class RuntimeEvaluator:
         indicator_func = registry._indicators[node.name]
 
         # Map evaluated children back to args and kwargs
-        eval_args = children_outputs[:len(node.args)]
+        eval_args = children_outputs[: len(node.args)]
         eval_kwargs = {}
-        
-        kwarg_outputs = children_outputs[len(node.args):]
+
+        kwarg_outputs = children_outputs[len(node.args) :]
         for key, val in zip(sorted(node.kwargs.keys()), kwarg_outputs):
             eval_kwargs[key] = val
 

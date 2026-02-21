@@ -8,14 +8,18 @@ from typing import Any, Literal, Union
 from .types import ExprType
 
 SCALAR_SYMBOL = "__SCALAR__"
+
+
 class ExprNode:
     """Base class for all canonical IR nodes."""
+
     pass
 
 
 @dataclass(slots=True, unsafe_hash=True)
 class LiteralNode(ExprNode):
     """A literal value (number, bool, string)."""
+
     value: float | bool | str
     span_start: int | None = None
     span_end: int | None = None
@@ -25,6 +29,7 @@ class LiteralNode(ExprNode):
 @dataclass(slots=True, unsafe_hash=True)
 class SourceRefNode(ExprNode):
     """Fully resolved source/field identity. Replaces AttributeNode."""
+
     symbol: str
     field: str
     source: str = "ohlcv"
@@ -41,6 +46,7 @@ class SourceRefNode(ExprNode):
 @dataclass(slots=True, unsafe_hash=True)
 class CallNode(ExprNode):
     """Indicator or function call. Replaces IndicatorNode."""
+
     name: str
     args: list[CanonicalExpression] = field(default_factory=list)
     kwargs: dict[str, CanonicalExpression] = field(default_factory=dict)
@@ -66,15 +72,13 @@ class CallNode(ExprNode):
         return out
 
 
-BinaryOperator = Literal[
-    "add", "sub", "mul", "div", "mod", "pow",
-    "gt", "gte", "lt", "lte", "eq", "neq",
-    "and", "or"
-]
+BinaryOperator = Literal["add", "sub", "mul", "div", "mod", "pow", "gt", "gte", "lt", "lte", "eq", "neq", "and", "or"]
+
 
 @dataclass(slots=True, unsafe_hash=True)
 class BinaryOpNode(ExprNode):
     """Binary operation."""
+
     operator: BinaryOperator
     left: CanonicalExpression
     right: CanonicalExpression
@@ -85,9 +89,11 @@ class BinaryOpNode(ExprNode):
 
 UnaryOperator = Literal["not", "neg", "pos"]
 
+
 @dataclass(slots=True, unsafe_hash=True)
 class UnaryOpNode(ExprNode):
     """Unary operation."""
+
     operator: UnaryOperator
     operand: CanonicalExpression
     span_start: int | None = None
@@ -98,6 +104,7 @@ class UnaryOpNode(ExprNode):
 @dataclass(slots=True, unsafe_hash=True)
 class FilterNode(ExprNode):
     """Filter operation on a series."""
+
     series: CanonicalExpression
     condition: CanonicalExpression
     span_start: int | None = None
@@ -108,6 +115,7 @@ class FilterNode(ExprNode):
 @dataclass(slots=True, unsafe_hash=True)
 class AggregateNode(ExprNode):
     """Aggregation over a series."""
+
     series: CanonicalExpression
     operation: str
     field: str | None = None
@@ -119,6 +127,7 @@ class AggregateNode(ExprNode):
 @dataclass(slots=True, unsafe_hash=True)
 class TimeShiftNode(ExprNode):
     """Time-shift operation on a series."""
+
     series: CanonicalExpression
     shift: str
     operation: str | None = None
@@ -130,6 +139,7 @@ class TimeShiftNode(ExprNode):
 @dataclass(slots=True, unsafe_hash=True)
 class MemberAccessNode(ExprNode):
     """Accessing a property of a struct/record output. (Gated for future)"""
+
     expr: CanonicalExpression
     member: str
     span_start: int | None = None
@@ -140,6 +150,7 @@ class MemberAccessNode(ExprNode):
 @dataclass(slots=True, unsafe_hash=True)
 class IndexNode(ExprNode):
     """Array/list indexing. (Gated for future)"""
+
     expr: CanonicalExpression
     index: CanonicalExpression
     span_start: int | None = None
@@ -157,5 +168,5 @@ CanonicalExpression = Union[
     AggregateNode,
     TimeShiftNode,
     MemberAccessNode,
-    IndexNode
+    IndexNode,
 ]

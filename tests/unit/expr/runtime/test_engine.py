@@ -1,7 +1,6 @@
 """Tests for evaluation engine."""
 
-from datetime import timezone, datetime
-UTC = timezone.utc
+from datetime import UTC, datetime
 from decimal import Decimal
 
 from laakhay.ta.core.series import Series

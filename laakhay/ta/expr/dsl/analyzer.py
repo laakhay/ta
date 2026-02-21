@@ -6,15 +6,15 @@ from typing import Any
 
 from ...registry.registry import get_global_registry
 from ..ir.nodes import (
-    CanonicalExpression,
+    AggregateNode,
     BinaryOpNode,
     CallNode,
-    UnaryOpNode,
+    CanonicalExpression,
     FilterNode,
-    AggregateNode,
-    TimeShiftNode,
+    IndexNode,
     MemberAccessNode,
-    IndexNode
+    TimeShiftNode,
+    UnaryOpNode,
 )
 
 

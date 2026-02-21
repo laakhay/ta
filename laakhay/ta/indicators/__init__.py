@@ -10,8 +10,8 @@ eliminating circular import issues and providing a single source of truth for de
 from ..api.namespace import _select_indicator  # noqa: F401
 from ..core import Series
 from ..core.types import Price, Qty
-from ..expr.ir.nodes import LiteralNode as Literal
 from ..expr.algebra.operators import Expression
+from ..expr.ir.nodes import LiteralNode as Literal
 
 # Import primitives directly from the module to avoid circular imports
 from ..primitives import (

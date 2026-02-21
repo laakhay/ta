@@ -1,7 +1,6 @@
 """Shared fixtures for registry tests."""
 
-from datetime import timezone, datetime
-UTC = timezone.utc
+from datetime import UTC, datetime
 from decimal import Decimal
 from inspect import signature
 

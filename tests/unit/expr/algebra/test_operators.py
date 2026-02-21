@@ -3,8 +3,7 @@
 
 from __future__ import annotations
 
-from datetime import timezone, datetime, timedelta
-UTC = timezone.utc
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 
 import pytest
@@ -15,10 +14,8 @@ from laakhay.ta.core.dataset import Dataset
 from laakhay.ta.core.ohlcv import OHLCV
 from laakhay.ta.core.series import Series
 from laakhay.ta.core.types import Price
-from laakhay.ta.expr.ir.nodes import BinaryOpNode, LiteralNode, UnaryOpNode
 from laakhay.ta.expr.algebra.operators import Expression, as_expression
-
-UTC = UTC
+from laakhay.ta.expr.ir.nodes import BinaryOpNode, LiteralNode, UnaryOpNode
 
 
 # ---------------------------------------------------------------------
@@ -251,7 +248,9 @@ class TestAsExpression:
         assert isinstance(e_s, Expression) and isinstance(e_s._node, LiteralNode) and e_s._node.value == 42
 
         e_ser = as_expression(test_series)
-        assert isinstance(e_ser, Expression) and isinstance(e_ser._node, LiteralNode) and e_ser._node.value == test_series
+        assert (
+            isinstance(e_ser, Expression) and isinstance(e_ser._node, LiteralNode) and e_ser._node.value == test_series
+        )
 
         e_lit = as_expression(literal_10)
         assert isinstance(e_lit, Expression) and e_lit._node == literal_10

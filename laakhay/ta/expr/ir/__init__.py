@@ -1,22 +1,22 @@
 """Canonical expression IR."""
 
 from .nodes import (
-    CanonicalExpression,
-    LiteralNode,
-    SourceRefNode,
-    CallNode,
-    BinaryOpNode,
-    UnaryOpNode,
-    FilterNode,
     AggregateNode,
-    TimeShiftNode,
-    MemberAccessNode,
-    IndexNode,
     BinaryOperator,
+    BinaryOpNode,
+    CallNode,
+    CanonicalExpression,
+    FilterNode,
+    IndexNode,
+    LiteralNode,
+    MemberAccessNode,
+    SourceRefNode,
+    TimeShiftNode,
     UnaryOperator,
+    UnaryOpNode,
 )
+from .serialize import IRSearializationError, ir_from_dict, ir_to_dict
 from .types import ExprType
-from .serialize import ir_to_dict, ir_from_dict, IRSearializationError
 
 __all__ = [
     "CanonicalExpression",

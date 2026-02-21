@@ -7,8 +7,8 @@ from typing import Any
 
 from ...registry.registry import get_global_registry
 from ..dsl import (
-    StrategyError,
     CanonicalExpression,
+    StrategyError,
     compile_expression,
     extract_indicator_nodes,
     parse_expression_text,
@@ -153,10 +153,11 @@ def validate(
             # Validate select field if this is a 'select' indicator
             if indicator_name == "select":
                 from ..ir.nodes import LiteralNode
+
                 field_param = node.kwargs.get("field")
                 if not field_param and node.args:
                     field_param = node.args[0]
-                
+
                 if isinstance(field_param, LiteralNode):
                     field_str = str(field_param.value).lower()
                     select_fields_used.append(field_str)
@@ -184,7 +185,7 @@ def validate(
                 for param_name, param_schema in param_schemas.items():
                     if param_name.lower() in ("ctx", "context"):
                         continue  # Skip internal context parameter
-                    
+
                     # Check in kwargs
                     in_kwargs = param_name in node.kwargs
                     # We skip positional check here for simplicity in validation stage

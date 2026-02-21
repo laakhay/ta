@@ -10,9 +10,15 @@ from ...registry.schemas import IndicatorMetadata
 from ..algebra import alignment as alignment_ctx
 from ..algebra.alignment import get_policy as _get_alignment_policy
 from ..ir.nodes import (
-    CanonicalExpression, LiteralNode, CallNode, SourceRefNode,
-    BinaryOpNode, UnaryOpNode, FilterNode, AggregateNode,
-    TimeShiftNode
+    AggregateNode,
+    BinaryOpNode,
+    CallNode,
+    CanonicalExpression,
+    FilterNode,
+    LiteralNode,
+    SourceRefNode,
+    TimeShiftNode,
+    UnaryOpNode,
 )
 from .builder import build_graph
 from .types import (
@@ -52,9 +58,6 @@ def get_alignment_policy() -> AlignmentPolicy:
         left_fill_value=left_fill_value,
         right_fill_value=right_fill_value,
     )
-
-
-
 
 
 def plan_expression(root: CanonicalExpression) -> PlanResult:
@@ -134,11 +137,15 @@ def _collect_requirements(graph: Graph) -> SignalRequirements:
             name = expr_node.name
             handle = registry.get(name)
             metadata: IndicatorMetadata | None = handle.schema.metadata if handle else None
-            param_defs = [
-                param.name
-                for param in handle.schema.parameters.values()
-                if param.name.lower() not in {"ctx", "context"}
-            ] if handle else []
+            param_defs = (
+                [
+                    param.name
+                    for param in handle.schema.parameters.values()
+                    if param.name.lower() not in {"ctx", "context"}
+                ]
+                if handle
+                else []
+            )
 
             params = {}
             for k, v in expr_node.kwargs.items():
@@ -150,7 +157,11 @@ def _collect_requirements(graph: Graph) -> SignalRequirements:
             has_input_series = expr_node.input_expr is not None
             arg_offset = 1 if has_input_series else 0
             param_start = 0
-            if has_input_series and param_defs and param_defs[0] in {"source", "input", "input_series", "series", "field"}:
+            if (
+                has_input_series
+                and param_defs
+                and param_defs[0] in {"source", "input", "input_series", "series", "field"}
+            ):
                 param_start = 1
             for idx, arg in enumerate(expr_node.args[arg_offset:]):
                 param_idx = param_start + idx

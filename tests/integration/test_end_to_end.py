@@ -1,7 +1,8 @@
 """End-to-end tests demonstrating the complete laakhay-ta workflow."""
 
-from datetime import timezone, datetime
-UTC = timezone.utc
+from datetime import UTC, datetime
+
+UTC = UTC
 from decimal import Decimal
 
 import pytest

@@ -5,13 +5,16 @@ from __future__ import annotations
 from typing import Any
 
 from ...core import Series
+from ..ir.nodes import (
+    BinaryOpNode,
+    CallNode,
+    CanonicalExpression,
+    LiteralNode,
+    UnaryOpNode,
+)
 from ..planner.planner import plan_expression
 from ..planner.types import PlanResult, SignalRequirements
-from ..ir.nodes import (
-    CanonicalExpression, LiteralNode, CallNode, SourceRefNode,
-    BinaryOpNode, UnaryOpNode, FilterNode, AggregateNode,
-    TimeShiftNode
-)
+
 
 class Expression:
     """Expression wrapper that enables operator overloading for Series objects."""
@@ -120,10 +123,12 @@ class Expression:
     def evaluate(self, context: dict[str, Series[Any]] | None) -> Series[Any]:
         # Handled by evaluator
         from ..planner.evaluator import Evaluator
+
         result = Evaluator().evaluate(self, context or {})
         if isinstance(result, Series):
             return result
         from .scalar_helpers import _make_scalar_series
+
         return _make_scalar_series(result)
 
     def run(self, data: Any, return_all_outputs: bool = False) -> Any:
@@ -254,11 +259,17 @@ def _to_node(
                 return expr._node  # type: ignore[misc]
         except Exception:
             pass
-    if isinstance(value, tuple) and hasattr(value, "span_start"): # Hack for CanonicalExpression
+    if isinstance(value, tuple) and hasattr(value, "span_start"):  # Hack for CanonicalExpression
         return value
     if type(value).__name__ in [
-        "LiteralNode", "CallNode", "BinaryOpNode", "UnaryOpNode", 
-        "FilterNode", "AggregateNode", "TimeShiftNode", "SourceRefNode"
+        "LiteralNode",
+        "CallNode",
+        "BinaryOpNode",
+        "UnaryOpNode",
+        "FilterNode",
+        "AggregateNode",
+        "TimeShiftNode",
+        "SourceRefNode",
     ]:
         return value
     return LiteralNode(value)
@@ -273,6 +284,3 @@ def as_expression(series: Series[Any]) -> Expression:
 # ------------------------------------------------------------------
 # Scalar series helpers (Proxied from scalar_helpers.py)
 # ------------------------------------------------------------------
-
-from ..ir.nodes import SCALAR_SYMBOL
-from .scalar_helpers import _make_scalar_series, _broadcast_scalar_series

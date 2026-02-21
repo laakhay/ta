@@ -1,7 +1,6 @@
 """Tests for registry models."""
 
-from datetime import timezone, datetime
-UTC = timezone.utc
+from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Any
 

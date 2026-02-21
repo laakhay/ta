@@ -293,7 +293,7 @@ def _resolve_binding_from_expression(node: ExprNode) -> IndicatorInputBinding | 
 
     if _is_indicator_node(node):
         params = dict(getattr(node, "kwargs", {}) or {})
-        
+
         # If the indicator is the 'select' function, its field argument directly defines the binding
         indicator_name = str(getattr(node, "name", ""))
         if indicator_name == "select":

@@ -5,9 +5,6 @@ from __future__ import annotations
 from enum import Enum
 from typing import Any
 
-from . import alignment
-from .alignment import alignment as alignment_func
-from .alignment import get_policy
 from ..ir.nodes import (
     AggregateNode,
     BinaryOpNode,
@@ -17,7 +14,11 @@ from ..ir.nodes import (
     TimeShiftNode,
     UnaryOpNode,
 )
+from . import alignment
+from .alignment import alignment as alignment_func
+from .alignment import get_policy
 from .operators import Expression, as_expression
+
 
 class OperatorType(str, Enum):
     """Legacy operator enum kept for backward compatibility."""

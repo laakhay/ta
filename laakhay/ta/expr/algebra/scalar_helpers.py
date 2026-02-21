@@ -1,16 +1,18 @@
 """Helpers for scalar series handling in the expression system."""
 
+from datetime import UTC
 from typing import Any
+
 from ...core.series import Series
 from ..ir.nodes import SCALAR_SYMBOL
 
 
 def _make_scalar_series(value: Any) -> Series[Any]:
     """Create a single-point series for a scalar value."""
-    from datetime import datetime, timezone
+    from datetime import datetime
 
     return Series(
-        timestamps=(datetime(1970, 1, 1, tzinfo=timezone.utc),),
+        timestamps=(datetime(1970, 1, 1, tzinfo=UTC),),
         values=(value,),
         symbol=SCALAR_SYMBOL,
         timeframe="1s",

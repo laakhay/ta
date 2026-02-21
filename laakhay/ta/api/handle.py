@@ -172,6 +172,7 @@ def _to_expression(
     if isinstance(value, Decimal):
         value = float(value)
     from ..expr.ir.nodes import LiteralNode
+
     return Expression(LiteralNode(value))
 
 

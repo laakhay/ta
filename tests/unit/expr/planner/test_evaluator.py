@@ -1,5 +1,3 @@
-import operator
-
 import pytest
 
 from laakhay.ta.expr.ir.nodes import BinaryOpNode, LiteralNode, UnaryOpNode

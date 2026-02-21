@@ -8,8 +8,9 @@ as the engine grows. Run with pytest-benchmark:
 If pytest-benchmark is not installed, tests will run normally without benchmarking.
 """
 
-from datetime import timezone, datetime, timedelta
-UTC = timezone.utc
+from datetime import UTC, datetime, timedelta
+
+UTC = UTC
 from decimal import Decimal
 
 import pytest

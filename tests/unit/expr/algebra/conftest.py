@@ -1,15 +1,14 @@
 """Shared fixtures for expressions tests."""
 
-from datetime import timezone, datetime
-UTC = timezone.utc
+from datetime import UTC, datetime
 from decimal import Decimal
 
 import pytest
 
 from laakhay.ta.core.series import Series
 from laakhay.ta.core.types import Price
-from laakhay.ta.expr.ir.nodes import BinaryOpNode, LiteralNode, UnaryOpNode
 from laakhay.ta.expr.algebra.operators import Expression
+from laakhay.ta.expr.ir.nodes import BinaryOpNode, LiteralNode, UnaryOpNode
 
 
 @pytest.fixture

@@ -6,12 +6,12 @@ Passes over the CanonicalExpression to perform:
 - positional -> named arg normalization
 """
 
-from typing import Any
 from ..ir.nodes import CanonicalExpression
+
 
 def normalize_expression(expr: CanonicalExpression) -> CanonicalExpression:
     """Normalize a canonical expression.
-    
+
     Currently a placeholder for expanding aliases, canonicalizing symbols,
     and resolving positional to named arguments.
     """

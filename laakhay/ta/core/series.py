@@ -5,6 +5,7 @@ from __future__ import annotations
 import decimal
 from collections.abc import Iterator
 from dataclasses import dataclass
+from datetime import UTC
 from typing import Any, Generic, Literal, TypeAlias, TypeVar
 
 from .types import Price, Qty, Symbol, Timestamp
@@ -257,7 +258,9 @@ class Series(Generic[T]):
             try:
                 new_values = tuple(
                     _v1 % _v2
-                    for _v1, _v2 in (_coerce_numeric_pair(v1, v2) for v1, v2 in zip(self.values, other.values, strict=False))
+                    for _v1, _v2 in (
+                        _coerce_numeric_pair(v1, v2) for v1, v2 in zip(self.values, other.values, strict=False)
+                    )
                 )  # type: ignore[misc]
             except (ZeroDivisionError, decimal.InvalidOperation):
                 raise ValueError("Cannot perform modulo with zero divisor in series") from None
@@ -300,7 +303,9 @@ class Series(Generic[T]):
             try:
                 new_values = tuple(
                     _v1**_v2
-                    for _v1, _v2 in (_coerce_numeric_pair(v1, v2) for v1, v2 in zip(self.values, other.values, strict=False))
+                    for _v1, _v2 in (
+                        _coerce_numeric_pair(v1, v2) for v1, v2 in zip(self.values, other.values, strict=False)
+                    )
                 )  # type: ignore[misc]
             except TypeError:
                 raise TypeError(
@@ -435,8 +440,7 @@ class Series(Generic[T]):
             timestamp = self.timestamps[0]
         else:
             # For empty series, we need a timestamp - use a default
-            from datetime import timezone, datetime
-            UTC = timezone.utc
+            from datetime import datetime
 
             timestamp = datetime.now(UTC)
         return Series[int](
@@ -473,8 +477,7 @@ class Series(Generic[T]):
             timestamp = self.timestamps[0]
         else:
             # For empty series, we need a timestamp - use a default
-            from datetime import timezone, datetime
-            UTC = timezone.utc
+            from datetime import datetime
 
             timestamp = datetime.now(UTC)
 

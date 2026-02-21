@@ -1,8 +1,9 @@
 """Tests for ta.dump.csv functionality."""
 
 import tempfile
-from datetime import timezone, datetime
-UTC = timezone.utc
+from datetime import UTC, datetime
+
+UTC = UTC
 from decimal import Decimal
 from pathlib import Path
 

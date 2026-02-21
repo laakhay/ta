@@ -6,9 +6,17 @@ import hashlib
 from typing import Any, Dict, Tuple
 
 from ..ir.nodes import (
-    CanonicalExpression, LiteralNode, CallNode, SourceRefNode,
-    BinaryOpNode, UnaryOpNode, FilterNode, AggregateNode,
-    TimeShiftNode, MemberAccessNode, IndexNode
+    AggregateNode,
+    BinaryOpNode,
+    CallNode,
+    CanonicalExpression,
+    FilterNode,
+    IndexNode,
+    LiteralNode,
+    MemberAccessNode,
+    SourceRefNode,
+    TimeShiftNode,
+    UnaryOpNode,
 )
 from .types import Graph, GraphNode
 
@@ -74,23 +82,23 @@ def build_graph(root: CanonicalExpression) -> Graph:
                 child_id, child_sig = visit(arg)
                 arg_sig_items.append(child_sig)
                 arg_children_ids.append(child_id)
-                
+
             arg_sig = tuple(arg_sig_items)
-            
+
             signature = ("CallNode", node.name, arg_sig, params_sig)
             children = tuple(arg_children_ids + param_children_ids)
-            
+
         elif isinstance(node, MemberAccessNode):
             expr_id, expr_sig = visit(node.expr)
             signature = ("MemberAccessNode", expr_sig, node.member)
             children = (expr_id,)
-            
+
         elif isinstance(node, IndexNode):
             expr_id, expr_sig = visit(node.expr)
             index_id, index_sig = visit(node.index)
             signature = ("IndexNode", expr_sig, index_sig)
             children = (expr_id, index_id)
-            
+
         else:
             # Fallback for unknown node types: use object id to keep determinism per instance
             signature = (type(node).__name__, id(node))

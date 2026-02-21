@@ -7,10 +7,10 @@ from typing import Any
 # Ensure indicators are loaded before creating parser
 from ... import indicators  # noqa: F401
 from ..algebra import Expression
-from .analyzer import IndicatorAnalyzer
 from ..compile import compile_to_ir
-from ..ir.nodes import CanonicalExpression, CallNode
+from ..ir.nodes import CallNode, CanonicalExpression
 from ..ir.serialize import ir_from_dict, ir_to_dict
+from .analyzer import IndicatorAnalyzer
 from .parser import StrategyError
 
 __all__ = [
@@ -39,11 +39,14 @@ def _ensure_expression(expression: CanonicalExpression | str | dict[str, Any]) -
 def parse_expression_text(expression_text: str) -> CanonicalExpression:
     return compile_to_ir(expression_text)
 
+
 def expression_from_dict(data: dict[str, Any]) -> CanonicalExpression:
     return ir_from_dict(data)
 
+
 def expression_to_dict(expr: CanonicalExpression) -> dict[str, Any]:
     return ir_to_dict(expr)
+
 
 def compile_expression(expression: CanonicalExpression | str | dict[str, Any]) -> Expression:
     expr = _ensure_expression(expression)

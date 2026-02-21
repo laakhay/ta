@@ -1,8 +1,8 @@
 """Tests for IR typechecker."""
 
-import pytest
 from laakhay.ta.expr.ir.nodes import LiteralNode
 from laakhay.ta.expr.typecheck.checker import typecheck_expression
+
 
 def test_typecheck_identity():
     """Currently typecheck is an identity placeholder."""

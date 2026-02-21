@@ -1,7 +1,8 @@
 """Tests for fib_retracement indicator."""
 
-from datetime import timezone, datetime, timedelta
-UTC = timezone.utc
+from datetime import UTC, datetime, timedelta
+
+UTC = UTC
 from decimal import Decimal
 
 import pytest

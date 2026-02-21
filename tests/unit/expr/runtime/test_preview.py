@@ -1,7 +1,6 @@
 """Tests for expression preview functionality."""
 
-from datetime import timezone, datetime, timedelta
-UTC = timezone.utc
+from datetime import UTC, datetime, timedelta
 
 import pytest
 

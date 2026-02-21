@@ -1,7 +1,8 @@
 """Tests for RuntimeEvaluator."""
 
-from datetime import timezone, datetime, timedelta
-UTC = timezone.utc
+from datetime import UTC, datetime, timedelta
+
+UTC = UTC
 from decimal import Decimal
 
 import pytest
@@ -11,6 +12,7 @@ from laakhay.ta.core.dataset import Dataset
 from laakhay.ta.core.ohlcv import OHLCV
 from laakhay.ta.core.series import Series
 from laakhay.ta.core.types import Price
+from laakhay.ta.expr.dsl import compile_expression
 from laakhay.ta.expr.ir.nodes import (
     AggregateNode,
     FilterNode,
@@ -18,7 +20,6 @@ from laakhay.ta.expr.ir.nodes import (
     SourceRefNode,
     TimeShiftNode,
 )
-from laakhay.ta.expr.dsl import compile_expression
 from laakhay.ta.expr.planner import plan_expression
 from laakhay.ta.expr.runtime.evaluator import RuntimeEvaluator
 

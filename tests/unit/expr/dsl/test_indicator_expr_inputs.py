@@ -1,8 +1,6 @@
 """Tests for indicators with explicit expression inputs."""
 
-from datetime import timezone, datetime, timedelta
-UTC = timezone.utc
-
+from datetime import UTC, datetime, timedelta
 import pytest
 
 from laakhay.ta.core.bar import Bar
@@ -126,7 +124,7 @@ def test_compile_indicator_with_nested_expression():
 
 def test_serialize_indicator_with_input_expr():
     """Test serialization of IndicatorNode with input_expr."""
-    from laakhay.ta.expr.ir.serialize import serialize_ir, deserialize_ir
+    from laakhay.ta.expr.ir.serialize import deserialize_ir, serialize_ir
 
     expr = parse_expression_text("sma(BTC.price, period=20)")
     indicators = extract_indicator_nodes(expr)

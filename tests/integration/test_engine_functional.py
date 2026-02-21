@@ -1,7 +1,8 @@
 """Functional tests for the Engine evaluation system."""
 
-from datetime import timezone, datetime
-UTC = timezone.utc
+from datetime import UTC, datetime
+
+UTC = UTC
 from decimal import Decimal
 
 import pytest

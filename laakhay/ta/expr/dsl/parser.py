@@ -9,19 +9,21 @@ from ... import indicators as _indicators  # noqa: F401
 from ...api.namespace import ensure_namespace_registered
 from ...registry.registry import get_global_registry
 from ..ir.nodes import (
-    CanonicalExpression,
-    LiteralNode,
-    CallNode,
-    SourceRefNode,
-    BinaryOpNode,
-    UnaryOpNode,
-    FilterNode,
     AggregateNode,
+    BinaryOpNode,
+    CallNode,
+    CanonicalExpression,
+    FilterNode,
+    LiteralNode,
+    SourceRefNode,
     TimeShiftNode,
+    UnaryOpNode,
 )
+
 
 class StrategyError(Exception):
     """Exception raised for errors in strategy parsing."""
+
     pass
 
 
@@ -343,7 +345,9 @@ class ExpressionParser:
 
                 param_name = param_defs[param_index].name
                 positional_param_names.add(param_name)
-                positional_args.append(self._literal_or_expression(node.args[arg_index], supports_nested, name, param_name))
+                positional_args.append(
+                    self._literal_or_expression(node.args[arg_index], supports_nested, name, param_name)
+                )
 
             # Validate argument count
             # If input_expr is present, we allow one extra positional arg (the expression)
@@ -382,12 +386,11 @@ class ExpressionParser:
             if param_name not in valid_param_names:
                 raise StrategyError(f"Unknown parameter '{param_name}' for indicator '{actual_name}'")
 
-        
         # Build args list
         args = list(positional_args)
         if input_expr is not None:
             args.insert(0, input_expr)
-            
+
         return CallNode(name=actual_name, args=tuple(args), kwargs=params)
 
     def _convert_select_call(self, node: ast.Call) -> CallNode:
@@ -941,7 +944,9 @@ class ExpressionParser:
 
         raise StrategyError("Only literal values are allowed inside indicator parameters")
 
-    def _literal_or_expression(self, node: ast.AST, allow_expression: bool, indicator: str, param: str) -> CanonicalExpression:
+    def _literal_or_expression(
+        self, node: ast.AST, allow_expression: bool, indicator: str, param: str
+    ) -> CanonicalExpression:
         try:
             return LiteralNode(value=self._literal_value(node))
         except StrategyError:

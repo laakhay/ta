@@ -1,5 +1,6 @@
-from datetime import timezone, datetime, timedelta
-UTC = timezone.utc
+from datetime import UTC, datetime, timedelta
+
+UTC = UTC
 
 from laakhay.ta.core.bar import Bar
 from laakhay.ta.core.dataset import Dataset
