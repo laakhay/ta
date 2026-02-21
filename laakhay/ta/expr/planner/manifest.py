@@ -2,19 +2,11 @@
 
 from __future__ import annotations
 
-import ast
-import inspect
 import keyword
-from dataclasses import fields
 from typing import Any
 
-from ...core.context import (
-    LiquidationContext,
-    OHLCVContext,
-    OrderBookContext,
-    TradeContext,
-)
 from ...registry.registry import get_global_registry
+from ..semantics.source_schema import SOURCE_DESCRIPTIONS, SOURCE_FIELDS
 
 
 def generate_capability_manifest() -> dict[str, Any]:
@@ -92,8 +84,8 @@ def generate_capability_manifest() -> dict[str, Any]:
                 }
             )
 
-    # Extract source fields from parser's validation logic
-    sources = _extract_source_fields_from_parser()
+    # Use canonical shared schema for source/field definitions.
+    sources = _canonical_sources()
 
     # Extract operators from parser
     operators = _extract_operators_from_parser()
@@ -144,98 +136,14 @@ def generate_capability_manifest() -> dict[str, Any]:
     }
 
 
-def _extract_source_fields_from_parser() -> dict[str, dict[str, Any]]:
-    """Extract source fields from parser's validation method using AST parsing."""
-    # Lazy import to avoid circular dependencies
-    from ..dsl.parser import ExpressionParser
-
-    try:
-        parser = ExpressionParser()
-        # Parse the AST of the method to find the source_fields dict
-        method_source = inspect.getsource(parser._validate_attribute_combination)
-        tree = ast.parse(method_source)
-
-        # Find the source_fields dict assignment
-        source_fields_dict = {}
-        for node in ast.walk(tree):
-            if isinstance(node, ast.Assign):
-                for target in node.targets:
-                    if isinstance(target, ast.Name) and target.id == "source_fields":
-                        if isinstance(node.value, ast.Dict):
-                            # Extract dict keys and values
-                            for key_node, value_node in zip(node.value.keys, node.value.values, strict=False):
-                                if isinstance(key_node, ast.Constant) and isinstance(value_node, ast.Set):
-                                    source_name = key_node.value
-                                    field_set = {el.value for el in value_node.elts if isinstance(el, ast.Constant)}
-                                    source_fields_dict[source_name] = sorted(field_set)
-
-        if source_fields_dict:
-            # Build sources dict with descriptions from context classes
-            sources = {}
-            source_descriptions = {
-                "ohlcv": "OHLCV candlestick data",
-                "trades": "Trade aggregation data",
-                "orderbook": "Order book snapshot data",
-                "liquidation": "Liquidation aggregation data",
-            }
-
-            for source_name, fields_list in source_fields_dict.items():
-                sources[source_name] = {
-                    "fields": fields_list,
-                    "description": source_descriptions.get(source_name, f"{source_name} data"),
-                }
-            return sources
-    except Exception:
-        pass
-
-    # Fallback: extract from context classes (but this misses derived fields like hlc3, ohlc4)
-    # For now, we'll use context classes and note that derived fields are parser-specific
-    return _extract_source_fields_from_contexts()
-
-
-def _extract_source_fields_from_contexts() -> dict[str, dict[str, Any]]:
-    """Extract source fields from context class dataclass fields.
-
-    Note: This extracts base fields from context classes. Derived fields (like hlc3, ohlc4)
-    are defined in the parser's validation logic and should be extracted from there.
-    """
-    context_mapping = {
-        "ohlcv": (OHLCVContext, "OHLCV candlestick data"),
-        "trades": (TradeContext, "Trade aggregation data"),
-        "orderbook": (OrderBookContext, "Order book snapshot data"),
-        "liquidation": (LiquidationContext, "Liquidation aggregation data"),
-    }
-
-    # Derived fields that are parser-specific (not in context classes)
-    derived_fields = {
-        "ohlcv": [
-            "hlc3",  # Typical price: (high + low + close) / 3
-            "ohlc4",  # Average price: (open + high + low + close) / 4
-            "hl2",  # Mid price: (high + low) / 2
-            "typical_price",  # Alias for hlc3
-            "weighted_close",  # Alias for ohlc4
-            "median_price",  # Alias for hl2
-            "range",  # High - Low
-            "upper_wick",  # High - max(Open, Close)
-            "lower_wick",  # min(Open, Close) - Low
-        ],
-    }
-
-    sources = {}
-    for source_name, (context_class, description) in context_mapping.items():
-        # Get all field names from the dataclass
-        field_names = [field.name for field in fields(context_class) if not field.name.startswith("_")]
-
-        # Add derived fields if any
-        if source_name in derived_fields:
-            field_names.extend(derived_fields[source_name])
-
-        sources[source_name] = {
-            "fields": sorted(set(field_names)),  # Remove duplicates
-            "description": description,
+def _canonical_sources() -> dict[str, dict[str, Any]]:
+    return {
+        source_name: {
+            "fields": sorted(fields),
+            "description": SOURCE_DESCRIPTIONS.get(source_name, f"{source_name} data"),
         }
-
-    return sources
+        for source_name, fields in SOURCE_FIELDS.items()
+    }
 
 
 def _extract_operators_from_parser() -> dict[str, list[str]]:

@@ -13,6 +13,7 @@ from ..dsl import (
     extract_indicator_nodes,
     parse_expression_text,
 )
+from ..semantics.source_schema import VALID_SELECT_FIELDS, canonical_select_field
 from .capability_validator import CapabilityValidator
 
 
@@ -49,34 +50,6 @@ class ValidationResult:
     select_fields: list[str] = field(default_factory=list)
     requirements: Any | None = None  # SignalRequirements from planner
     plan: Any | None = None  # PlanResult if available
-
-
-# Valid select fields that can be used with the 'select' indicator
-VALID_SELECT_FIELDS = {
-    # Standard OHLCV fields
-    "open",
-    "high",
-    "low",
-    "close",
-    "volume",
-    # Derived fields
-    "hlc3",  # Typical price: (high + low + close) / 3
-    "ohlc4",  # Average price: (open + high + low + close) / 4
-    "hl2",  # Mid price: (high + low) / 2
-    "range",  # High - Low
-    "upper_wick",  # High - max(Open, Close)
-    "lower_wick",  # min(Open, Close) - Low
-    "typical_price",  # Alias for hlc3
-    "weighted_close",  # Alias for ohlc4
-    "median_price",  # Alias for hl2
-    # Common aliases
-    "price",  # Alias for close
-    "o",  # Short alias for open
-    "h",  # Short alias for high
-    "l",  # Short alias for low
-    "c",  # Short alias for close
-    "v",  # Short alias for volume
-}
 
 
 def validate(
@@ -159,7 +132,7 @@ def validate(
                     field_param = node.args[0]
 
                 if isinstance(field_param, LiteralNode):
-                    field_str = str(field_param.value).lower()
+                    field_str = canonical_select_field(str(field_param.value))
                     select_fields_used.append(field_str)
                     if field_str not in VALID_SELECT_FIELDS:
                         errors.append(

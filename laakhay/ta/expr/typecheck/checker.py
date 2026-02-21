@@ -14,6 +14,7 @@ from ..ir.nodes import (
     TimeShiftNode,
     UnaryOpNode,
 )
+from ..semantics.source_schema import is_valid_source_field
 
 
 class TypeCheckError(ValueError):
@@ -225,30 +226,5 @@ def _validate_source_field(source: str, field: str | None) -> None:
     if field is None:
         return
 
-    field = field.lower()
-    source_fields = {
-        "ohlcv": {
-            "open",
-            "high",
-            "low",
-            "close",
-            "volume",
-            "hlc3",
-            "ohlc4",
-            "hl2",
-            "typical_price",
-            "weighted_close",
-            "median_price",
-            "range",
-            "upper_wick",
-            "lower_wick",
-            "price",
-        },
-        "trades": {"price", "amount", "side", "id", "timestamp", "count"},
-        "orderbook": {"bid", "ask", "bid_size", "ask_size", "imbalance"},
-        "liquidation": {"price", "amount", "side", "id", "timestamp"},
-    }
-
-    if source in source_fields:
-        if field not in source_fields[source]:
-            raise TypeCheckError(f"Field '{field}' is not valid for source '{source}'")
+    if not is_valid_source_field(source, field):
+        raise TypeCheckError(f"Field '{field}' is not valid for source '{source}'")
