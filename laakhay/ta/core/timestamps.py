@@ -16,7 +16,8 @@ If strict=True:
 
 from __future__ import annotations
 
-from datetime import UTC, date, datetime
+from datetime import timezone, date, datetime
+UTC = timezone.utc
 from decimal import Decimal
 from typing import Any
 

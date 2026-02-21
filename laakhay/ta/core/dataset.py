@@ -4,7 +4,8 @@ from __future__ import annotations
 
 from collections.abc import Iterator
 from dataclasses import dataclass, field
-from datetime import UTC, datetime
+from datetime import timezone, datetime
+UTC = timezone.utc
 from typing import TYPE_CHECKING, Any, TypeVar
 
 from .ohlcv import OHLCV
