@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
+from decimal import Decimal
+
 from ...core import Series
 from ...core.types import Price
-from ...expr.algebra.operators import Expression
-from ...expr.ir.nodes import LiteralNode as Literal
 from ...primitives.rolling_ops import rolling_max, rolling_mean, rolling_min
 from ...registry.models import SeriesContext
 from ...registry.registry import register
@@ -70,23 +70,22 @@ def stochastic(ctx: SeriesContext, k_period: int = 14, d_period: int = 3) -> tup
         timeframe=ctx.close.timeframe,
     )
 
-    # Calculate %K using expressions
-    close_expr = Expression(Literal(aligned_close))
-    high_expr = Expression(Literal(highest_high))
-    low_expr = Expression(Literal(lowest_low))
-
-    # Handle identical high/low case
-    if all(h == l for h, l in zip(highest_high.values, lowest_low.values, strict=False)):
-        k_series = Series[Price](
-            timestamps=aligned_close.timestamps,
-            values=tuple(Price("50.0") for _ in aligned_close.values),
-            symbol=aligned_close.symbol,
-            timeframe=aligned_close.timeframe,
-        )
-    else:
-        # %K = ((Close - Lowest Low) / (Highest High - Lowest Low)) * 100
-        k_expr = ((close_expr - low_expr) / (high_expr - low_expr + 1e-10)) * 100
-        k_series = k_expr.evaluate({})
+    # %K = ((Close - Lowest Low) / (Highest High - Lowest Low)) * 100
+    # Use 50 when the denominator is zero to avoid divide-by-zero drift.
+    k_values = []
+    for c_val, h_val, l_val in zip(aligned_close.values, highest_high.values, lowest_low.values, strict=False):
+        denom = Decimal(str(h_val)) - Decimal(str(l_val))
+        if denom == 0:
+            k_values.append(Price("50.0"))
+        else:
+            num = Decimal(str(c_val)) - Decimal(str(l_val))
+            k_values.append(Price((num / denom) * Decimal(100)))
+    k_series = Series[Price](
+        timestamps=aligned_close.timestamps,
+        values=tuple(k_values),
+        symbol=aligned_close.symbol,
+        timeframe=aligned_close.timeframe,
+    )
 
     # Calculate %D using rolling_mean on %K
     d_series = rolling_mean(SeriesContext(close=k_series), d_period)

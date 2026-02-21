@@ -4,8 +4,6 @@ from __future__ import annotations
 
 from ...core import Series
 from ...core.types import Price, Qty
-from ...expr.algebra.operators import Expression
-from ...expr.ir.nodes import LiteralNode as Literal
 from ...primitives.elementwise_ops import cumulative_sum, sign
 from ...registry.models import SeriesContext
 from ...registry.registry import register
@@ -48,7 +46,7 @@ def obv(ctx: SeriesContext) -> Series[Qty]:
     )
 
     # Calculate directed volume: volume * sign(price_change)
-    directed_volume = (Expression(Literal(aligned_volume)) * Expression(Literal(price_signs))).evaluate({})
+    directed_volume = aligned_volume * price_signs
 
     # Calculate OBV as cumulative sum + first volume
     obv_series = cumulative_sum(SeriesContext(close=directed_volume))
