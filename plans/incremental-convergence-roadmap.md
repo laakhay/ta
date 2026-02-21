@@ -12,10 +12,10 @@ for all node execution, with `batch` and `incremental` as two runners over the s
 - Mode resolver centralized (`expr/execution/backend.py`) and wired in main entrypoints.
 - Source/field schema unified (parser/typecheck/validate/manifest).
 - [~] Parity harness expanded (`tests/parity/test_batch_vs_incremental.py` + utils) with nested, boolean, and time-shift cases.
-- [~] Canonical step contract module introduced (`expr/execution/contracts.py`) with initial tests.
-- [~] Incremental backend adapterization advanced; source/literal/binary/unary/call/timeshift/filter/aggregate logic delegated to `expr/execution/node_adapters.py`.
-- [~] Single step runner entrypoint introduced (`expr/execution/runner.py`) and wired through `Expression.run`, `Engine`, and `Stream`.
-- [~] Versioned state snapshots introduced under `expr/execution/state/*`.
+- [x] Canonical step contract module introduced (`expr/execution/contracts.py`) with initial tests.
+- [x] Incremental backend adapterization advanced; source/literal/binary/unary/call/timeshift/filter/aggregate logic delegated to `expr/execution/node_adapters.py`.
+- [x] Single step runner entrypoint introduced (`expr/execution/runner.py`) and wired through `Expression.run`, `Engine`, and `Stream`.
+- [x] Versioned state snapshots introduced under `expr/execution/state/*`.
 
 ## Phase A: Canonical Step Contract
 
@@ -51,8 +51,8 @@ Exit gate:
 Goal: both execution modes use the same graph step runner.
 
 - [x] Create `expr/execution/runner.py` as canonical graph runner.
-- [~] Implement batch as historical replay over runner.
-- [~] Implement incremental as streaming updates over runner.
+- [x] Implement batch as historical replay over runner.
+- [x] Implement incremental as streaming updates over runner.
 - [x] Keep vectorized shortcuts optional and parity-guarded.
 
 Exit gate:
@@ -64,42 +64,42 @@ Exit gate:
 Goal: state lifecycle is explicit, typed, and replay-safe.
 
 - [x] Introduce graph state model (`execution/state/*`) for node state snapshots.
-- [~] Ensure snapshot/restore parity for batch replay and incremental continuation.
+- [x] Ensure snapshot/restore parity for batch replay and incremental continuation.
 - [x] Add state schema/version metadata for forward compatibility.
 
 Exit gate:
 
-- [~] Replay tests and snapshot determinism tests pass.
+- [x] Replay tests and snapshot determinism tests pass.
 
 ## Phase E: Semantic Parity Hardening
 
 Goal: prevent drift permanently via test gates.
 
-- [~] Expand parity matrix:
+- [x] Expand parity matrix:
   - nested indicators
   - multi-source expressions
   - boolean chains and comparison mixes
   - time shift / change / change_pct
   - warmup boundaries and availability transitions
-- [ ] Add CI parity gate as mandatory.
-- [~] Add targeted tolerance rules only where mathematically justified.
+- [~] Add CI parity gate as mandatory.
+- [x] Add targeted tolerance rules only where mathematically justified.
 
 Exit gate:
 
-- [~] Batch vs incremental parity suite passes for current expanded expression set; continue expanding goldens.
+- [x] Batch vs incremental parity suite passes for current expanded expression set.
 
 ## Phase F: Compatibility Cleanup
 
 Goal: remove temporary wrappers and stale modules once migration is complete.
 
-- Migrate imports away from legacy runtime evaluator entrypoint.
-- Remove `expr/runtime/evaluator.py` when zero references remain.
-- Remove parser compatibility stubs only after callsites migrate.
-- Keep changelog entries for migration-safe upgrades.
+- [x] Migrate imports away from legacy runtime evaluator entrypoint.
+- [x] Remove `expr/runtime/evaluator.py` when zero references remain.
+- [x] Remove parser compatibility stubs only after callsites migrate.
+- [~] Keep changelog entries for migration-safe upgrades.
 
 Exit gate:
 
-- No stale wrappers remain except documented intentional API shims.
+- [x] No stale wrappers remain except documented intentional API shims.
 
 ## Weekly progress checklist
 

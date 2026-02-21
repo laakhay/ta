@@ -7,8 +7,8 @@ evaluation logic lives in ``laakhay.ta.expr.planner.evaluator.Evaluator``.
 from .analyze import AnalysisResult, analyze
 from .emission import IndicatorEmission, IndicatorInputBinding, IndicatorRenderHints
 from .engine import Engine
-from .evaluator import RuntimeEvaluator
-from .evaluator import RuntimeEvaluator as LegacyRuntimeEvaluator
+from .legacy_evaluator import RuntimeEvaluator
+from .legacy_evaluator import RuntimeEvaluator as LegacyRuntimeEvaluator
 from .preview import PreviewResult, preview
 from .stream import AvailabilityTransition, Stream, StreamUpdate
 from .validate import ExprValidationError, ValidationResult, validate
