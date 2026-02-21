@@ -396,6 +396,11 @@ def negative_values(ctx: SeriesContext, field: str | None = None) -> Series[Pric
     return ew_unary(_select_field(ctx, field) if field else _select(ctx), lambda x: x if x < 0 else Decimal(0))  # type: ignore
 
 
+@register("abs", description="Absolute value of a series")
+def absolute_value(ctx: SeriesContext, field: str | None = None) -> Series[Price]:
+    return ew_unary(_select_field(ctx, field) if field else _select(ctx), abs)  # type: ignore
+
+
 @register("rolling_ema", description="Exponential Moving Average over a window")
 def rolling_ema(ctx: SeriesContext, period: int = 20, field: str | None = None) -> Series[Price]:
     src = _select_field(ctx, field) if field else _select(ctx)

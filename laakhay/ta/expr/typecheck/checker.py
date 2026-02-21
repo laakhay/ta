@@ -153,8 +153,10 @@ def _validate_param_value(indicator_name: str, param_name: str, value: Any, expe
 
         val = actual_node.value
         if not isinstance(val, expected_type):
-            # Safe coercion: int -> float
+            # Safe coercion: int -> float or float(whole) -> int
             if expected_type is float and isinstance(val, int):
+                pass
+            elif expected_type is int and isinstance(val, float) and val.is_integer():
                 pass
             else:
                 raise TypeCheckError(

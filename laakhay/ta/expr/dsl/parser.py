@@ -5,20 +5,20 @@ from __future__ import annotations
 import ast
 from typing import Any
 
-from ... import indicators as _indicators  # noqa: F401
-from ...api.namespace import ensure_namespace_registered
-from ...registry.registry import get_global_registry
-from ..ir.nodes import (
+from laakhay.ta.api.namespace import ensure_namespace_registered
+from laakhay.ta.expr.ir.nodes import (
     AggregateNode,
     BinaryOpNode,
     CallNode,
     CanonicalExpression,
     FilterNode,
     LiteralNode,
+    MemberAccessNode,
     SourceRefNode,
     TimeShiftNode,
     UnaryOpNode,
 )
+from laakhay.ta.registry.registry import get_global_registry
 
 
 class StrategyError(Exception):
@@ -73,6 +73,7 @@ _INDICATOR_ALIASES = {
     "fib_up": "fib_level_up",
     "fib_down_level": "fib_level_down",
     "fib_up_level": "fib_level_up",
+    "stoch": "stochastic",
 }
 
 _PARAM_ALIASES = {
@@ -85,6 +86,12 @@ _DEFAULT_SOURCE_FIELDS = {
     "low",
     "open",
     "volume",
+    "price",
+    "amount",
+    "count",
+    "side",
+    "bid",
+    "ask",
     "hlc3",
     "ohlc4",
     "hl2",
@@ -103,7 +110,7 @@ class ExpressionParser:
     def __init__(self) -> None:
         ensure_namespace_registered()
         # Ensure indicators are loaded before accessing registry
-        from ... import indicators  # noqa: F401
+        from laakhay.ta import indicators  # noqa: F401
 
         self._registry = get_global_registry()
 
@@ -191,8 +198,8 @@ class ExpressionParser:
                 condition_expr = self._convert_node(node.args[0])
                 return FilterNode(series=series_expr, condition=condition_expr)
 
-            # Handle aggregation method calls: trades.sum(amount), trades.avg(price)
-            if method_name in {"sum", "avg", "max", "min"}:
+            # Handle aggregation method calls: trades.sum(amount), trades.avg(price), trades.count()
+            if method_name in {"sum", "avg", "max", "min", "count"}:
                 series_expr = self._convert_node(node.func.value)
                 field: str | None = None
 
@@ -239,6 +246,17 @@ class ExpressionParser:
         input_expr: CanonicalExpression | None = None
 
         supports_nested = name in {
+            "sma",
+            "ema",
+            "rma",
+            "rsi",
+            "atr",
+            "macd",
+            "bbands",
+            "stoch",
+            "stochastic",
+            "vwap",
+            "abs",
             "crossup",
             "crossdown",
             "cross",
@@ -420,6 +438,12 @@ class ExpressionParser:
         lowered = node.id.lower()
         if lowered in {"true", "false"}:
             return LiteralNode(value=1.0 if lowered == "true" else 0.0)
+
+        # Support sources as bare names (for method calls like trades.filter)
+        known_sources = {"ohlcv", "trades", "orderbook", "liquidation"}
+        if lowered in known_sources:
+            return SourceRefNode(symbol=None, field="close" if lowered == "ohlcv" else None, source=lowered)
+
         if lowered in _DEFAULT_SOURCE_FIELDS:
             return CallNode(name="select", args=(), kwargs={"field": LiteralNode(lowered)})
         raise StrategyError(f"Unknown identifier '{node.id}'")
@@ -458,7 +482,11 @@ class ExpressionParser:
         if isinstance(current, ast.Name):
             chain.insert(0, current.id)
         else:
-            raise StrategyError(f"Unsupported attribute chain base: {ast.dump(current)}")
+            # If the ultimate base is an expression (e.g. Call), handle as MemberAccess
+            expr = self._convert_node(current)
+            for attr in chain:
+                expr = MemberAccessNode(expr=expr, member=attr.lower())
+            return expr
 
         # Parse chain into components (now includes base, quote, instrument_type)
         exchange, symbol, timeframe, source, field, base, quote, instrument_type = self._parse_attribute_chain(chain)

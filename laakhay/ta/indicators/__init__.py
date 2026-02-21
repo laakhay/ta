@@ -15,6 +15,9 @@ from ..expr.ir.nodes import LiteralNode as Literal
 
 # Import primitives directly from the module to avoid circular imports
 from ..primitives import (
+    absolute_value as abs,
+)
+from ..primitives import (
     cumulative_sum,
     diff,
     negative_values,
@@ -74,6 +77,7 @@ __all__ = [
     "Expression",
     "Literal",
     # Primitives
+    "abs",
     "diff",
     "rolling_max",
     "rolling_mean",

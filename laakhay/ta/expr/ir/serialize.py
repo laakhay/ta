@@ -151,9 +151,11 @@ def ir_from_dict(data: dict[str, Any]) -> CanonicalExpression:
     if node_type == "literal":
         return LiteralNode(value=data["value"], **kwargs)
     if node_type == "source_ref":
+        symbol = data.get("symbol")
+        field = data.get("field")
         return SourceRefNode(
-            symbol=str(data["symbol"]),
-            field=str(data["field"]),
+            symbol=str(symbol) if symbol is not None else None,
+            field=str(field) if field is not None else None,
             source=str(data.get("source", "ohlcv")),
             exchange=data.get("exchange"),
             timeframe=data.get("timeframe"),

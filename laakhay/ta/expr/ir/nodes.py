@@ -30,8 +30,8 @@ class LiteralNode(ExprNode):
 class SourceRefNode(ExprNode):
     """Fully resolved source/field identity. Replaces AttributeNode."""
 
-    symbol: str
-    field: str
+    symbol: str | None
+    field: str | None
     source: str = "ohlcv"
     exchange: str | None = None
     timeframe: str | None = None

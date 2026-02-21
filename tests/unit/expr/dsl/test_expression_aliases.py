@@ -1,6 +1,7 @@
 import pytest
 
 from laakhay.ta.expr.dsl import StrategyError, extract_indicator_nodes, parse_expression_text
+from laakhay.ta.expr.typecheck.checker import TypeCheckError
 
 
 def test_parse_mean_alias():
@@ -117,11 +118,10 @@ def test_parse_mean_explicit_field_kwarg():
 def test_malformed_lookback():
     """Test negative cases for lookback (should still fail if invalid value)."""
     # The parser currently doesn't validate types strictly in _convert_indicator_call,
-    # it just stores whatever literal it gets. Hard validation comes later.
-    # For now, let's just assert it normalizes even bad values.
-    expr = parse_expression_text("mean(close, lookback='invalid')")
-    indicators = extract_indicator_nodes(expr)
-    assert indicators[0].kwargs["period"].value == "invalid"
+    # it just stores whatever literal it gets. Hard validation comes later
+    # during compile_to_ir -> typecheck_expression.
+    with pytest.raises(TypeCheckError, match="Parameter 'period' expects int, got str"):
+        parse_expression_text("mean(close, lookback='invalid')")
 
 
 def test_unknown_parameter_raises_error():
