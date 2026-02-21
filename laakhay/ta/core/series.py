@@ -5,11 +5,26 @@ from __future__ import annotations
 import decimal
 from collections.abc import Iterator
 from dataclasses import dataclass
+from datetime import UTC
 from typing import Any, Generic, Literal, TypeAlias, TypeVar
 
 from .types import Price, Qty, Symbol, Timestamp
 
 T = TypeVar("T")
+
+
+def _coerce_numeric_pair(v1: Any, v2: Any) -> tuple[Any, Any]:
+    if isinstance(v1, decimal.Decimal) and isinstance(v2, float):
+        return v1, decimal.Decimal(str(v2))
+    if isinstance(v2, decimal.Decimal) and isinstance(v1, float):
+        return decimal.Decimal(str(v1)), v2
+    return v1, v2
+
+
+def _coerce_scalar_for_sample(sample: Any, scalar: Any) -> Any:
+    if isinstance(sample, decimal.Decimal) and isinstance(scalar, float):
+        return decimal.Decimal(str(scalar))
+    return scalar
 
 
 @dataclass(slots=True, frozen=True)
@@ -76,6 +91,7 @@ class Series(Generic[T]):
             try:
                 new_values_list = []
                 for v1, v2 in zip(self.values, other.values, strict=False):
+                    v1, v2 = _coerce_numeric_pair(v1, v2)
                     new_values_list.append(v1 + v2)  # type: ignore
                 new_values = tuple(new_values_list)  # type: ignore[misc]
             except TypeError:
@@ -91,9 +107,10 @@ class Series(Generic[T]):
         else:
             # Scalar addition (requires T to support addition)
             try:
+                scalar = _coerce_scalar_for_sample(self.values[0], other) if self.values else other
                 new_values_list = []
                 for v in self.values:
-                    new_values_list.append(v + other)  # type: ignore
+                    new_values_list.append(v + scalar)  # type: ignore
                 new_values = tuple(new_values_list)  # type: ignore[misc]
             except TypeError:
                 raise TypeError(
@@ -114,6 +131,7 @@ class Series(Generic[T]):
             try:
                 new_values_list = []
                 for v1, v2 in zip(self.values, other.values, strict=False):
+                    v1, v2 = _coerce_numeric_pair(v1, v2)
                     new_values_list.append(v1 - v2)  # type: ignore
                 new_values = tuple(new_values_list)  # type: ignore[misc]
             except TypeError:
@@ -130,9 +148,10 @@ class Series(Generic[T]):
             )
         else:
             try:
+                scalar = _coerce_scalar_for_sample(self.values[0], other) if self.values else other
                 new_values_list = []
                 for v in self.values:
-                    new_values_list.append(v - other)  # type: ignore
+                    new_values_list.append(v - scalar)  # type: ignore
                 new_values = tuple(new_values_list)  # type: ignore[misc]
             except TypeError:
                 raise TypeError(
@@ -153,6 +172,7 @@ class Series(Generic[T]):
             try:
                 new_values_list = []
                 for v1, v2 in zip(self.values, other.values, strict=False):
+                    v1, v2 = _coerce_numeric_pair(v1, v2)
                     new_values_list.append(v1 * v2)  # type: ignore
                 new_values = tuple(new_values_list)  # type: ignore[misc]
             except TypeError:
@@ -169,9 +189,10 @@ class Series(Generic[T]):
             )
         else:
             try:
+                scalar = _coerce_scalar_for_sample(self.values[0], other) if self.values else other
                 new_values_list = []
                 for v in self.values:
-                    new_values_list.append(v * other)  # type: ignore
+                    new_values_list.append(v * scalar)  # type: ignore
                 new_values = tuple(new_values_list)  # type: ignore[misc]
             except TypeError:
                 raise TypeError(
@@ -192,6 +213,7 @@ class Series(Generic[T]):
             try:
                 new_values_list = []
                 for v1, v2 in zip(self.values, other.values, strict=False):
+                    v1, v2 = _coerce_numeric_pair(v1, v2)
                     new_values_list.append(v1 / v2)  # type: ignore
                 new_values = tuple(new_values_list)  # type: ignore[misc]
             except TypeError:
@@ -210,9 +232,10 @@ class Series(Generic[T]):
             )
         else:
             try:
+                scalar = _coerce_scalar_for_sample(self.values[0], other) if self.values else other
                 new_values_list = []
                 for v in self.values:
-                    new_values_list.append(v / other)  # type: ignore
+                    new_values_list.append(v / scalar)  # type: ignore
                 new_values = tuple(new_values_list)  # type: ignore[misc]
             except TypeError:
                 raise TypeError(
@@ -233,7 +256,12 @@ class Series(Generic[T]):
         if isinstance(other, Series):
             self._validate_series_alignment(other, operation="modulo")
             try:
-                new_values = tuple(v1 % v2 for v1, v2 in zip(self.values, other.values, strict=False))  # type: ignore[misc]
+                new_values = tuple(
+                    _v1 % _v2
+                    for _v1, _v2 in (
+                        _coerce_numeric_pair(v1, v2) for v1, v2 in zip(self.values, other.values, strict=False)
+                    )
+                )  # type: ignore[misc]
             except (ZeroDivisionError, decimal.InvalidOperation):
                 raise ValueError("Cannot perform modulo with zero divisor in series") from None
             except TypeError:
@@ -250,9 +278,10 @@ class Series(Generic[T]):
             )
         else:
             try:
+                scalar = _coerce_scalar_for_sample(self.values[0], other) if self.values else other
                 new_values = []
                 for v in self.values:
-                    new_values.append(v % other)  # type: ignore
+                    new_values.append(v % scalar)  # type: ignore
             except (ZeroDivisionError, decimal.InvalidOperation):
                 raise ValueError("Cannot perform modulo with scalar zero") from None
             except TypeError:
@@ -272,7 +301,12 @@ class Series(Generic[T]):
         if isinstance(other, Series):
             self._validate_series_alignment(other, operation="power")
             try:
-                new_values = tuple(v1**v2 for v1, v2 in zip(self.values, other.values, strict=False))  # type: ignore[misc]
+                new_values = tuple(
+                    _v1**_v2
+                    for _v1, _v2 in (
+                        _coerce_numeric_pair(v1, v2) for v1, v2 in zip(self.values, other.values, strict=False)
+                    )
+                )  # type: ignore[misc]
             except TypeError:
                 raise TypeError(
                     f"Cannot perform power on series values of types {type(self.values[0])} and {type(other.values[0])}"
@@ -287,7 +321,8 @@ class Series(Generic[T]):
             )
         else:
             try:
-                new_values = tuple(v**other for v in self.values)  # type: ignore[misc]
+                scalar = _coerce_scalar_for_sample(self.values[0], other) if self.values else other
+                new_values = tuple(v**scalar for v in self.values)  # type: ignore[misc]
             except TypeError:
                 raise TypeError(
                     f"Cannot perform power on series values of type {type(self.values[0]) if self.values else 'unknown'} with scalar {type(other)}"
@@ -405,7 +440,7 @@ class Series(Generic[T]):
             timestamp = self.timestamps[0]
         else:
             # For empty series, we need a timestamp - use a default
-            from datetime import UTC, datetime
+            from datetime import datetime
 
             timestamp = datetime.now(UTC)
         return Series[int](
@@ -442,7 +477,7 @@ class Series(Generic[T]):
             timestamp = self.timestamps[0]
         else:
             # For empty series, we need a timestamp - use a default
-            from datetime import UTC, datetime
+            from datetime import datetime
 
             timestamp = datetime.now(UTC)
 

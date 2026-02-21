@@ -10,12 +10,13 @@ from ...core import Series
 from ...core.dataset import Dataset
 from ...data.dataset import dataset_from_bars, trim_dataset
 from ..dsl import (
-    StrategyExpression,
+    CanonicalExpression,
     compile_expression,
     compute_trim,
     extract_indicator_nodes,
     parse_expression_text,
 )
+from ..ir.nodes import CallNode
 from .emission import IndicatorEmission, build_indicator_emissions
 
 
@@ -45,7 +46,7 @@ class PreviewResult:
 
 
 def preview(
-    expression: str | StrategyExpression,
+    expression: str | CanonicalExpression,
     *,
     bars: Sequence[Mapping[str, Any]] | None = None,
     dataset: Dataset | None = None,
@@ -63,7 +64,7 @@ def preview(
     6. Extracts trigger points (where boolean results are True)
 
     Args:
-        expression: Expression text (e.g., "(sma(20) > sma(50))") or parsed StrategyExpression
+        expression: Expression text (e.g., "(sma(20) > sma(50))") or parsed CanonicalExpression
         bars: Optional raw OHLCV bar data. Must provide either bars or dataset.
         dataset: Optional pre-built Dataset. Must provide either bars or dataset.
         symbol: Symbol name (required if bars provided)
@@ -115,7 +116,7 @@ def preview(
     plan = compiled_expr._ensure_plan()
     for node_id, node_data in plan.graph.nodes.items():
         n = node_data.node
-        if hasattr(n, "__class__") and n.__class__.__name__ == "IndicatorNode":
+        if isinstance(n, CallNode):
             if node_id in node_outputs:
                 # Key format: "indicator_nodeid" (e.g., "sma_25")
                 key = f"{n.name}_{node_id}"

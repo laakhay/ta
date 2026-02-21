@@ -14,11 +14,8 @@ from laakhay.ta.core.dataset import Dataset
 from laakhay.ta.core.ohlcv import OHLCV
 from laakhay.ta.core.series import Series
 from laakhay.ta.core.types import Price
-from laakhay.ta.expr.algebra.models import BinaryOp, Literal, OperatorType, UnaryOp
 from laakhay.ta.expr.algebra.operators import Expression, as_expression
-
-UTC = UTC
-
+from laakhay.ta.expr.ir.nodes import BinaryOpNode, LiteralNode, UnaryOpNode
 
 # ---------------------------------------------------------------------
 # Helpers
@@ -51,18 +48,18 @@ class TestExpression:
         from laakhay.ta.expr.algebra.operators import _to_node
 
         expr_ser = Expression(_to_node(test_series))
-        assert isinstance(expr_ser._node, Literal) and expr_ser._node.value == test_series
+        assert isinstance(expr_ser._node, LiteralNode) and expr_ser._node.value == test_series
 
         # scalar
         expr_s = Expression(_to_node(42))
-        assert isinstance(expr_s._node, Literal) and expr_s._node.value == 42
+        assert isinstance(expr_s._node, LiteralNode) and expr_s._node.value == 42
 
     def test_evaluate_and_describe_and_deps(self, literal_10, literal_20):
         expr = Expression(literal_10)
         out = expr.evaluate({})
         assert isinstance(out, Series) and len(out) == 1 and out.values[0] == Price(10)
 
-        add = BinaryOp(OperatorType.ADD, literal_10, literal_20)
+        add = BinaryOpNode("add", literal_10, literal_20)
         ex_add = Expression(add)
         desc = ex_add.describe()
         assert "(10 + 20)" in desc
@@ -72,78 +69,78 @@ class TestExpression:
     @pytest.mark.parametrize(
         "op_type",
         [
-            OperatorType.ADD,
-            OperatorType.SUB,
-            OperatorType.MUL,
-            OperatorType.DIV,
-            OperatorType.MOD,
-            OperatorType.POW,
+            "add",
+            "sub",
+            "mul",
+            "div",
+            "mod",
+            "pow",
         ],
     )
     def test_arithmetic_overloading(self, literal_10, literal_20, op_type):
         a, b = Expression(literal_10), Expression(literal_20)
         node = {
-            OperatorType.ADD: (a + b),
-            OperatorType.SUB: (a - b),
-            OperatorType.MUL: (a * b),
-            OperatorType.DIV: (a / b),
-            OperatorType.MOD: (a % b),
-            OperatorType.POW: (a**b),
+            "add": (a + b),
+            "sub": (a - b),
+            "mul": (a * b),
+            "div": (a / b),
+            "mod": (a % b),
+            "pow": (a**b),
         }[op_type]._node
-        assert isinstance(node, BinaryOp) and node.operator == op_type
+        assert isinstance(node, BinaryOpNode) and node.operator == op_type
 
     @pytest.mark.parametrize(
         "op_type",
         [
-            OperatorType.EQ,
-            OperatorType.NE,
-            OperatorType.LT,
-            OperatorType.LE,
-            OperatorType.GT,
-            OperatorType.GE,
+            "eq",
+            "neq",
+            "lt",
+            "lte",
+            "gt",
+            "gte",
         ],
     )
     def test_comparison_overloading(self, literal_10, literal_20, op_type):
         a, b = Expression(literal_10), Expression(literal_20)
         node = {
-            OperatorType.EQ: (a == b),
-            OperatorType.NE: (a != b),
-            OperatorType.LT: (a < b),
-            OperatorType.LE: (a <= b),
-            OperatorType.GT: (a > b),
-            OperatorType.GE: (a >= b),
+            "eq": (a == b),
+            "neq": (a != b),
+            "lt": (a < b),
+            "lte": (a <= b),
+            "gt": (a > b),
+            "gte": (a >= b),
         }[op_type]._node
-        assert isinstance(node, BinaryOp) and node.operator == op_type
+        assert isinstance(node, BinaryOpNode) and node.operator == op_type
 
     def test_unary_overloading(self, literal_10):
         expr = Expression(literal_10)
         neg = (-expr)._node
         pos = (+expr)._node
-        assert isinstance(neg, UnaryOp) and neg.operator == OperatorType.NEG
-        assert isinstance(pos, UnaryOp) and pos.operator == OperatorType.POS
+        assert isinstance(neg, UnaryOpNode) and neg.operator == "neg"
+        assert isinstance(pos, UnaryOpNode) and pos.operator == "pos"
 
     @pytest.mark.parametrize(
         "op_type",
         [
-            OperatorType.ADD,
-            OperatorType.SUB,
-            OperatorType.MUL,
-            OperatorType.DIV,
-            OperatorType.MOD,
-            OperatorType.POW,
+            "add",
+            "sub",
+            "mul",
+            "div",
+            "mod",
+            "pow",
         ],
     )
     def test_scalar_ops_wrap_to_binary(self, literal_10, op_type):
         expr = Expression(literal_10)
         node = {
-            OperatorType.ADD: (expr + 5),
-            OperatorType.SUB: (expr - 5),
-            OperatorType.MUL: (expr * 5),
-            OperatorType.DIV: (expr / 5),
-            OperatorType.MOD: (expr % 5),
-            OperatorType.POW: (expr**2),
+            "add": (expr + 5),
+            "sub": (expr - 5),
+            "mul": (expr * 5),
+            "div": (expr / 5),
+            "mod": (expr % 5),
+            "pow": (expr**2),
         }[op_type]._node
-        assert isinstance(node, BinaryOp) and node.operator == op_type
+        assert isinstance(node, BinaryOpNode) and node.operator == op_type
 
     def test_chaining_and_eval(self, literal_10, literal_20):
         # (10 + 20) * 10 = 300
@@ -247,10 +244,12 @@ class TestExpressionIntegration:
 class TestAsExpression:
     def test_wrap_scalar_series_literal_and_idempotent(self, literal_10, test_series):
         e_s = as_expression(42)
-        assert isinstance(e_s, Expression) and isinstance(e_s._node, Literal) and e_s._node.value == 42
+        assert isinstance(e_s, Expression) and isinstance(e_s._node, LiteralNode) and e_s._node.value == 42
 
         e_ser = as_expression(test_series)
-        assert isinstance(e_ser, Expression) and isinstance(e_ser._node, Literal) and e_ser._node.value == test_series
+        assert (
+            isinstance(e_ser, Expression) and isinstance(e_ser._node, LiteralNode) and e_ser._node.value == test_series
+        )
 
         e_lit = as_expression(literal_10)
         assert isinstance(e_lit, Expression) and e_lit._node == literal_10
@@ -261,7 +260,7 @@ class TestAsExpression:
     def test_operator_chaining(self, literal_10, literal_20):
         res = as_expression(literal_10) + as_expression(literal_20)
         assert isinstance(res, Expression)
-        assert isinstance(res._node, BinaryOp) and res._node.operator == OperatorType.ADD
+        assert isinstance(res._node, BinaryOpNode) and res._node.operator == "add"
         assert res._node.left == literal_10 and res._node.right == literal_20
 
 

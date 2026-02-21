@@ -11,9 +11,6 @@ from laakhay.ta.core import OHLCV, Dataset, DatasetKey, DatasetMetadata, Series
 from laakhay.ta.core.dataset import dataset as make_dataset
 from laakhay.ta.core.types import Price
 
-UTC = UTC
-
-
 # ---------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------

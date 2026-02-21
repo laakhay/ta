@@ -7,20 +7,13 @@ from typing import Any
 # Ensure indicators are loaded before creating parser
 from ... import indicators  # noqa: F401
 from ..algebra import Expression
+from ..compile import compile_to_ir
+from ..ir.nodes import CallNode, CanonicalExpression
+from ..ir.serialize import ir_from_dict, ir_to_dict
 from .analyzer import IndicatorAnalyzer
-from .compiler import ExpressionCompiler
-from .nodes import (
-    IndicatorNode,
-    StrategyError,
-    StrategyExpression,
-    expression_from_dict,
-    expression_to_dict,
-)
-from .parser import ExpressionParser
+from .parser import StrategyError
 
 __all__ = [
-    "StrategyExpression",
-    "IndicatorNode",
     "StrategyError",
     "parse_expression_text",
     "expression_from_dict",
@@ -28,36 +21,44 @@ __all__ = [
     "compile_expression",
     "extract_indicator_nodes",
     "compute_trim",
+    "CanonicalExpression",
+    "CallNode",
 ]
 
-_parser = ExpressionParser()
-_compiler = ExpressionCompiler()
 _analyzer = IndicatorAnalyzer()
 
 
-def _ensure_expression(expression: StrategyExpression | str | dict[str, Any]) -> StrategyExpression:
+def _ensure_expression(expression: CanonicalExpression | str | dict[str, Any]) -> CanonicalExpression:
     if isinstance(expression, str):
-        return _parser.parse_text(expression)
+        return compile_to_ir(expression)
     if isinstance(expression, dict):
-        return expression_from_dict(expression)
+        return ir_from_dict(expression)
     return expression
 
 
-def parse_expression_text(expression_text: str) -> StrategyExpression:
-    return _parser.parse_text(expression_text)
+def parse_expression_text(expression_text: str) -> CanonicalExpression:
+    return compile_to_ir(expression_text)
 
 
-def compile_expression(expression: StrategyExpression | str | dict[str, Any]) -> Expression:
+def expression_from_dict(data: dict[str, Any]) -> CanonicalExpression:
+    return ir_from_dict(data)
+
+
+def expression_to_dict(expr: CanonicalExpression) -> dict[str, Any]:
+    return ir_to_dict(expr)
+
+
+def compile_expression(expression: CanonicalExpression | str | dict[str, Any]) -> Expression:
     expr = _ensure_expression(expression)
-    return _compiler.compile(expr)
+    return Expression(expr)
 
 
-def extract_indicator_nodes(expression: StrategyExpression | str | dict[str, Any]) -> list[IndicatorNode]:
+def extract_indicator_nodes(expression: CanonicalExpression | str | dict[str, Any]) -> list[CallNode]:
     expr = _ensure_expression(expression)
     return _analyzer.collect(expr)
 
 
-def compute_trim(expression_or_indicators: StrategyExpression | list[IndicatorNode] | str | dict[str, Any]) -> int:
+def compute_trim(expression_or_indicators: CanonicalExpression | list[CallNode] | str | dict[str, Any]) -> int:
     if isinstance(expression_or_indicators, list):
         return _analyzer.compute_trim(expression_or_indicators)
     expr = _ensure_expression(expression_or_indicators)

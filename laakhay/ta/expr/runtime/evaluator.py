@@ -14,15 +14,16 @@ from ...core.dataset import Dataset
 from ...core.series import align_series
 from ...exceptions import MissingDataError
 from ...registry.models import SeriesContext
-from ..algebra.models import (
+from ..ir.nodes import (
     SCALAR_SYMBOL,
-    AggregateExpression,
-    BinaryOp,
-    FilterExpression,
-    Literal,
-    SourceExpression,
-    TimeShiftExpression,
-    UnaryOp,
+    AggregateNode,
+    BinaryOpNode,
+    CallNode,
+    FilterNode,
+    LiteralNode,
+    SourceRefNode,
+    TimeShiftNode,
+    UnaryOpNode,
 )
 from ..planner.types import PlanResult
 
@@ -214,40 +215,28 @@ class RuntimeEvaluator:
         """Evaluate a single node in the expression graph."""
         n = node.node
 
-        # Binary operations
-        if isinstance(n, BinaryOp):
+        if isinstance(n, BinaryOpNode):
             return self._eval_binary_op(n, children_outputs, alignment_args)
 
-        # Unary operations
-        if isinstance(n, UnaryOp):
-            return n.evaluate(context)
+        if isinstance(n, UnaryOpNode):
+            return self._eval_unary_op(n, children_outputs)
 
-        # Literals
-        if isinstance(n, Literal):
-            result = n.evaluate(context)
-            # Extract scalar value if it's a scalar series
-            if isinstance(result, Series) and result.symbol == SCALAR_SYMBOL and len(result) == 1:
-                return result.values[0]
-            return result
+        if isinstance(n, LiteralNode):
+            return self._eval_literal_node(n, context)
 
-        # Source expressions - resolve from dataset context
-        if isinstance(n, SourceExpression):
+        if isinstance(n, SourceRefNode):
             return self._eval_source_expression(n, context, symbol, timeframe)
 
-        # Filter expressions
-        if isinstance(n, FilterExpression):
+        if isinstance(n, FilterNode):
             return self._eval_filter_expression(n, children_outputs, context)
 
-        # Aggregate expressions
-        if isinstance(n, AggregateExpression):
+        if isinstance(n, AggregateNode):
             return self._eval_aggregate_expression(n, children_outputs, context)
 
-        # Time shift expressions
-        if isinstance(n, TimeShiftExpression):
+        if isinstance(n, TimeShiftNode):
             return self._eval_time_shift_expression(n, children_outputs, context)
 
-        # Indicator nodes
-        if hasattr(n, "__class__") and n.__class__.__name__ == "IndicatorNode":
+        if isinstance(n, CallNode):
             return self._eval_indicator_node(n, children_outputs, context)
 
         from ...exceptions import EvaluationError
@@ -260,7 +249,7 @@ class RuntimeEvaluator:
 
     def _eval_binary_op(
         self,
-        op: BinaryOp,
+        n: BinaryOpNode,
         children_outputs: list[Series[Any]],
         alignment_args: dict[str, Any],
     ) -> Series[Any]:
@@ -271,7 +260,7 @@ class RuntimeEvaluator:
         left, right = children_outputs[0], children_outputs[1]
 
         # Ensure both are Series objects
-        from ..algebra.models import _make_scalar_series
+        from ..algebra.scalar_helpers import _make_scalar_series
 
         if not isinstance(left, Series):
             left = _make_scalar_series(left)
@@ -279,24 +268,137 @@ class RuntimeEvaluator:
             right = _make_scalar_series(right)
 
         # Align series if needed
-        if isinstance(left, Series) and isinstance(right, Series):
+        left_aligned, right_aligned = left, right
+        arithmetic_ops = {"add", "sub", "mul", "div", "mod", "pow"}
+        comparison_ops = {"eq", "neq", "lt", "lte", "gt", "gte"}
+        logical_ops = {"and", "or"}
+
+        if n.operator in arithmetic_ops | comparison_ops | logical_ops:
             left_is_scalar = left.symbol == SCALAR_SYMBOL
             right_is_scalar = right.symbol == SCALAR_SYMBOL
-
             if not (left_is_scalar or right_is_scalar):
-                left, right = align_series(
+                if left.symbol != right.symbol or left.timeframe != right.timeframe:
+                    raise ValueError("mismatched metadata")
+                left_aligned, right_aligned = align_series(
                     left,
                     right,
                     **alignment_args,
                     symbol=left.symbol,
                     timeframe=left.timeframe,
                 )
+            elif left_is_scalar and not right_is_scalar:
+                from ..algebra.scalar_helpers import _broadcast_scalar_series
 
-        return op.evaluate_aligned(left, right)
+                left_aligned = _broadcast_scalar_series(left_aligned, right_aligned)
+            elif right_is_scalar and not left_is_scalar:
+                from ..algebra.scalar_helpers import _broadcast_scalar_series
+
+                right_aligned = _broadcast_scalar_series(right_aligned, left_aligned)
+
+        op = n.operator
+        if op == "add":
+            return left_aligned + right_aligned
+        elif op == "sub":
+            return left_aligned - right_aligned
+        elif op == "mul":
+            return left_aligned * right_aligned
+        elif op == "div":
+            return left_aligned / right_aligned
+        elif op == "mod":
+            return left_aligned % right_aligned
+        elif op == "pow":
+            return left_aligned**right_aligned
+        elif op == "eq":
+            return self._comparison_series(left_aligned, right_aligned, lambda a, b: a == b)
+        elif op == "neq":
+            return self._comparison_series(left_aligned, right_aligned, lambda a, b: a != b)
+        elif op == "lt":
+            return self._comparison_series(left_aligned, right_aligned, lambda a, b: a < b)
+        elif op == "lte":
+            return self._comparison_series(left_aligned, right_aligned, lambda a, b: a <= b)
+        elif op == "gt":
+            return self._comparison_series(left_aligned, right_aligned, lambda a, b: a > b)
+        elif op == "gte":
+            return self._comparison_series(left_aligned, right_aligned, lambda a, b: a >= b)
+        elif op in {"and", "or"}:
+            from decimal import Decimal
+
+            def _truthy(v: Any) -> bool:
+                if isinstance(v, bool):
+                    return v
+                if isinstance(v, (int, float, Decimal)):
+                    return bool(Decimal(str(v)))
+                try:
+                    return bool(Decimal(str(v)))
+                except Exception:
+                    return bool(v)
+
+            values = tuple(
+                (_truthy(lv) and _truthy(rv)) if op == "and" else (_truthy(lv) or _truthy(rv))
+                for lv, rv in zip(left_aligned.values, right_aligned.values, strict=False)
+            )
+            return Series[bool](
+                timestamps=left_aligned.timestamps,
+                values=values,
+                symbol=left_aligned.symbol,
+                timeframe=left_aligned.timeframe,
+            )
+        raise NotImplementedError(f"operator {op} not supported")
+
+    def _comparison_series(self, left: Series[Any], right: Series[Any], compare) -> Series[bool]:
+        # Debugging print
+        print(f"\n_comparison_series left len: {len(left.timestamps)} vs {len(left.values)}")
+        print(f"_comparison_series right len: {len(right.timestamps)} vs {len(right.values)}")
+        result_values = tuple(bool(compare(lv, rv)) for lv, rv in zip(left.values, right.values, strict=False))
+        return Series[bool](
+            timestamps=left.timestamps,
+            values=result_values,
+            symbol=left.symbol,
+            timeframe=left.timeframe,
+        )
+
+    def _eval_unary_op(self, n: UnaryOpNode, children_outputs: list[Series[Any]]) -> Series[Any]:
+        operand = children_outputs[0]
+        if not isinstance(operand, Series):
+            from ..algebra.scalar_helpers import _make_scalar_series
+
+            operand = _make_scalar_series(operand)
+        op = n.operator
+        if op == "neg":
+            return -operand
+        elif op == "pos":
+            return operand
+        elif op == "not":
+            from decimal import Decimal
+
+            def _truthy(v: Any) -> bool:
+                if isinstance(v, bool):
+                    return v
+                if isinstance(v, (int, float, Decimal)):
+                    return bool(Decimal(str(v)))
+                try:
+                    return bool(Decimal(str(v)))
+                except Exception:
+                    return bool(v)
+
+            return Series[bool](
+                timestamps=operand.timestamps,
+                values=tuple(not _truthy(v) for v in operand.values),
+                symbol=operand.symbol,
+                timeframe=operand.timeframe,
+            )
+        raise NotImplementedError(f"Unary operator {op} not implemented")
+
+    def _eval_literal_node(self, n: LiteralNode, context: dict[str, Series[Any]]) -> Any:
+        if isinstance(n.value, Series) and n.value.symbol == SCALAR_SYMBOL and len(n.value) == 1:
+            return n.value.values[0]
+        if isinstance(n.value, Series):
+            return n.value
+        return n.value
 
     def _eval_source_expression(
         self,
-        expr: SourceExpression,
+        expr: SourceRefNode,
         context: dict[str, Series[Any]],
         symbol: str,
         timeframe: str,
@@ -343,7 +445,7 @@ class RuntimeEvaluator:
 
     def _eval_filter_expression(
         self,
-        expr: FilterExpression,
+        expr: FilterNode,
         children_outputs: list[Series[Any]],
         context: dict[str, Series[Any]],
     ) -> Series[Any]:
@@ -352,9 +454,7 @@ class RuntimeEvaluator:
             series_expr = children_outputs[0]
             condition_expr = children_outputs[1]
         else:
-            # Fallback: evaluate directly
-            series_expr = expr.series.evaluate(context)
-            condition_expr = expr.condition.evaluate(context)
+            raise ValueError("FilterNode requires 2 evaluated children")
 
         from ...exceptions import EvaluationError
 
@@ -375,7 +475,7 @@ class RuntimeEvaluator:
 
     def _eval_aggregate_expression(
         self,
-        expr: AggregateExpression,
+        expr: AggregateNode,
         children_outputs: list[Series[Any]],
         context: dict[str, Series[Any]],
     ) -> Series[Any]:
@@ -383,8 +483,7 @@ class RuntimeEvaluator:
         if len(children_outputs) >= 1:
             series_expr = children_outputs[0]
         else:
-            # Fallback: evaluate directly
-            series_expr = expr.series.evaluate(context)
+            raise ValueError("AggregateNode requires 1 evaluated child")
 
         from ...exceptions import EvaluationError
 
@@ -414,7 +513,7 @@ class RuntimeEvaluator:
 
     def _eval_time_shift_expression(
         self,
-        expr: TimeShiftExpression,
+        expr: TimeShiftNode,
         children_outputs: list[Series[Any]],
         context: dict[str, Series[Any]],
     ) -> Series[Any]:
@@ -422,8 +521,7 @@ class RuntimeEvaluator:
         if len(children_outputs) >= 1:
             series_expr = children_outputs[0]
         else:
-            # Fallback: evaluate directly
-            series_expr = expr.series.evaluate(context)
+            raise ValueError("TimeShiftNode requires 1 evaluated child")
 
         from ...exceptions import EvaluationError
 
@@ -503,27 +601,39 @@ class RuntimeEvaluator:
 
     def _eval_indicator_node(
         self,
-        node: Any,
+        node: CallNode,
         children_outputs: list[Series[Any]],
         context: dict[str, Series[Any]],
     ) -> Series[Any]:
-        """Evaluate IndicatorNode."""
-        # If indicator has input_series and it was evaluated as a child, use that result
-        if hasattr(node, "input_series") and node.input_series is not None and len(children_outputs) >= 1:
-            input_series_result = children_outputs[0]
-            if node.name not in node._registry._indicators:
-                from ...exceptions import UnsupportedIndicatorError
+        """Evaluate CallNode."""
+        from ...registry.registry import get_global_registry
 
-                raise UnsupportedIndicatorError(
-                    f"Indicator '{node.name}' not found in registry",
-                    indicator=node.name,
-                    reason="Indicator not registered",
-                )
-            indicator_func = node._registry._indicators[node.name]
-            params_without_input = {k: v for k, v in node.params.items() if k != "input_series"}
+        registry = get_global_registry()
+
+        if node.name not in registry._indicators:
+            from ...exceptions import UnsupportedIndicatorError
+
+            raise UnsupportedIndicatorError(
+                f"Indicator '{node.name}' not found in registry",
+                indicator=node.name,
+                reason="Indicator not registered",
+            )
+        indicator_func = registry._indicators[node.name]
+
+        # Map evaluated children back to args and kwargs
+        eval_args = children_outputs[: len(node.args)]
+        eval_kwargs = {}
+
+        kwarg_outputs = children_outputs[len(node.args) :]
+        for key, val in zip(sorted(node.kwargs.keys()), kwarg_outputs, strict=True):
+            eval_kwargs[key] = val
+
+        if node.input_expr is not None and len(eval_args) > 0:
+            input_series_result = eval_args[0]
+            remaining_args = eval_args[1:]
+
             if isinstance(input_series_result, Series):
-                # Standard nested-series flow (e.g. sma(close, 20)).
-                return indicator_func(SeriesContext(close=input_series_result), **params_without_input)
+                return indicator_func(SeriesContext(close=input_series_result), *remaining_args, **eval_kwargs)
 
             # Multi-output flow (e.g. enter(bbands(...))). Preserve original context
             # and pass nested result as the first positional indicator argument.
@@ -537,10 +647,9 @@ class RuntimeEvaluator:
                 orderbook=context.get("orderbook"),
                 liquidation=context.get("liquidation"),
             )
-            return indicator_func(series_context, input_series_result, **params_without_input)
+            return indicator_func(series_context, input_series_result, *remaining_args, **eval_kwargs)
 
-        # Otherwise, use standard evaluation
-        return node.run(context)
+        return indicator_func(SeriesContext(**context), *eval_args, **eval_kwargs)
 
     def clear_cache(self) -> None:
         """Clear the evaluation cache."""

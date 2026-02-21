@@ -12,8 +12,6 @@ from laakhay.ta.core.types import Price
 # Helpers & fixtures
 # ---------------------------------------------------------------------
 
-UTC = UTC
-
 
 def ts(*parts) -> tuple[datetime, ...]:
     """Datetime tuple helper: ts((y,m,d,h=0), ...) -> (dt1, dt2, ...)."""

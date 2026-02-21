@@ -1,10 +1,10 @@
-"""Shared test fixtures for laakhay.ta tests."""
-
 from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
 from typing import Any
 
 import pytest
+
+UTC = UTC
 
 
 @pytest.fixture(autouse=True)
@@ -346,7 +346,7 @@ def unsorted_timestamps() -> tuple[datetime, ...]:
 @pytest.fixture
 def multi_source_dataset() -> Any:
     """Create a comprehensive multi-source dataset fixture for testing."""
-    from datetime import UTC, datetime, timedelta
+    from datetime import datetime, timedelta
     from decimal import Decimal
 
     from laakhay.ta.core.bar import Bar

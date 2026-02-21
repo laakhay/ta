@@ -48,8 +48,7 @@ def test_parse_invalid_expression():
 def test_parse_sma_positional_period():
     expr = parse_expression_text("sma(20)")
     indicators = extract_indicator_nodes(expr)
-    assert indicators[0].params.get("period") == 20
-    assert "ctx" not in indicators[0].params
+    assert indicators[0].args[0].value == 20
 
 
 def test_parse_in_channel_expression():

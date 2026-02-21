@@ -10,14 +10,14 @@ from laakhay.ta.core.dataset import Dataset
 from laakhay.ta.core.ohlcv import OHLCV
 from laakhay.ta.core.series import Series
 from laakhay.ta.core.types import Price
-from laakhay.ta.expr.algebra.models import (
-    AggregateExpression,
-    FilterExpression,
-    Literal,
-    SourceExpression,
-    TimeShiftExpression,
-)
 from laakhay.ta.expr.dsl import compile_expression
+from laakhay.ta.expr.ir.nodes import (
+    AggregateNode,
+    FilterNode,
+    LiteralNode,
+    SourceRefNode,
+    TimeShiftNode,
+)
 from laakhay.ta.expr.planner import plan_expression
 from laakhay.ta.expr.runtime.evaluator import RuntimeEvaluator
 
@@ -104,8 +104,8 @@ class TestRuntimeEvaluator:
         evaluator = RuntimeEvaluator()
         ds = create_test_dataset()
 
-        # Create SourceExpression directly
-        source_expr = SourceExpression(
+        # Create SourceRefNode directly
+        source_expr = SourceRefNode(
             symbol="BTCUSDT",
             field="price",
             exchange=None,
@@ -148,7 +148,7 @@ class TestRuntimeEvaluator:
             timeframe="1h",
         )
 
-        filter_expr = FilterExpression(series=Literal(values_series), condition=Literal(condition_series))
+        filter_expr = FilterNode(series=LiteralNode(values_series), condition=LiteralNode(condition_series))
 
         # Plan it
         from laakhay.ta.expr.planner.builder import build_graph
@@ -178,7 +178,7 @@ class TestRuntimeEvaluator:
             timeframe="1h",
         )
 
-        aggregate_expr = AggregateExpression(series=Literal(values_series), operation="sum", field=None)
+        aggregate_expr = AggregateNode(series=LiteralNode(values_series), operation="sum", field=None)
 
         # Plan it
         from laakhay.ta.expr.planner.builder import build_graph
@@ -208,7 +208,7 @@ class TestRuntimeEvaluator:
             timeframe="1h",
         )
 
-        shift_expr = TimeShiftExpression(series=Literal(values_series), shift="1h_ago", operation=None)
+        shift_expr = TimeShiftNode(series=LiteralNode(values_series), shift="1h_ago", operation=None)
 
         # Plan it
         from laakhay.ta.expr.planner.builder import build_graph
@@ -237,7 +237,7 @@ class TestRuntimeEvaluator:
             timeframe="1h",
         )
 
-        shift_expr = TimeShiftExpression(series=Literal(values_series), shift="1h", operation="change")
+        shift_expr = TimeShiftNode(series=LiteralNode(values_series), shift="1h", operation="change")
 
         # Plan it
         from laakhay.ta.expr.planner.builder import build_graph

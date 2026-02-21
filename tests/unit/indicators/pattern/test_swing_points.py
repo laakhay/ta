@@ -37,15 +37,16 @@ def test_swing_points_flags_basic_detection():
     high_series = result["swing_high"]
     low_series = result["swing_low"]
 
+    # Confirmed swings are visible on pivot+right (no-lookahead).
     assert high_series.values == (
         False,
         False,
-        True,
-        False,
-        False,
         False,
         True,
         False,
+        False,
+        False,
+        True,
         False,
     )
     assert low_series.values == (
@@ -53,33 +54,34 @@ def test_swing_points_flags_basic_detection():
         False,
         False,
         False,
-        True,
         False,
+        True,
         False,
         False,
         False,
     )
+    # Evaluation becomes valid only after left+right bars.
     assert high_series.availability_mask == (
         False,
-        True,
-        True,
-        True,
-        True,
-        True,
-        True,
-        True,
         False,
+        True,
+        True,
+        True,
+        True,
+        True,
+        True,
+        True,
     )
     assert low_series.availability_mask == (
         False,
-        True,
-        True,
-        True,
-        True,
-        True,
-        True,
-        True,
         False,
+        True,
+        True,
+        True,
+        True,
+        True,
+        True,
+        True,
     )
 
 
@@ -93,16 +95,16 @@ def test_swing_points_levels_reference_prices():
     high_series = result["swing_high"]
     low_series = result["swing_low"]
 
-    # Masks only flag confirmed swing candles
+    # Masks flag confirmation bars (not pivot bars).
     assert high_series.availability_mask == (
         False,
         False,
-        True,
-        False,
-        False,
         False,
         True,
         False,
+        False,
+        False,
+        True,
         False,
     )
     assert low_series.availability_mask == (
@@ -110,16 +112,17 @@ def test_swing_points_levels_reference_prices():
         False,
         False,
         False,
-        True,
         False,
+        True,
         False,
         False,
         False,
     )
 
-    # Values inherit underlying price series
-    assert high_series.values == high.values
-    assert low_series.values == low.values
+    # Values carry pivot prices at confirmation bars.
+    assert high_series.values[3] == Decimal("3")
+    assert high_series.values[7] == Decimal("4")
+    assert low_series.values[5] == Decimal("-1")
 
 
 def test_swing_points_equal_highs_not_flagged():
@@ -161,6 +164,19 @@ def test_swing_at_indexed_levels():
     assert latest_low.values[-1] == Decimal("-1")
 
 
+def test_swing_at_respects_right_bar_confirmation_no_lookahead():
+    high = _make_price_series([1, 2, 4, 3, 2, 1, 2, 5, 3, 2])
+    low = _make_price_series([1, 0, 1, 0, -1, 0, 1, 0, -1, 0])
+    ctx = SeriesContext(high=high, low=low)
+
+    latest_high = swing_high_at(ctx, index=1, left=1, right=2)
+
+    # First confirmed high is pivot idx=2 => visible at idx=4.
+    assert latest_high.availability_mask[3] is False
+    assert latest_high.availability_mask[4] is True
+    assert latest_high.values[4] == Decimal("4")
+
+
 def test_swing_at_invalid_index():
     high = _make_price_series([1, 2, 3, 2, 1])
     low = _make_price_series([1, 0, 1, 0, -1])
@@ -178,21 +194,22 @@ def test_swing_highs_direct_api_levels():
     levels = swing_highs(ctx, left=1, right=1, return_mode="levels")
     flags = swing_highs(ctx, left=1, right=1, return_mode="flags")
 
-    # Levels inherit prices but only mark confirmed swing highs in availability mask.
-    assert levels.values == high.values
+    # Levels expose confirmed pivot prices on confirmation bars.
+    assert levels.values[3] == Decimal("3")
+    assert levels.values[7] == Decimal("4")
     assert levels.availability_mask == (
         False,
         False,
-        True,
-        False,
-        False,
         False,
         True,
         False,
+        False,
+        False,
+        True,
         False,
     )
-    # Flags represent the same pattern as swing_points overall result.
-    assert flags.values == (False, False, True, False, False, False, True, False, False)
+    # Flags represent the same confirmation pattern.
+    assert flags.values == (False, False, False, True, False, False, False, True, False)
 
 
 def test_swing_lows_direct_api_levels():
@@ -203,14 +220,14 @@ def test_swing_lows_direct_api_levels():
     levels = swing_lows(ctx, left=1, right=1, return_mode="levels")
     flags = swing_lows(ctx, left=1, right=1, return_mode="flags")
 
-    assert levels.values == low.values
+    assert levels.values[5] == Decimal("-1")
     assert levels.availability_mask == (
         False,
         False,
         False,
         False,
-        True,
         False,
+        True,
         False,
         False,
         False,
@@ -220,8 +237,8 @@ def test_swing_lows_direct_api_levels():
         False,
         False,
         False,
-        True,
         False,
+        True,
         False,
         False,
         False,

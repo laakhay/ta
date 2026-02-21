@@ -9,17 +9,16 @@ from ...core.dataset import Dataset
 from ...core.series import align_series
 from ...exceptions import MissingDataError
 from ...registry.models import SeriesContext
-from ..algebra.models import (
+from ..ir.nodes import (
     SCALAR_SYMBOL,
-    AggregateExpression,
-    BinaryOp,
-    ExpressionNode,
-    FilterExpression,
-    Literal,
-    OperatorType,
-    SourceExpression,
-    TimeShiftExpression,
-    UnaryOp,
+    AggregateNode,
+    BinaryOpNode,
+    CallNode,
+    FilterNode,
+    LiteralNode,
+    SourceRefNode,
+    TimeShiftNode,
+    UnaryOpNode,
 )
 from .types import PlanResult, SignalRequirements
 
@@ -32,7 +31,7 @@ class Evaluator:
     def evaluate(
         self,
         expr,
-        data: Series[Any] | Dataset,
+        data: Series[Any] | Dataset | dict[str, Series[Any]],
         return_all_outputs: bool = False,
     ) -> Series[Any] | dict[tuple[str, str, str], Series[Any]] | tuple[Any, dict[int, Any]]:
         plan = expr._ensure_plan()
@@ -40,9 +39,11 @@ class Evaluator:
             context: dict[str, Series[Any]] = {"close": data}
             # Node-level caching is not performed for Series input
             return self._evaluate_graph(plan, context, return_all_outputs=return_all_outputs)
+        if isinstance(data, dict):
+            return self._evaluate_graph(plan, data, return_all_outputs=return_all_outputs)
         if isinstance(data, Dataset):
             return self._evaluate_dataset(expr, plan, data, return_all_outputs=return_all_outputs)
-        raise TypeError("Evaluator expects Series or Dataset")
+        raise TypeError(f"Evaluator expects Series, Dataset, or dict, got {type(data)}")
 
     def _evaluate_dataset(
         self,
@@ -180,131 +181,189 @@ class Evaluator:
 
     def _eval_node(self, node, children_outputs, context, alignment_args):
         n = node.node
-        # BinaryOp central alignment
-        if isinstance(n, BinaryOp):
-            arithmetic_ops = {
-                OperatorType.ADD,
-                OperatorType.SUB,
-                OperatorType.MUL,
-                OperatorType.DIV,
-                OperatorType.MOD,
-                OperatorType.POW,
-            }
-            comparison_ops = {
-                OperatorType.EQ,
-                OperatorType.NE,
-                OperatorType.LT,
-                OperatorType.LE,
-                OperatorType.GT,
-                OperatorType.GE,
-            }
-            # If operator is a Series operation, align both children before passing to op logic
-            if n.operator in arithmetic_ops | comparison_ops:
-                left, right = children_outputs[0], children_outputs[1]
-                # Ensure both operands are Series objects (convert scalars if needed)
-                from ..algebra.models import _make_scalar_series
+        if isinstance(n, BinaryOpNode):
+            arithmetic_ops = {"add", "sub", "mul", "div", "mod", "pow"}
+            comparison_ops = {"eq", "neq", "lt", "lte", "gt", "gte"}
+            logical_ops = {"and", "or"}
 
-                if not isinstance(left, Series):
-                    left = _make_scalar_series(left)
-                if not isinstance(right, Series):
-                    right = _make_scalar_series(right)
+            left, right = children_outputs[0], children_outputs[1]
+            from ..algebra.scalar_helpers import _make_scalar_series
 
-                if isinstance(left, Series) and isinstance(right, Series):
-                    left_is_scalar = left.symbol == SCALAR_SYMBOL
-                    right_is_scalar = right.symbol == SCALAR_SYMBOL
-                    if not (left_is_scalar or right_is_scalar):
-                        left, right = align_series(
-                            left,
-                            right,
-                            **alignment_args,
-                            symbol=left.symbol,
-                            timeframe=left.timeframe,
-                        )
-                return n.evaluate_aligned(left, right)
-            # Otherwise, fallback to default logic (e.g. logical)
-            return n.evaluate(context)
-        elif isinstance(n, UnaryOp):
-            return n.evaluate(context)
-        elif isinstance(n, Literal):
-            result = n.evaluate(context)
-            # If result is a scalar Series, extract the scalar value for test compatibility
-            if isinstance(result, Series) and result.symbol == SCALAR_SYMBOL and len(result) == 1:
-                return result.values[0]
-            return result
-        elif isinstance(n, SourceExpression):
+            if not isinstance(left, Series):
+                left = _make_scalar_series(left)
+            if not isinstance(right, Series):
+                right = _make_scalar_series(right)
+
+            left_aligned, right_aligned = left, right
+            if n.operator in arithmetic_ops | comparison_ops | logical_ops:
+                left_is_scalar = left.symbol == SCALAR_SYMBOL
+                right_is_scalar = right.symbol == SCALAR_SYMBOL
+                if not (left_is_scalar or right_is_scalar):
+                    if left.symbol != right.symbol or left.timeframe != right.timeframe:
+                        raise ValueError("mismatched metadata")
+                    left_aligned, right_aligned = align_series(
+                        left,
+                        right,
+                        **alignment_args,
+                        symbol=left.symbol,
+                        timeframe=left.timeframe,
+                    )
+                elif left_is_scalar and not right_is_scalar:
+                    from ..algebra.scalar_helpers import _broadcast_scalar_series
+
+                    left_aligned = _broadcast_scalar_series(left_aligned, right_aligned)
+                elif right_is_scalar and not left_is_scalar:
+                    from ..algebra.scalar_helpers import _broadcast_scalar_series
+
+                    right_aligned = _broadcast_scalar_series(right_aligned, left_aligned)
+
+            op = n.operator
+            if op == "add":
+                return left_aligned + right_aligned
+            elif op == "sub":
+                return left_aligned - right_aligned
+            elif op == "mul":
+                return left_aligned * right_aligned
+            elif op == "div":
+                return left_aligned / right_aligned
+            elif op == "mod":
+                return left_aligned % right_aligned
+            elif op == "pow":
+                return left_aligned**right_aligned
+            elif op == "eq":
+                return self._comparison_series(left_aligned, right_aligned, lambda a, b: a == b)
+            elif op == "neq":
+                return self._comparison_series(left_aligned, right_aligned, lambda a, b: a != b)
+            elif op == "lt":
+                return self._comparison_series(left_aligned, right_aligned, lambda a, b: a < b)
+            elif op == "lte":
+                return self._comparison_series(left_aligned, right_aligned, lambda a, b: a <= b)
+            elif op == "gt":
+                return self._comparison_series(left_aligned, right_aligned, lambda a, b: a > b)
+            elif op == "gte":
+                return self._comparison_series(left_aligned, right_aligned, lambda a, b: a >= b)
+            elif op in {"and", "or"}:
+                from decimal import Decimal
+
+                def _truthy(v: Any) -> bool:
+                    if isinstance(v, bool):
+                        return v
+                    if isinstance(v, (int, float, Decimal)):
+                        return bool(Decimal(str(v)))
+                    try:
+                        return bool(Decimal(str(v)))
+                    except Exception:
+                        return bool(v)
+
+                values = tuple(
+                    _truthy(lv) and _truthy(rv) if op == "and" else _truthy(lv) or _truthy(rv)
+                    for lv, rv in zip(left_aligned.values, right_aligned.values, strict=False)
+                )
+                return Series[bool](
+                    timestamps=left_aligned.timestamps,
+                    values=values,
+                    symbol=left_aligned.symbol,
+                    timeframe=left_aligned.timeframe,
+                )
+            raise NotImplementedError(f"operator {op} not supported")
+
+        elif isinstance(n, UnaryOpNode):
+            operand = children_outputs[0]
+            if not isinstance(operand, Series):
+                from ..algebra.scalar_helpers import _make_scalar_series
+
+                operand = _make_scalar_series(operand)
+            op = n.operator
+            if op == "neg":
+                return -operand
+            elif op == "pos":
+                return operand
+            elif op == "not":
+                from decimal import Decimal
+
+                def _truthy(v: Any) -> bool:
+                    if isinstance(v, bool):
+                        return v
+                    if isinstance(v, (int, float, Decimal)):
+                        return bool(Decimal(str(v)))
+                    try:
+                        return bool(Decimal(str(v)))
+                    except Exception:
+                        return bool(v)
+
+                return Series[bool](
+                    timestamps=operand.timestamps,
+                    values=tuple(not _truthy(v) for v in operand.values),
+                    symbol=operand.symbol,
+                    timeframe=operand.timeframe,
+                )
+            raise NotImplementedError(f"Unary operator {op} not implemented")
+
+        elif isinstance(n, LiteralNode):
+            if isinstance(n.value, Series) and n.value.symbol == SCALAR_SYMBOL and len(n.value) == 1:
+                return n.value.values[0]
+            if isinstance(n.value, Series):
+                return n.value
+            return n.value
+
+        elif isinstance(n, SourceRefNode):
             return self._evaluate_source_expression(n, context)
-        elif isinstance(n, FilterExpression):
-            # Evaluate child expressions (series and condition)
-            # Children should be in children_outputs if graph was built correctly
-            if len(children_outputs) >= 2:
-                series_expr = children_outputs[0]
-                condition_expr = children_outputs[1]
-            else:
-                # Fallback: evaluate directly from node
-                series_expr = n.series.evaluate(context)
-                condition_expr = n.condition.evaluate(context)
+
+        elif isinstance(n, FilterNode):
+            series_expr = children_outputs[0] if len(children_outputs) >= 1 else None
+            condition_expr = children_outputs[1] if len(children_outputs) >= 2 else None
             return self._evaluate_filter_expression(series_expr, condition_expr)
-        elif isinstance(n, AggregateExpression):
-            # Evaluate child expression (series)
-            if len(children_outputs) >= 1:
-                series_expr = children_outputs[0]
-            else:
-                # Fallback: evaluate directly from node
-                series_expr = n.series.evaluate(context)
+
+        elif isinstance(n, AggregateNode):
+            series_expr = children_outputs[0] if len(children_outputs) >= 1 else None
             return self._evaluate_aggregate_expression(series_expr, n.operation, n.field)
-        elif isinstance(n, TimeShiftExpression):
-            # Evaluate child expression (series)
-            if len(children_outputs) >= 1:
-                series_expr = children_outputs[0]
-            else:
-                # Fallback: evaluate directly from node
-                series_expr = n.series.evaluate(context)
+
+        elif isinstance(n, TimeShiftNode):
+            series_expr = children_outputs[0] if len(children_outputs) >= 1 else None
             return self._evaluate_time_shift_expression(series_expr, n.shift, n.operation)
-        elif hasattr(n, "__class__") and n.__class__.__name__ == "IndicatorNode":
-            # Prepare parameters by substituting child results
-            params = n.params.copy()
-            child_output_index = 0
 
-            # Sort params to match builder order
-            for key, value in sorted(n.params.items()):
-                if isinstance(value, ExpressionNode):
-                    if child_output_index < len(children_outputs):
-                        params[key] = children_outputs[child_output_index]
-                        child_output_index += 1
+        elif isinstance(n, CallNode):
+            from ...registry.registry import get_global_registry
 
-            # Handle input_series (always processed after params in builder)
-            if hasattr(n, "input_series") and n.input_series is not None:
-                if child_output_index < len(children_outputs):
-                    # Use the pre-evaluated input_series from children
-                    input_series_result = children_outputs[child_output_index]
+            registry = get_global_registry()
 
-                    # Remove input_series from params if present
-                    if "input_series" in params:
-                        del params["input_series"]
-
-                    # Evaluate the indicator with this context
-                    if n.name not in n._registry._indicators:
-                        raise ValueError(f"Indicator '{n.name}' not found in registry")
-                    indicator_func = n._registry._indicators[n.name]
-                    if isinstance(input_series_result, Series):
-                        # Standard nested-series flow.
-                        return indicator_func(SeriesContext(close=input_series_result), **params)
-
-                    # Multi-output flow (e.g. enter(bbands(...))): preserve context
-                    # and pass nested result as first positional indicator argument.
-                    base_ctx = SeriesContext(**context)
-                    return indicator_func(base_ctx, input_series_result, **params)
-
-            # Use standard context if no input_series
-            if n.name not in n._registry._indicators:
+            if n.name not in registry._indicators:
                 raise ValueError(f"Indicator '{n.name}' not found in registry")
+            indicator_func = registry._indicators[n.name]
 
-            indicator_func = n._registry._indicators[n.name]
-            return indicator_func(SeriesContext(**context), **params)
+            # Map evaluated children back to args and kwargs
+            eval_args = children_outputs[: len(n.args)]
+            eval_kwargs = n.kwargs.copy()
+
+            kwarg_outputs = children_outputs[len(n.args) :]
+            for key, val in zip(sorted(n.kwargs.keys()), kwarg_outputs, strict=True):
+                eval_kwargs[key] = val
+
+            if n.input_expr is not None and len(eval_args) > 0:
+                input_series_result = eval_args[0]
+                remaining_args = eval_args[1:]
+
+                if isinstance(input_series_result, Series):
+                    return indicator_func(SeriesContext(close=input_series_result), *remaining_args, **eval_kwargs)
+
+                base_ctx = SeriesContext(**context)
+                return indicator_func(base_ctx, input_series_result, *remaining_args, **eval_kwargs)
+
+            return indicator_func(SeriesContext(**context), *eval_args, **eval_kwargs)
+
         else:
             raise NotImplementedError(f"Unsupported node type: {type(n)}")
 
-    def _evaluate_source_expression(self, expr: SourceExpression, context: dict[str, Any]) -> Series[Any]:
+    def _comparison_series(self, left: Series[Any], right: Series[Any], compare) -> Series[bool]:
+        result_values = tuple(bool(compare(lv, rv)) for lv, rv in zip(left.values, right.values, strict=False))
+        return Series[bool](
+            timestamps=left.timestamps,
+            values=result_values,
+            symbol=left.symbol,
+            timeframe=left.timeframe,
+        )
+
+    def _evaluate_source_expression(self, expr: SourceRefNode, context: dict[str, Any]) -> Series[Any]:
         """Evaluate SourceExpression by resolving series from context.
 
         Args:

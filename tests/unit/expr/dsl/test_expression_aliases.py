@@ -1,6 +1,7 @@
 import pytest
 
 from laakhay.ta.expr.dsl import StrategyError, extract_indicator_nodes, parse_expression_text
+from laakhay.ta.expr.typecheck.checker import TypeCheckError
 
 
 def test_parse_mean_alias():
@@ -8,7 +9,7 @@ def test_parse_mean_alias():
     expr = parse_expression_text("mean(close, lookback=10)")
     indicators = extract_indicator_nodes(expr)
     assert indicators[0].name == "rolling_mean"
-    assert indicators[0].params["period"] == 10
+    assert indicators[0].kwargs["period"].value == 10
 
 
 def test_parse_median_alias():
@@ -16,7 +17,7 @@ def test_parse_median_alias():
     expr = parse_expression_text("median(close, lookback=10)")
     indicators = extract_indicator_nodes(expr)
     assert indicators[0].name == "rolling_median"
-    assert indicators[0].params["period"] == 10
+    assert indicators[0].kwargs["period"].value == 10
 
 
 def test_parse_lookback_keyword():
@@ -24,7 +25,7 @@ def test_parse_lookback_keyword():
     expr = parse_expression_text("sma(close, lookback=10)")
     indicators = extract_indicator_nodes(expr)
     assert indicators[0].name == "sma"
-    assert indicators[0].params["period"] == 10
+    assert indicators[0].kwargs["period"].value == 10
 
 
 def test_parse_min_max_with_lookback():
@@ -32,12 +33,12 @@ def test_parse_min_max_with_lookback():
     expr_max = parse_expression_text("max(close, lookback=20)")
     indicators_max = extract_indicator_nodes(expr_max)
     assert indicators_max[0].name == "max"
-    assert indicators_max[0].params["period"] == 20
+    assert indicators_max[0].kwargs["period"].value == 20
 
     expr_min = parse_expression_text("min(close, lookback=20)")
     indicators_min = extract_indicator_nodes(expr_min)
     assert indicators_min[0].name == "min"
-    assert indicators_min[0].params["period"] == 20
+    assert indicators_min[0].kwargs["period"].value == 20
 
 
 def test_parse_volume_stats():
@@ -45,7 +46,7 @@ def test_parse_volume_stats():
     expr = parse_expression_text("mean(volume, lookback=10)")
     indicators = extract_indicator_nodes(expr)
     assert indicators[0].name == "rolling_mean"
-    assert indicators[0].params["period"] == 10
+    assert indicators[0].kwargs["period"].value == 10
 
 
 def test_parse_mixed_aliases_and_logic():
@@ -60,12 +61,10 @@ def test_parse_nested_stats_aliases():
     """Test nesting aliases."""
     expr = parse_expression_text("mean(sma(close, 14), lookback=10)")
     indicators = extract_indicator_nodes(expr)
-    # 1. rolling_mean
-    # 2. sma (from input_expr of rolling_mean)
-    # 3. select (from input_expr of sma)
     assert any(ind.name == "rolling_mean" for ind in indicators)
     assert any(ind.name == "sma" for ind in indicators)
-    assert any(ind.name == "select" and ind.params.get("field") == "close" for ind in indicators)
+    # SourceRefNode is no longer collected by IndicatorAnalyzer.collect because it's not a CallNode
+    # assert any(ind.name == "select" and ind.params.get("field") == "close" for ind in indicators)
 
 
 def test_parse_explicit_source_with_alias():
@@ -77,7 +76,7 @@ def test_parse_explicit_source_with_alias():
     # Note: the input_expr of 'mean' will be the AttributeNode, which is not collected by collect().
     assert len(indicators) == 1
     assert indicators[0].name == "rolling_mean"
-    assert indicators[0].params["period"] == 50
+    assert indicators[0].kwargs["period"].value == 50
 
 
 def test_parse_mean_positional_field():
@@ -88,8 +87,13 @@ def test_parse_mean_positional_field():
     # Should resolve to field='volume', period=10
     # Note: 'volume' is parsed as a name, which heuristics map to field param
     assert indicators[0].name == "rolling_mean"
-    assert indicators[0].params["field"] == "volume"
-    assert indicators[0].params["period"] == 10
+    # Positional args are now in indicators[0].args
+    from laakhay.ta.expr.ir.nodes import LiteralNode, SourceRefNode
+
+    assert isinstance(indicators[0].args[0], SourceRefNode)
+    assert indicators[0].args[0].field == "volume"
+    assert isinstance(indicators[0].args[1], LiteralNode)
+    assert indicators[0].args[1].value == 10
 
 
 def test_parse_mean_default_positional_field():
@@ -98,8 +102,7 @@ def test_parse_mean_default_positional_field():
     indicators = extract_indicator_nodes(expr)
     assert len(indicators) == 1
     assert indicators[0].name == "rolling_mean"
-    assert indicators[0].params.get("field") is None
-    assert indicators[0].params["period"] == 10
+    assert indicators[0].args[0].value == 10
 
 
 def test_parse_mean_explicit_field_kwarg():
@@ -108,18 +111,17 @@ def test_parse_mean_explicit_field_kwarg():
     indicators = extract_indicator_nodes(expr)
     assert len(indicators) == 1
     assert indicators[0].name == "rolling_mean"
-    assert indicators[0].params["field"] == "high"
-    assert indicators[0].params["period"] == 10
+    assert indicators[0].kwargs["field"].value == "high"
+    assert indicators[0].args[0].value == 10
 
 
 def test_malformed_lookback():
     """Test negative cases for lookback (should still fail if invalid value)."""
     # The parser currently doesn't validate types strictly in _convert_indicator_call,
-    # it just stores whatever literal it gets. Hard validation comes later.
-    # For now, let's just assert it normalizes even bad values.
-    expr = parse_expression_text("mean(close, lookback='invalid')")
-    indicators = extract_indicator_nodes(expr)
-    assert indicators[0].params["period"] == "invalid"
+    # it just stores whatever literal it gets. Hard validation comes later
+    # during compile_to_ir -> typecheck_expression.
+    with pytest.raises(TypeCheckError, match="Parameter 'period' expects int, got str"):
+        parse_expression_text("mean(close, lookback='invalid')")
 
 
 def test_unknown_parameter_raises_error():

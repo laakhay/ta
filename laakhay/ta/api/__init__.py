@@ -233,26 +233,41 @@ def __getattr__(name: str) -> Any:
         from ..expr.runtime.engine import Engine
 
         return Engine
-    elif name in ("Expression", "BinaryOp", "ExpressionNode", "Literal", "UnaryOp", "as_expression"):
+    elif name in (
+        "Expression",
+        "BinaryOp",
+        "BinaryOpNode",
+        "ExpressionNode",
+        "Literal",
+        "LiteralNode",
+        "UnaryOp",
+        "UnaryOpNode",
+        "as_expression",
+    ):
         from ..expr.algebra import (
-            BinaryOp,
+            BinaryOp,  # noqa: F401
+            BinaryOpNode,
             Expression,
-            ExpressionNode,
-            Literal,
-            UnaryOp,
+            Literal,  # noqa: F401
+            LiteralNode,
+            OperatorType,  # noqa: F401
+            UnaryOp,  # noqa: F401
+            UnaryOpNode,
             as_expression,
         )
 
         if name == "Expression":
             return Expression
-        elif name == "BinaryOp":
-            return BinaryOp
+        elif name in ("BinaryOp", "BinaryOpNode"):
+            return BinaryOpNode
         elif name == "ExpressionNode":
-            return ExpressionNode
-        elif name == "Literal":
-            return Literal
-        elif name == "UnaryOp":
-            return UnaryOp
+            from ..expr.ir.nodes import ExprNode
+
+            return ExprNode
+        elif name in ("Literal", "LiteralNode"):
+            return LiteralNode
+        elif name in ("UnaryOp", "UnaryOpNode"):
+            return UnaryOpNode
         elif name == "as_expression":
             return as_expression
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
@@ -284,10 +299,12 @@ __all__ = [
     "list_indicators",
     "list_all_names",
     "Expression",
-    "ExpressionNode",
     "BinaryOp",
+    "BinaryOpNode",
     "UnaryOp",
+    "UnaryOpNode",
     "Literal",
+    "LiteralNode",
     "as_expression",
     "Engine",  # Imported lazily
     "ta",

@@ -10,10 +10,13 @@ eliminating circular import issues and providing a single source of truth for de
 from ..api.namespace import _select_indicator  # noqa: F401
 from ..core import Series
 from ..core.types import Price, Qty
-from ..expr.algebra.models import Literal
 from ..expr.algebra.operators import Expression
+from ..expr.ir.nodes import LiteralNode as Literal
 
 # Import primitives directly from the module to avoid circular imports
+from ..primitives import (
+    absolute_value as abs,
+)
 from ..primitives import (
     cumulative_sum,
     diff,
@@ -74,6 +77,7 @@ __all__ = [
     "Expression",
     "Literal",
     # Primitives
+    "abs",
     "diff",
     "rolling_max",
     "rolling_mean",

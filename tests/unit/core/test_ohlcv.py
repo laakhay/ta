@@ -12,9 +12,6 @@ from laakhay.ta.core import OHLCV
 from laakhay.ta.core.bar import Bar
 from laakhay.ta.core.types import Timestamp
 
-UTC = UTC
-
-
 # ---------------------------------------------------------------------
 # Helpers & fixtures
 # ---------------------------------------------------------------------

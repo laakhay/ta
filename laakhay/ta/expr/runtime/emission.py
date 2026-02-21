@@ -8,7 +8,7 @@ from typing import Any
 
 from ...core import Series
 from ...registry.registry import get_global_registry
-from ..algebra.models import BinaryOp, ExpressionNode, Literal, SourceExpression, UnaryOp
+from ..ir.nodes import BinaryOpNode, CallNode, ExprNode, LiteralNode, SourceRefNode, UnaryOpNode
 
 _OSCILLATOR_INDICATORS = {
     "rsi",
@@ -111,8 +111,9 @@ def build_indicator_emissions(
             continue
 
         indicator_name = str(getattr(node, "name", ""))
-        raw_params = dict(getattr(node, "params", {}) or {})
-        input_node = getattr(node, "input_series", None)
+        raw_params = dict(getattr(node, "kwargs", {}) or {})
+        input_node = getattr(node, "args", [])
+        input_node = input_node[0] if input_node else None
         binding = _resolve_input_binding(indicator_name, raw_params, input_node)
         outputs = _normalize_outputs(
             value=node_outputs[node_id],
@@ -151,7 +152,7 @@ def build_indicator_emissions(
 
 
 def _is_indicator_node(node: Any) -> bool:
-    return node.__class__.__name__ == "IndicatorNode" and hasattr(node, "name") and hasattr(node, "params")
+    return isinstance(node, CallNode)
 
 
 def _normalize_outputs(
@@ -211,7 +212,7 @@ def _build_render_hints(
 def _resolve_input_binding(
     indicator_name: str,
     params: dict[str, Any],
-    input_node: ExpressionNode | None,
+    input_node: ExprNode | None,
 ) -> IndicatorInputBinding:
     if input_node is not None:
         resolved = _resolve_binding_from_expression(input_node)
@@ -219,6 +220,8 @@ def _resolve_input_binding(
             return resolved
 
     source_param = params.get("source")
+    if isinstance(source_param, LiteralNode) and isinstance(source_param.value, str):
+        source_param = source_param.value
     if isinstance(source_param, str):
         src = source_param.lower()
         if src in {"open", "high", "low", "close", "volume", "price"}:
@@ -226,9 +229,20 @@ def _resolve_input_binding(
         return IndicatorInputBinding(source="ohlcv", field=src)
 
     field_param = params.get("field")
+    if isinstance(field_param, LiteralNode) and isinstance(field_param.value, str):
+        field_param = field_param.value
     if isinstance(field_param, str):
         field = field_param.lower()
         return IndicatorInputBinding(source="ohlcv", field=("close" if field == "price" else field))
+
+    # Also handle the cases where field is passed positionally via args
+    # But those are passed via input_node, which we already resolved above
+    # So if we reach here and input_node was a LiteralNode with a string, it might be the field
+    if isinstance(input_node, LiteralNode) and isinstance(input_node.value, str):
+        val = input_node.value.lower()
+        if val in {"open", "high", "low", "close", "volume", "price"}:
+            return IndicatorInputBinding(source="ohlcv", field=("close" if val == "price" else val))
+        return IndicatorInputBinding(source="ohlcv", field=val)
 
     handle = get_global_registry().get(indicator_name)
     if handle is not None:
@@ -243,26 +257,28 @@ def _resolve_input_binding(
     return IndicatorInputBinding(source="ohlcv", field="close")
 
 
-def _resolve_binding_from_expression(node: ExpressionNode) -> IndicatorInputBinding | None:
-    if isinstance(node, SourceExpression):
+def _resolve_binding_from_expression(node: ExprNode) -> IndicatorInputBinding | None:
+    if isinstance(node, SourceRefNode):
         field = node.field.lower()
+        if field in {"open", "high", "low", "close", "volume", "price"}:
+            field = "close" if field == "price" else field
         return IndicatorInputBinding(
             source=node.source.lower(),
-            field=("close" if field == "price" else field),
+            field=field,
             symbol=node.symbol,
             timeframe=node.timeframe,
             exchange=node.exchange,
         )
 
-    if isinstance(node, Literal):
+    if isinstance(node, LiteralNode):
         if isinstance(node.value, Series):
             return IndicatorInputBinding(source="series", field="literal")
         return None
 
-    if isinstance(node, UnaryOp):
+    if isinstance(node, UnaryOpNode):
         return _resolve_binding_from_expression(node.operand)
 
-    if isinstance(node, BinaryOp):
+    if isinstance(node, BinaryOpNode):
         left = _resolve_binding_from_expression(node.left)
         right = _resolve_binding_from_expression(node.right)
         if left is None and right is None:
@@ -276,13 +292,23 @@ def _resolve_binding_from_expression(node: ExpressionNode) -> IndicatorInputBind
         return IndicatorInputBinding(source="mixed", field="mixed")
 
     if _is_indicator_node(node):
-        input_series = getattr(node, "input_series", None)
+        params = dict(getattr(node, "kwargs", {}) or {})
+
+        # If the indicator is the 'select' function, its field argument directly defines the binding
+        indicator_name = str(getattr(node, "name", ""))
+        if indicator_name == "select":
+            field_name = params.get("field")
+            if isinstance(field_name, LiteralNode) and isinstance(field_name.value, str):
+                field_name = field_name.value
+            if isinstance(field_name, str):
+                return IndicatorInputBinding(source="ohlcv", field=("close" if field_name == "price" else field_name))
+
+        input_series = getattr(node, "args", [])
+        input_series = input_series[0] if input_series else None
         if input_series is not None:
             nested = _resolve_binding_from_expression(input_series)
             if nested is not None:
                 return nested
-
-        params = dict(getattr(node, "params", {}) or {})
         field_param = params.get("field")
         if isinstance(field_param, str):
             field = field_param.lower()
@@ -298,15 +324,16 @@ def _resolve_binding_from_expression(node: ExpressionNode) -> IndicatorInputBind
     return None
 
 
-def _serialize_expression_node(node: ExpressionNode | None) -> dict[str, Any] | None:
+def _serialize_expression_node(node: ExprNode | None) -> dict[str, Any] | None:
+    """Serialize expression node to something client chart can digest for inputs."""
     if node is None:
         return None
-    if isinstance(node, SourceExpression):
+    if isinstance(node, SourceRefNode):
         payload: dict[str, Any] = {
-            "type": "attribute",
-            "symbol": node.symbol,
+            "type": "source",
             "source": node.source,
             "field": node.field,
+            "symbol": node.symbol,
         }
         if node.exchange:
             payload["exchange"] = node.exchange
@@ -319,30 +346,31 @@ def _serialize_expression_node(node: ExpressionNode | None) -> dict[str, Any] | 
         if node.instrument_type:
             payload["instrument_type"] = node.instrument_type
         return payload
-    if isinstance(node, Literal):
+    if isinstance(node, LiteralNode):
         value = node.value
         if isinstance(value, Series):
             return {"type": "literal_series", "symbol": value.symbol, "timeframe": value.timeframe}
         return {"type": "literal", "value": _json_value(value)}
-    if isinstance(node, BinaryOp):
+    if isinstance(node, BinaryOpNode):
         return {
             "type": "binary",
-            "operator": node.operator.value,
+            "operator": node.operator,
             "left": _serialize_expression_node(node.left),
             "right": _serialize_expression_node(node.right),
         }
-    if isinstance(node, UnaryOp):
+    if isinstance(node, UnaryOpNode):
         return {
             "type": "unary",
-            "operator": node.operator.value,
+            "operator": node.operator,
             "operand": _serialize_expression_node(node.operand),
         }
     if _is_indicator_node(node):
-        nested_input = getattr(node, "input_series", None)
+        nested_input = getattr(node, "args", [])
+        nested_input = nested_input[0] if nested_input else None
         return {
             "type": "indicator",
             "name": str(getattr(node, "name", "")),
-            "params": dict(getattr(node, "params", {}) or {}),
+            "params": dict(getattr(node, "kwargs", {}) or {}),
             "input_expr": _serialize_expression_node(nested_input) if nested_input is not None else None,
         }
     return {"type": "unknown", "repr": repr(node)}

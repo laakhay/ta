@@ -322,6 +322,20 @@ class Registry:
         if isinstance(annotation, type):
             return annotation  # type: ignore[return-value]
 
+        # Handle string annotations (from __future__ import annotations)
+        if isinstance(annotation, str):
+            mapping = {
+                "int": int,
+                "float": float,
+                "str": str,
+                "bool": bool,
+                "Price": float,  # Common alias
+                "Qty": float,  # Common alias
+            }
+            if annotation in mapping:
+                return mapping[annotation]
+            # Fall through for complex string annotations
+
         # Handle typing annotations
         origin = getattr(annotation, "__origin__", None)
         args = getattr(annotation, "__args__", ())
