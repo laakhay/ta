@@ -1,10 +1,5 @@
 from __future__ import annotations
 
-from collections import deque
-from collections.abc import Callable, Iterable
-from decimal import Decimal
-from typing import Any, Tuple
-
 from ..core import Series
 from ..core.series import Series as CoreSeries
 from ..core.types import Price
@@ -23,176 +18,7 @@ from .kernels.rolling import (
     RollingStdKernel,
     RollingSumKernel,
 )
-from .math_ops import _build_like, _dec, _empty_like
 from .select import _select, _select_field
-
-InitFn = Callable[[Iterable[Decimal]], Tuple[Any, Decimal]]
-UpdateFn = Callable[[Any, Decimal, Decimal], Tuple[Any, Decimal]]
-FinalizeFn = Callable[[Any], Decimal | None]
-
-
-def rolling_kernel(
-    src: Series[Price],
-    period: int,
-    *,
-    init: InitFn | None = None,
-    update: UpdateFn | None = None,
-    finalize: FinalizeFn | None = None,
-    window_eval: Callable[[Iterable[Decimal]], Decimal] | None = None,
-) -> Series[Price]:
-    if period <= 0:
-        raise ValueError("Period must be positive")
-    n = len(src)
-    if n == 0 or n < period:
-        return _empty_like(src)
-
-    xs = [_dec(v) for v in src.values]
-    out: list[Decimal] = []
-
-    if window_eval is not None:
-        for i in range(period - 1, n):
-            w = xs[i - period + 1 : i + 1]
-            out.append(window_eval(w))
-        return _build_like(src, src.timestamps[period - 1 :], out)
-
-    if init and update:
-        state, first_val = init(xs[:period])
-        out.append(first_val)
-        for i in range(period, n):
-            state, v = update(state, xs[i - period], xs[i])
-            out.append(v)
-        return _build_like(src, src.timestamps[period - 1 :], out)
-
-    raise ValueError("rolling_kernel: supply either (init,update) or window_eval")
-
-
-def rolling_sum_recipe(period: int):
-    def _init(win: Iterable[Decimal]):
-        s = sum(win)
-        return s, s
-
-    def _update(s: Decimal, out_v: Decimal, in_v: Decimal):
-        s2 = s + in_v - out_v
-        return s2, s2
-
-    return _init, _update
-
-
-def rolling_mean_recipe(period: int):
-    init_s, upd_s = rolling_sum_recipe(period)
-
-    def _init(win: Iterable[Decimal]):
-        s, _ = init_s(win)
-        m = s / Decimal(period)
-        return s, m
-
-    def _update(s: Decimal, out_v: Decimal, in_v: Decimal):
-        s2, s2_val = upd_s(s, out_v, in_v)
-        return s2, s2_val / Decimal(period)
-
-    return _init, _update
-
-
-def rolling_std_recipe(period: int):
-    def _init(win: Iterable[Decimal]):
-        xs = list(win)
-        s = sum(xs)
-        ss = sum(x * x for x in xs)
-        mean = s / Decimal(period)
-        var = (ss / Decimal(period)) - mean * mean
-        std = var.sqrt() if var >= 0 else Decimal(0)
-        return (s, ss), std
-
-    def _update(state: Tuple[Decimal, Decimal], out_v: Decimal, in_v: Decimal):
-        s, ss = state
-        s2 = s + in_v - out_v
-        ss2 = ss + in_v * in_v - out_v * out_v
-        mean = s2 / Decimal(period)
-        var = (ss2 / Decimal(period)) - mean * mean
-        std = var.sqrt() if var >= 0 else Decimal(0)
-        return (s2, ss2), std
-
-    return _init, _update
-
-
-def rolling_max_deque(src: Series[Price], period: int) -> Series[Price]:
-    if period <= 0:
-        raise ValueError("Period must be positive")
-    n = len(src)
-    if n == 0 or n < period:
-        return _empty_like(src)
-    xs = [_dec(v) for v in src.values]
-    dq: deque[int] = deque()
-    out: list[Decimal] = []
-    for i, v in enumerate(xs):
-        while dq and xs[dq[-1]] <= v:
-            dq.pop()
-        dq.append(i)
-        if dq[0] <= i - period:
-            dq.popleft()
-        if i >= period - 1:
-            out.append(xs[dq[0]])
-    return _build_like(src, src.timestamps[period - 1 :], out)
-
-
-def rolling_min_deque(src: Series[Price], period: int) -> Series[Price]:
-    if period <= 0:
-        raise ValueError("Period must be positive")
-    n = len(src)
-    if n == 0 or n < period:
-        return _empty_like(src)
-    xs = [_dec(v) for v in src.values]
-    dq: deque[int] = deque()
-    out: list[Decimal] = []
-    for i, v in enumerate(xs):
-        while dq and xs[dq[-1]] >= v:
-            dq.pop()
-        dq.append(i)
-        if dq[0] <= i - period:
-            dq.popleft()
-        if i >= period - 1:
-            out.append(xs[dq[0]])
-    return _build_like(src, src.timestamps[period - 1 :], out)
-
-
-def rolling_argmax_deque(src: Series[Price], period: int) -> Series[Price]:
-    if period <= 0:
-        raise ValueError("Period must be positive")
-    n = len(src)
-    if n == 0 or n < period:
-        return _empty_like(src)
-    xs = [_dec(v) for v in src.values]
-    dq: deque[int] = deque()
-    out: list[Decimal] = []
-    for i, v in enumerate(xs):
-        while dq and xs[dq[-1]] <= v:
-            dq.pop()
-        dq.append(i)
-        if dq[0] <= i - period:
-            dq.popleft()
-        if i >= period - 1:
-            out.append(Decimal(i - dq[0]))
-    return _build_like(src, src.timestamps[period - 1 :], out)
-
-
-def rolling_argmin_deque(src: Series[Price], period: int) -> Series[Price]:
-    if period <= 0:
-        raise ValueError("Period must be positive")
-    n = len(src)
-    if n == 0 or n < period:
-        return _empty_like(src)
-    xs = [_dec(v) for v in src.values]
-    dq: deque[int] = deque()
-    out: list[Decimal] = []
-    for i, v in enumerate(xs):
-        while dq and xs[dq[-1]] >= v:
-            dq.pop()
-        dq.append(i)
-        if dq[0] <= i - period:
-            dq.popleft()
-        if i >= period - 1:
-            out.append(Decimal(i - dq[0]))
-    return _build_like(src, src.timestamps[period - 1 :], out)
 
 
 def _with_window_mask(res: Series[Price], period: int) -> Series[Price]:
@@ -288,21 +114,13 @@ def rolling_rma(ctx: SeriesContext, period: int = 14, field: str | None = None) 
 
 __all__ = [
     "rolling_argmax",
-    "rolling_argmax_deque",
     "rolling_argmin",
-    "rolling_argmin_deque",
     "rolling_ema",
-    "rolling_kernel",
     "rolling_max",
-    "rolling_max_deque",
     "rolling_mean",
-    "rolling_mean_recipe",
     "rolling_median",
     "rolling_min",
-    "rolling_min_deque",
     "rolling_rma",
     "rolling_std",
-    "rolling_std_recipe",
     "rolling_sum",
-    "rolling_sum_recipe",
 ]
