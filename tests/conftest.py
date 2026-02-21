@@ -6,6 +6,7 @@ import pytest
 
 UTC = UTC
 
+
 @pytest.fixture(autouse=True)
 def ensure_indicators_registered():
     """Ensure indicators are registered before each test.

@@ -31,18 +31,18 @@ def normalize_expression(expr: CanonicalExpression) -> CanonicalExpression:
             field = expr.field.lower()
             if field == "price":
                 return SourceRefNode(
-                symbol=expr.symbol,
-                field="close",
-                source=expr.source,
-                exchange=expr.exchange,
-                timeframe=expr.timeframe,
-                base=expr.base,
-                quote=expr.quote,
-                instrument_type=expr.instrument_type,
-                span_start=expr.span_start,
-                span_end=expr.span_end,
-                type_tag=expr.type_tag,
-            )
+                    symbol=expr.symbol,
+                    field="close",
+                    source=expr.source,
+                    exchange=expr.exchange,
+                    timeframe=expr.timeframe,
+                    base=expr.base,
+                    quote=expr.quote,
+                    instrument_type=expr.instrument_type,
+                    span_start=expr.span_start,
+                    span_end=expr.span_end,
+                    type_tag=expr.type_tag,
+                )
         return expr
 
     if isinstance(expr, BinaryOpNode):
