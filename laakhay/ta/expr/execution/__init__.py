@@ -4,6 +4,13 @@ __all__ = [
     "DEFAULT_EXECUTION_MODE",
     "resolve_execution_mode",
     "resolve_backend",
+    "Availability",
+    "MissingInputPolicy",
+    "ErrorPolicy",
+    "StepPolicies",
+    "DEFAULT_STEP_POLICIES",
+    "StepResult",
+    "NodeStepper",
     "build_evaluation_context",
     "collect_required_field_names",
     "resolve_source_from_context",
@@ -18,6 +25,35 @@ def __getattr__(name: str):
             "DEFAULT_EXECUTION_MODE": DEFAULT_EXECUTION_MODE,
             "resolve_execution_mode": resolve_execution_mode,
             "resolve_backend": resolve_backend,
+        }
+        return exports[name]
+    if name in {
+        "Availability",
+        "MissingInputPolicy",
+        "ErrorPolicy",
+        "StepPolicies",
+        "DEFAULT_STEP_POLICIES",
+        "StepResult",
+        "NodeStepper",
+    }:
+        from .contracts import (
+            DEFAULT_STEP_POLICIES,
+            Availability,
+            ErrorPolicy,
+            MissingInputPolicy,
+            NodeStepper,
+            StepPolicies,
+            StepResult,
+        )
+
+        exports = {
+            "Availability": Availability,
+            "MissingInputPolicy": MissingInputPolicy,
+            "ErrorPolicy": ErrorPolicy,
+            "StepPolicies": StepPolicies,
+            "DEFAULT_STEP_POLICIES": DEFAULT_STEP_POLICIES,
+            "StepResult": StepResult,
+            "NodeStepper": NodeStepper,
         }
         return exports[name]
     if name in {"build_evaluation_context", "collect_required_field_names", "resolve_source_from_context"}:
