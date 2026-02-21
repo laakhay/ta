@@ -1,6 +1,7 @@
 """Tests for the streaming helper."""
 
-from datetime import UTC, datetime, timedelta
+from datetime import timezone, datetime, timedelta
+UTC = timezone.utc
 from decimal import Decimal
 
 from laakhay.ta import ta

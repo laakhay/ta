@@ -2,7 +2,7 @@ import operator
 
 import pytest
 
-from laakhay.ta.expr.algebra.models import BinaryOp, Literal, UnaryOp
+from laakhay.ta.expr.ir.nodes import BinaryOpNode, LiteralNode, UnaryOpNode
 from laakhay.ta.expr.planner.evaluator import Evaluator
 from laakhay.ta.expr.planner.types import (
     AlignmentPolicy,
@@ -29,7 +29,7 @@ def make_simple_plan(node):
 
 def test_literal_node():
     evaluator = Evaluator()
-    node = Literal(42)
+    node = LiteralNode(42)
     plan = make_simple_plan(node)
     result = evaluator._evaluate_graph(plan, context={})
     assert result == 42
@@ -38,9 +38,9 @@ def test_literal_node():
 def test_binaryop_node():
     evaluator = Evaluator()
     # 5 + 3
-    left = Literal(5)
-    right = Literal(3)
-    node = BinaryOp(operator.add, left, right)  # Use real add function, not enum
+    left = LiteralNode(5)
+    right = LiteralNode(3)
+    node = BinaryOpNode("add", left, right)  # Use string operator for Canonical IR
     # Simulate plan with binaryop as root, children as nodes 1 (left) and 2 (right)
     nodes = {
         0: GraphNode(0, node, (1, 2), (), "binop"),
@@ -60,8 +60,8 @@ def test_binaryop_node():
 def test_unaryop_node():
     evaluator = Evaluator()
     # -7
-    operand = Literal(7)
-    node = UnaryOp(operator.neg, operand)
+    operand = LiteralNode(7)
+    node = UnaryOpNode("neg", operand)
     nodes = {
         0: GraphNode(0, node, (1,), (), "uop"),
         1: GraphNode(1, operand, (), (), "uop"),
@@ -79,10 +79,10 @@ def test_unaryop_node():
 def test_shared_subgraph_cache():
     evaluator = Evaluator()
     # Build a graph of: sub = (4 + 2); root = sub + sub
-    l1 = Literal(4)
-    l2 = Literal(2)
-    sub = BinaryOp(operator.add, l1, l2)
-    root = BinaryOp(operator.add, sub, sub)
+    l1 = LiteralNode(4)
+    l2 = LiteralNode(2)
+    sub = BinaryOpNode("add", l1, l2)
+    root = BinaryOpNode("add", sub, sub)
     nodes = {
         0: GraphNode(0, root, (1, 1), (), "shared-cache"),
         1: GraphNode(1, sub, (2, 3), (), "shared-cache"),

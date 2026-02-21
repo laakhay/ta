@@ -1,6 +1,7 @@
 """Tests for catalog utility functions."""
 
-from datetime import UTC, datetime
+from datetime import timezone, datetime
+UTC = timezone.utc
 from decimal import Decimal
 
 from laakhay.ta.catalog.utils import jsonify_value, to_epoch_seconds, to_float

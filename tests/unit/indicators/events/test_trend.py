@@ -1,6 +1,7 @@
 """Tests for trend event patterns."""
 
-from datetime import UTC, datetime
+from datetime import timezone, datetime
+UTC = timezone.utc
 from decimal import Decimal
 
 from laakhay.ta.core.series import Series

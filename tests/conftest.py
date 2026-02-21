@@ -1,6 +1,8 @@
 """Shared test fixtures for laakhay.ta tests."""
+from __future__ import annotations
 
-from datetime import UTC, date, datetime, timedelta
+from datetime import timezone, date, datetime, timedelta
+UTC = timezone.utc
 from decimal import Decimal
 from typing import Any
 
@@ -346,7 +348,8 @@ def unsorted_timestamps() -> tuple[datetime, ...]:
 @pytest.fixture
 def multi_source_dataset() -> Any:
     """Create a comprehensive multi-source dataset fixture for testing."""
-    from datetime import UTC, datetime, timedelta
+    from datetime import timezone, datetime, timedelta
+    UTC = timezone.utc
     from decimal import Decimal
 
     from laakhay.ta.core.bar import Bar

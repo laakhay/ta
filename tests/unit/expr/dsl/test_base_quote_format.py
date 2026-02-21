@@ -3,7 +3,7 @@
 import pytest
 
 from laakhay.ta.expr.dsl import StrategyError, parse_expression_text
-from laakhay.ta.expr.dsl.nodes import AttributeNode
+from laakhay.ta.expr.ir.nodes import SourceRefNode as AttributeNode
 
 
 class TestBaseQuoteFormat:
@@ -183,7 +183,7 @@ class TestBaseQuoteFormat:
         """Test Base/Quote with liquidation source: BTC.USDT.liquidation.count"""
         # Note: .count is treated as an aggregation, so we need to access it differently
         # The parser treats .count as AggregateNode, not AttributeNode
-        from laakhay.ta.expr.dsl.nodes import AggregateNode
+        from laakhay.ta.expr.ir.nodes import AggregateNode
 
         expr = parse_expression_text("BTC.USDT.liquidation.count")
         assert isinstance(expr, AggregateNode)
@@ -215,7 +215,7 @@ class TestBaseQuoteFormat:
         """Test Base/Quote in comparison expression: BTC.USDT.price > 50000"""
         expr = parse_expression_text("BTC.USDT.price > 50000")
         # Should parse as BinaryNode with AttributeNode on left
-        from laakhay.ta.expr.dsl.nodes import BinaryNode
+        from laakhay.ta.expr.ir.nodes import BinaryOpNode as BinaryNode
 
         assert isinstance(expr, BinaryNode)
         assert isinstance(expr.left, AttributeNode)
@@ -226,7 +226,7 @@ class TestBaseQuoteFormat:
     def test_base_quote_cross_exchange_comparison(self):
         """Test Base/Quote cross-exchange comparison: binance.BTC.USDT.price > bybit.BTC.USDT.price"""
         expr = parse_expression_text("binance.BTC.USDT.price > bybit.BTC.USDT.price")
-        from laakhay.ta.expr.dsl.nodes import BinaryNode
+        from laakhay.ta.expr.ir.nodes import BinaryOpNode as BinaryNode
 
         assert isinstance(expr, BinaryNode)
         assert isinstance(expr.left, AttributeNode)
@@ -239,7 +239,7 @@ class TestBaseQuoteFormat:
     def test_base_quote_perp_vs_spot_comparison(self):
         """Test Base/Quote perpetual vs spot comparison: BTC.USDT.perp.price > BTC.USDT.spot.price"""
         expr = parse_expression_text("BTC.USDT.perp.price > BTC.USDT.spot.price")
-        from laakhay.ta.expr.dsl.nodes import BinaryNode
+        from laakhay.ta.expr.ir.nodes import BinaryOpNode as BinaryNode
 
         assert isinstance(expr, BinaryNode)
         assert isinstance(expr.left, AttributeNode)
@@ -260,14 +260,14 @@ class TestBaseQuoteFormat:
     def test_base_quote_with_explicit_indicator_input(self):
         """Test Base/Quote with explicit indicator input: sma(BTC.USDT.price, period=20)"""
         expr = parse_expression_text("sma(BTC.USDT.price, period=20)")
-        from laakhay.ta.expr.dsl.nodes import IndicatorNode
+        from laakhay.ta.expr.ir.nodes import CallNode as IndicatorNode
 
         assert isinstance(expr, IndicatorNode)
         assert expr.name == "sma"
-        assert isinstance(expr.input_expr, AttributeNode)
-        assert expr.input_expr.symbol == "BTC/USDT"
-        assert expr.input_expr.base == "BTC"
-        assert expr.input_expr.quote == "USDT"
+        assert isinstance(expr.args[0], AttributeNode)
+        assert expr.args[0].symbol == "BTC/USDT"
+        assert expr.args[0].base == "BTC"
+        assert expr.args[0].quote == "USDT"
 
     def test_base_quote_case_insensitive_instrument_type(self):
         """Test that instrument types are case-insensitive: BTC.USDT.PERP.price"""
@@ -286,18 +286,18 @@ class TestBaseQuoteFormat:
     def test_lowercase_base_quote_in_indicator(self):
         """Test lowercase base/quote in indicator: sma(binance.btc.usdt.m5.ohlcv.close, 20)"""
         expr = parse_expression_text("sma(binance.btc.usdt.m5.ohlcv.close, 20)")
-        from laakhay.ta.expr.dsl.nodes import IndicatorNode
+        from laakhay.ta.expr.ir.nodes import CallNode as IndicatorNode
 
         assert isinstance(expr, IndicatorNode)
         assert expr.name == "sma"
-        assert isinstance(expr.input_expr, AttributeNode)
-        assert expr.input_expr.symbol == "BTC/USDT"
-        assert expr.input_expr.base == "BTC"
-        assert expr.input_expr.quote == "USDT"
-        assert expr.input_expr.exchange == "binance"
-        assert expr.input_expr.timeframe == "5m"
-        assert expr.input_expr.source == "ohlcv"
-        assert expr.input_expr.field == "close"
+        assert isinstance(expr.args[0], AttributeNode)
+        assert expr.args[0].symbol == "BTC/USDT"
+        assert expr.args[0].base == "BTC"
+        assert expr.args[0].quote == "USDT"
+        assert expr.args[0].exchange == "binance"
+        assert expr.args[0].timeframe == "5m"
+        assert expr.args[0].source == "ohlcv"
+        assert expr.args[0].field == "close"
 
 
 class TestBaseQuoteFormatErrors:
@@ -453,7 +453,7 @@ class TestQuoteAssetDetection:
     def test_timeframe_instrument_type_in_comparison(self):
         """Test timeframe and instrument type in comparison: binance.ETH.USDT.m5.perp.volume > 100000"""
         expr = parse_expression_text("binance.ETH.USDT.m5.perp.volume > 100000")
-        from laakhay.ta.expr.dsl.nodes import BinaryNode
+        from laakhay.ta.expr.ir.nodes import BinaryOpNode as BinaryNode
 
         assert isinstance(expr, BinaryNode)
         assert isinstance(expr.left, AttributeNode)

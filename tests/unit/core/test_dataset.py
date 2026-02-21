@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import timezone, datetime
+UTC = timezone.utc
 from typing import Any
 
 import pytest

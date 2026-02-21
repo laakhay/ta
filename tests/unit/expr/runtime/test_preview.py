@@ -1,6 +1,7 @@
 """Tests for expression preview functionality."""
 
-from datetime import UTC, datetime, timedelta
+from datetime import timezone, datetime, timedelta
+UTC = timezone.utc
 
 import pytest
 
@@ -176,6 +177,7 @@ class TestIndicatorEmissions:
         assert result.indicator_emissions is not None
         assert len(result.indicator_emissions) >= 1
         sma_emission = next((item for item in result.indicator_emissions if item.indicator == "sma"), None)
+        print("Emissions:", [e.to_dict() for e in result.indicator_emissions])
         assert sma_emission is not None
         assert sma_emission.input_binding.field == "volume"
         assert sma_emission.render.pane_hint == "volume"

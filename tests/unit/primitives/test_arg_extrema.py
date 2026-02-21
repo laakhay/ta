@@ -1,6 +1,7 @@
 """Tests for newly added rolling arg-extrema primitives and helpers."""
 
-from datetime import UTC, datetime, timedelta
+from datetime import timezone, datetime, timedelta
+UTC = timezone.utc
 from decimal import Decimal
 
 from laakhay.ta.core.series import Series

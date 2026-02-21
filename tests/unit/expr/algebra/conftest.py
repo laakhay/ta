@@ -1,13 +1,14 @@
 """Shared fixtures for expressions tests."""
 
-from datetime import UTC, datetime
+from datetime import timezone, datetime
+UTC = timezone.utc
 from decimal import Decimal
 
 import pytest
 
 from laakhay.ta.core.series import Series
 from laakhay.ta.core.types import Price
-from laakhay.ta.expr.algebra.models import BinaryOp, Literal, OperatorType, UnaryOp
+from laakhay.ta.expr.ir.nodes import BinaryOpNode, LiteralNode, UnaryOpNode
 from laakhay.ta.expr.algebra.operators import Expression
 
 
@@ -38,31 +39,31 @@ def multi_point_series(timestamp):
 @pytest.fixture
 def literal_10():
     """Literal with value 10."""
-    return Literal(10)
+    return LiteralNode(10)
 
 
 @pytest.fixture
 def literal_20():
     """Literal with value 20."""
-    return Literal(20)
+    return LiteralNode(20)
 
 
 @pytest.fixture
 def literal_series(test_series):
     """Literal with series value."""
-    return Literal(test_series)
+    return LiteralNode(test_series)
 
 
 @pytest.fixture
 def binary_op_add(literal_10, literal_20):
     """Binary operation: 10 + 20."""
-    return BinaryOp(literal_10, OperatorType.ADD, literal_20)
+    return BinaryOpNode("add", literal_10, literal_20)
 
 
 @pytest.fixture
 def unary_op_neg(literal_10):
     """Unary operation: -10."""
-    return UnaryOp(OperatorType.NEG, literal_10)
+    return UnaryOpNode("neg", literal_10)
 
 
 @pytest.fixture

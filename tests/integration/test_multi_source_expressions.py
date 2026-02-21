@@ -4,7 +4,8 @@ Tests end-to-end evaluation of expressions using synthetic
 trade, orderbook, and liquidation data.
 """
 
-from datetime import UTC, datetime, timedelta
+from datetime import timezone, datetime, timedelta
+UTC = timezone.utc
 from decimal import Decimal
 
 from laakhay.ta.core.bar import Bar

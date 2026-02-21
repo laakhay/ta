@@ -1,6 +1,7 @@
 """Tests for the ta.ref multi-timeframe helper."""
 
-from datetime import UTC, datetime, timedelta
+from datetime import timezone, datetime, timedelta
+UTC = timezone.utc
 from decimal import Decimal
 
 import pytest

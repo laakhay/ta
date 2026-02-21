@@ -1,6 +1,7 @@
 """Tests for laakhay.ta.core.timestamps module."""
 
-from datetime import UTC, date, datetime
+from datetime import timezone, date, datetime
+UTC = timezone.utc
 
 import pytest
 

@@ -1,6 +1,7 @@
 """Tests for indicators with explicit expression inputs."""
 
-from datetime import UTC, datetime, timedelta
+from datetime import timezone, datetime, timedelta
+UTC = timezone.utc
 
 import pytest
 
@@ -30,14 +31,14 @@ def test_parse_indicator_with_explicit_source():
     indicators = extract_indicator_nodes(expr)
     assert len(indicators) == 1
     assert indicators[0].name == "sma"
-    assert indicators[0].params.get("period") == 20
-    assert indicators[0].input_expr is not None
-    # Check that input_expr is an AttributeNode
-    from laakhay.ta.expr.dsl.nodes import AttributeNode
+    assert indicators[0].kwargs.get("period").value == 20
+    assert len(indicators[0].args) == 1
+    # Check that input_expr is an SourceRefNode
+    from laakhay.ta.expr.ir.nodes import SourceRefNode
 
-    assert isinstance(indicators[0].input_expr, AttributeNode)
-    assert indicators[0].input_expr.symbol == "BTC"
-    assert indicators[0].input_expr.field == "price"
+    assert isinstance(indicators[0].args[0], SourceRefNode)
+    assert indicators[0].args[0].symbol == "BTC"
+    assert indicators[0].args[0].field == "price"
 
 
 def test_parse_indicator_with_explicit_source_trades():
@@ -46,12 +47,12 @@ def test_parse_indicator_with_explicit_source_trades():
     indicators = extract_indicator_nodes(expr)
     assert len(indicators) == 1
     assert indicators[0].name == "sma"
-    assert indicators[0].input_expr is not None
-    from laakhay.ta.expr.dsl.nodes import AttributeNode
+    assert len(indicators[0].args) == 1
+    from laakhay.ta.expr.ir.nodes import SourceRefNode
 
-    assert isinstance(indicators[0].input_expr, AttributeNode)
-    assert indicators[0].input_expr.source == "trades"
-    assert indicators[0].input_expr.field == "volume"
+    assert isinstance(indicators[0].args[0], SourceRefNode)
+    assert indicators[0].args[0].source == "trades"
+    assert indicators[0].args[0].field == "volume"
 
 
 def test_parse_indicator_with_explicit_source_orderbook():
@@ -60,13 +61,13 @@ def test_parse_indicator_with_explicit_source_orderbook():
     indicators = extract_indicator_nodes(expr)
     assert len(indicators) == 1
     assert indicators[0].name == "sma"
-    assert indicators[0].input_expr is not None
-    from laakhay.ta.expr.dsl.nodes import AttributeNode
+    assert len(indicators[0].args) == 1
+    from laakhay.ta.expr.ir.nodes import SourceRefNode
 
-    assert isinstance(indicators[0].input_expr, AttributeNode)
-    assert indicators[0].input_expr.exchange == "binance"
-    assert indicators[0].input_expr.source == "orderbook"
-    assert indicators[0].input_expr.field == "imbalance"
+    assert isinstance(indicators[0].args[0], SourceRefNode)
+    assert indicators[0].args[0].exchange == "binance"
+    assert indicators[0].args[0].source == "orderbook"
+    assert indicators[0].args[0].field == "imbalance"
 
 
 def test_parse_indicator_with_literal_first_arg():
@@ -75,9 +76,9 @@ def test_parse_indicator_with_literal_first_arg():
     indicators = extract_indicator_nodes(expr)
     assert len(indicators) == 1
     assert indicators[0].name == "sma"
-    assert indicators[0].params.get("period") == 20
-    # When first arg is literal, input_expr should be None
-    assert indicators[0].input_expr is None
+    assert len(indicators[0].args) == 1
+    # When first arg is literal, it goes to args
+    assert indicators[0].args[0].value == 20
 
 
 def test_parse_indicator_with_keyword_period():
@@ -86,8 +87,8 @@ def test_parse_indicator_with_keyword_period():
     indicators = extract_indicator_nodes(expr)
     assert len(indicators) == 1
     assert indicators[0].name == "sma"
-    assert indicators[0].params.get("period") == 20
-    assert indicators[0].input_expr is None
+    assert indicators[0].kwargs.get("period").value == 20
+    assert len(indicators[0].args) == 0
 
 
 def test_parse_indicator_expr_and_keyword_conflict():
@@ -125,25 +126,25 @@ def test_compile_indicator_with_nested_expression():
 
 def test_serialize_indicator_with_input_expr():
     """Test serialization of IndicatorNode with input_expr."""
-    from laakhay.ta.expr.dsl.nodes import expression_from_dict, expression_to_dict
+    from laakhay.ta.expr.ir.serialize import serialize_ir, deserialize_ir
 
     expr = parse_expression_text("sma(BTC.price, period=20)")
     indicators = extract_indicator_nodes(expr)
     indicator = indicators[0]
 
     # Serialize
-    serialized = expression_to_dict(indicator)
-    assert "input_expr" in serialized
-    assert serialized["input_expr"]["type"] == "attribute"
+    serialized = serialize_ir(indicator)
+    assert "args" in serialized
+    assert serialized["args"][0]["type"] == "source_ref"
 
     # Deserialize
-    deserialized = expression_from_dict(serialized)
+    deserialized = deserialize_ir(serialized)
     assert deserialized.name == "sma"
-    assert deserialized.params.get("period") == 20
-    assert deserialized.input_expr is not None
-    from laakhay.ta.expr.dsl.nodes import AttributeNode
+    assert deserialized.kwargs.get("period").value == 20
+    assert len(deserialized.args) == 1
+    from laakhay.ta.expr.ir.nodes import SourceRefNode
 
-    assert isinstance(deserialized.input_expr, AttributeNode)
+    assert isinstance(deserialized.args[0], SourceRefNode)
 
 
 def test_multiple_indicators_with_explicit_sources():
@@ -151,12 +152,12 @@ def test_multiple_indicators_with_explicit_sources():
     expr = parse_expression_text("sma(BTC.price, period=20) > sma(BTC.volume, period=10)")
     indicators = extract_indicator_nodes(expr)
     assert len(indicators) == 2
-    # Both should have input_expr
-    assert indicators[0].input_expr is not None
-    assert indicators[1].input_expr is not None
+    # Both should have args
+    assert len(indicators[0].args) == 1
+    assert len(indicators[1].args) == 1
     # Check fields
-    assert indicators[0].input_expr.field == "price"
-    assert indicators[1].input_expr.field == "volume"
+    assert indicators[0].args[0].field == "price"
+    assert indicators[1].args[0].field == "volume"
 
 
 def test_indicator_with_timeframe_in_source():
@@ -167,7 +168,7 @@ def test_indicator_with_timeframe_in_source():
     expr = parse_expression_text("sma(BTC.price, period=20)")
     indicators = extract_indicator_nodes(expr)
     assert len(indicators) == 1
-    assert indicators[0].input_expr is not None
+    assert len(indicators[0].args) == 1
     # Timeframe support would require additional parser changes for bracket notation
 
 

@@ -1,6 +1,7 @@
 """Tests for swing_points indicator."""
 
-from datetime import UTC, datetime, timedelta
+from datetime import timezone, datetime, timedelta
+UTC = timezone.utc
 from decimal import Decimal
 
 import pytest

@@ -1,11 +1,12 @@
 """Tests for evaluation engine."""
 
-from datetime import UTC, datetime
+from datetime import timezone, datetime
+UTC = timezone.utc
 from decimal import Decimal
 
 from laakhay.ta.core.series import Series
 from laakhay.ta.core.types import Price
-from laakhay.ta.expr.algebra.models import BinaryOp, Literal, OperatorType
+from laakhay.ta.expr.ir.nodes import BinaryOpNode, LiteralNode
 from laakhay.ta.expr.runtime.engine import Engine
 
 
@@ -22,7 +23,7 @@ class TestEngine:
         engine = Engine()
         literal = engine.literal(42)
 
-        assert isinstance(literal, Literal)
+        assert isinstance(literal, LiteralNode)
         assert literal.value == 42
 
     def test_evaluate_literal_series(self):
@@ -39,7 +40,7 @@ class TestEngine:
             timeframe="1h",
         )
 
-        literal = Literal(series)
+        literal = LiteralNode(series)
         dataset = {}
         result = engine.evaluate(literal, dataset)
 
@@ -49,7 +50,7 @@ class TestEngine:
         """Test evaluating a literal scalar."""
         engine = Engine()
 
-        literal = Literal(42)
+        literal = LiteralNode(42)
         dataset = {}
         result = engine.evaluate(literal, dataset)
 
@@ -75,9 +76,9 @@ class TestEngine:
         )
 
         # Create binary operation: series + 10
-        left = Literal(series)
-        right = Literal(10)
-        binary_op = BinaryOp(OperatorType.ADD, left, right)
+        left = LiteralNode(series)
+        right = LiteralNode(10)
+        binary_op = BinaryOpNode("add", left, right)
 
         dataset = {}
         result = engine.evaluate(binary_op, dataset)
@@ -104,7 +105,7 @@ class TestEngine:
         )
 
         # Create literal that references dataset
-        literal = Literal(series)
+        literal = LiteralNode(series)
         dataset = {"close": series}
 
         result = engine.evaluate(literal, dataset)
@@ -130,8 +131,8 @@ class TestEngine:
         )
 
         # Create expression: (series * 2) + 10
-        left_mult = BinaryOp(OperatorType.MUL, Literal(series), Literal(2))
-        final_add = BinaryOp(OperatorType.ADD, left_mult, Literal(10))
+        left_mult = BinaryOpNode("mul", LiteralNode(series), LiteralNode(2))
+        final_add = BinaryOpNode("add", left_mult, LiteralNode(10))
 
         dataset = {}
         result = engine.evaluate(final_add, dataset)
@@ -148,7 +149,7 @@ class TestEngine:
         """Test evaluating with empty dataset."""
         engine = Engine()
 
-        literal = Literal(42)
+        literal = LiteralNode(42)
         dataset = {}
         result = engine.evaluate(literal, dataset)
 

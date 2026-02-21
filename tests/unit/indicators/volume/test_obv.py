@@ -1,6 +1,7 @@
 """Tests for OBV indicator."""
 
-from datetime import UTC, datetime
+from datetime import timezone, datetime
+UTC = timezone.utc
 from decimal import Decimal
 
 import pytest

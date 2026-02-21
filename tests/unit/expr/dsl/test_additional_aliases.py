@@ -1,14 +1,15 @@
 """Tests for parsing additional aliases added in Commit 9b."""
 
 from laakhay.ta.expr.dsl import parse_expression_text
-from laakhay.ta.expr.dsl.nodes import IndicatorNode
+from laakhay.ta.expr.ir.nodes import CallNode, LiteralNode
 
 
 def test_alias_parsing_rolling_std():
     expr = parse_expression_text("std(close, 20)")
-    assert isinstance(expr, IndicatorNode)
+    assert isinstance(expr, CallNode)
     assert expr.name == "rolling_std"
-    assert expr.params["period"] == 20
+    assert isinstance(expr.args[1], LiteralNode)
+    assert expr.args[1].value == 20
 
     expr = parse_expression_text("stddev(close, 20)")
     assert expr.name == "rolling_std"
@@ -16,15 +17,16 @@ def test_alias_parsing_rolling_std():
 
 def test_alias_parsing_rolling_sum():
     expr = parse_expression_text("sum(close, 20)")
-    assert isinstance(expr, IndicatorNode)
+    assert isinstance(expr, CallNode)
     assert expr.name == "rolling_sum"
 
 
 def test_alias_parsing_rolling_rma():
     expr = parse_expression_text("rma(close, 14)")
-    assert isinstance(expr, IndicatorNode)
+    assert isinstance(expr, CallNode)
     assert expr.name == "rolling_rma"
-    assert expr.params["period"] == 14
+    assert isinstance(expr.args[1], LiteralNode)
+    assert expr.args[1].value == 14
 
 
 def test_alias_parsing_rolling_argextrema():
@@ -37,7 +39,7 @@ def test_alias_parsing_rolling_argextrema():
 
 def test_alias_parsing_cumsum():
     expr = parse_expression_text("cumsum(close)")
-    assert isinstance(expr, IndicatorNode)
+    assert isinstance(expr, CallNode)
     assert expr.name == "cumulative_sum"
 
 
@@ -52,5 +54,5 @@ def test_alias_parsing_pos_neg():
 def test_alias_parsing_tr():
     # tr() since it's a function call
     expr = parse_expression_text("tr()")
-    assert isinstance(expr, IndicatorNode)
+    assert isinstance(expr, CallNode)
     assert expr.name == "true_range"

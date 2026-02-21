@@ -1,6 +1,7 @@
 """Consolidated registry tests - lean and efficient."""
 
-from datetime import UTC, datetime
+from datetime import timezone, datetime
+UTC = timezone.utc
 from typing import Any
 from unittest.mock import Mock
 
