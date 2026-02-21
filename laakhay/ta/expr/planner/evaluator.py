@@ -7,8 +7,13 @@ from typing import Any
 from ...core import Series
 from ...core.dataset import Dataset
 from ...core.series import align_series
-from ...exceptions import MissingDataError
 from ...registry.models import SeriesContext
+from ..execution.context_builder import (
+    build_evaluation_context,
+    collect_required_field_names,
+    resolve_source_from_context,
+)
+from ..execution.time_shift import parse_shift_periods
 from ..ir.nodes import (
     SCALAR_SYMBOL,
     AggregateNode,
@@ -20,7 +25,7 @@ from ..ir.nodes import (
     TimeShiftNode,
     UnaryOpNode,
 )
-from .types import PlanResult, SignalRequirements
+from .types import PlanResult
 
 
 class Evaluator:
@@ -55,7 +60,7 @@ class Evaluator:
         if dataset.is_empty:
             return {}
 
-        required_fields = _collect_required_field_names(plan.requirements)
+        required_fields = collect_required_field_names(plan.requirements)
         results: dict[tuple[str, str, str], Series[Any]] = {}
         all_node_outputs: dict[int, Any] = {}
         unique_keys = {(key.symbol, key.timeframe) for key in dataset.keys}
@@ -72,60 +77,7 @@ class Evaluator:
                 # Only retrieve the root node if all subnodes already cached
                 results[(symbol, timeframe, "default")] = self._cache[node_cache_key]
                 continue
-            # Build context - try multi-source context first, fall back to standard
-            try:
-                # Try to build multi-source context for better support
-                context = dataset.to_multisource_context(symbol=symbol, timeframe=timeframe)
-                context_dict = {name: getattr(context, name) for name in context.available_series}
-            except (ValueError, AttributeError):
-                # Fall back to standard context building
-                context = dataset.build_context(symbol, timeframe, required_fields)
-                context_dict = {name: getattr(context, name) for name in context.available_series}
-
-            # Also add source-specific keys for SourceExpression resolution
-            # Add keys in format "source.field" for each series in the dataset
-            for key, series_obj in dataset:
-                if key.symbol == symbol and key.timeframe == timeframe:
-                    if hasattr(series_obj, "to_series"):  # OHLCV
-                        # Map "price" to "close" for OHLCV
-                        field_mapping = {
-                            "open": "open",
-                            "high": "high",
-                            "low": "low",
-                            "close": "close",
-                            "volume": "volume",
-                            "price": "close",  # Map price to close
-                        }
-                        for field, ohlcv_field in field_mapping.items():
-                            try:
-                                field_series = series_obj.to_series(ohlcv_field)
-                                context_dict[f"{key.source}.{field}"] = field_series
-                                context_dict[field] = field_series  # Also add without source prefix
-                            except (KeyError, AttributeError, ValueError):
-                                pass
-                    else:
-                        # Regular series - handle source.field format for SourceExpression resolution
-                        source_name = key.source
-                        # If source contains underscore, it might be:
-                        # 1. Exchange-qualified (e.g., "trades_binance") -> base_source = "trades"
-                        # 2. Source_field format (e.g., "orderbook_imbalance") -> base_source = "orderbook", field = "imbalance"
-                        if "_" in source_name:
-                            parts = source_name.split("_", 1)  # Split only on first underscore
-                            base_source = parts[0]
-                            field_name = parts[1] if len(parts) > 1 else base_source
-
-                            # Add with source.field format (e.g., "orderbook.imbalance")
-                            context_dict[f"{base_source}.{field_name}"] = series_obj
-                            # Also add with just field name for backward compatibility
-                            context_dict[field_name] = series_obj
-                            # Add with base source for backward compatibility
-                            context_dict[base_source] = series_obj
-                        else:
-                            # Simple source name - add with source.source format and just source
-                            context_dict[f"{source_name}.{source_name}"] = series_obj
-                            context_dict[source_name] = series_obj
-                        # Always add with full source name for backward compatibility
-                        context_dict[key.source] = series_obj
+            context_dict = build_evaluation_context(dataset, symbol, timeframe, required_fields)
 
             if return_all_outputs:
                 output, node_outputs = self._evaluate_graph(
@@ -364,51 +316,7 @@ class Evaluator:
         )
 
     def _evaluate_source_expression(self, expr: SourceRefNode, context: dict[str, Any]) -> Series[Any]:
-        """Evaluate SourceExpression by resolving series from context.
-
-        Args:
-            expr: SourceExpression to evaluate
-            context: Context dictionary containing series
-
-        Returns:
-            Series from the context
-
-        Raises:
-            ValueError: If the required series is not found in context
-        """
-        # Build context key based on source expression attributes
-        # Try multiple key formats for flexibility
-        possible_keys = []
-
-        # Format: source.field (e.g., "trades.volume")
-        possible_keys.append(f"{expr.source}.{expr.field}")
-
-        # Format: source_symbol_timeframe_field (e.g., "trades_BTC_1h_volume")
-        if expr.symbol and expr.timeframe:
-            possible_keys.append(f"{expr.source}_{expr.symbol}_{expr.timeframe}_{expr.field}")
-
-        # Format: symbol_source_field (e.g., "BTC_trades_volume")
-        if expr.symbol:
-            possible_keys.append(f"{expr.symbol}_{expr.source}_{expr.field}")
-
-        # Format: just the field name (e.g., "volume")
-        possible_keys.append(expr.field)
-
-        # Try each possible key
-        for key in possible_keys:
-            if key in context:
-                series = context[key]
-                if isinstance(series, Series):
-                    return series
-
-        # If not found, raise MissingDataError with context
-        raise MissingDataError(
-            f"SourceExpression not found in context: {expr.source}.{expr.field}",
-            source=expr.source,
-            field=expr.field,
-            symbol=expr.symbol,
-            timeframe=expr.timeframe,
-        )
+        return resolve_source_from_context(expr, context)
 
     def _evaluate_filter_expression(self, series: Series[Any], condition: Series[bool]) -> Series[Any]:
         """Evaluate FilterExpression by filtering series based on condition.
@@ -474,35 +382,10 @@ class Evaluator:
         if not isinstance(series, Series):
             raise TypeError(f"Expected Series, got {type(series)}")
 
-        # Parse shift string to extract periods
-        # Support formats: "24h_ago", "1h", "1", "24h"
-        periods = 1  # default
-        if shift.endswith("_ago"):
-            # Format: "24h_ago" -> extract number and convert to periods
-            shift_part = shift[:-4]  # Remove "_ago"
-            if shift_part.endswith("h"):
-                hours = int(shift_part[:-1])
-                # For now, assume 1 period per hour (this should be based on timeframe)
-                periods = hours
-            elif shift_part.endswith("m"):
-                minutes = int(shift_part[:-1])
-                periods = minutes // 60  # Convert to hours (rough approximation)
-            else:
-                try:
-                    periods = int(shift_part)
-                except ValueError:
-                    raise ValueError(f"Invalid shift format: {shift}")
-        elif shift.endswith("h"):
-            hours = int(shift[:-1])
-            periods = hours
-        elif shift.endswith("m"):
-            minutes = int(shift[:-1])
-            periods = minutes // 60
-        else:
-            try:
-                periods = int(shift)
-            except ValueError:
-                raise ValueError(f"Invalid shift format: {shift}")
+        try:
+            periods = parse_shift_periods(shift)
+        except ValueError as exc:
+            raise ValueError(f"Invalid shift format: {shift}") from exc
 
         # Apply shift
         shifted = series.shift(-periods)  # Negative for "ago" (looking back)
@@ -516,10 +399,3 @@ class Evaluator:
             return shifted
         else:
             raise ValueError(f"Unknown time shift operation: {operation}")
-
-
-def _collect_required_field_names(requirements: SignalRequirements) -> list[str]:
-    names = {req.field for req in requirements.data_requirements if req.field}
-    if not names:
-        names = {"close"}
-    return sorted(names)
