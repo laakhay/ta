@@ -9,7 +9,8 @@ from __future__ import annotations
 from typing import Any
 
 from ...core import Series
-from ..algebra.models import ExpressionNode, Literal
+from ...core.dataset import Dataset
+from ..ir.nodes import CanonicalExpression, LiteralNode
 
 
 class Engine:
@@ -22,16 +23,32 @@ class Engine:
     def __init__(self) -> None:
         self._cache: dict[int, Series[Any]] = {}
 
-    def evaluate(self, expression: ExpressionNode, dataset: dict[str, Series[Any]]) -> Series[Any]:
+    def evaluate(self, expression: CanonicalExpression, dataset: Any) -> Any:
         """Evaluate an expression node with given dataset mapping.
 
         The dataset should be a mapping from series names used in the
         expression to their corresponding Series objects. Literals are
         supported via Literal nodes internally.
         """
-        # Simple direct evaluation; placeholder for future caching/DAG walk
-        return expression.evaluate(dataset)
+        from ..algebra.operators import Expression
+        from ..planner.evaluator import Evaluator
 
-    def literal(self, value: Any) -> Literal:
+        expr = expression if isinstance(expression, Expression) else Expression(expression)
+        result = Evaluator().evaluate(expr, dataset)
+
+        if isinstance(result, dict):
+            if len(result) == 1:
+                return next(iter(result.values()))
+            if len(result) == 0 and isinstance(dataset, Dataset):
+                # Allow scalar/literal expressions on empty datasets.
+                result = Evaluator().evaluate(expr, {})
+            else:
+                return result
+        if not isinstance(result, Series):
+            from ..algebra.scalar_helpers import _make_scalar_series
+            return _make_scalar_series(result)
+        return result
+
+    def literal(self, value: Any) -> LiteralNode:
         """Create a literal node for convenience."""
-        return Literal(value)
+        return LiteralNode(value)

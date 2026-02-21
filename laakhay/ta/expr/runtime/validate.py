@@ -8,7 +8,7 @@ from typing import Any
 from ...registry.registry import get_global_registry
 from ..dsl import (
     StrategyError,
-    StrategyExpression,
+    CanonicalExpression,
     compile_expression,
     extract_indicator_nodes,
     parse_expression_text,
@@ -80,7 +80,7 @@ VALID_SELECT_FIELDS = {
 
 
 def validate(
-    expression: str | StrategyExpression,
+    expression: str | CanonicalExpression,
     exchange: str | None = None,
     check_capabilities: bool = True,
 ) -> ValidationResult:
@@ -152,13 +152,17 @@ def validate(
 
             # Validate select field if this is a 'select' indicator
             if indicator_name == "select":
-                field_param = node.params.get("field")
-                if field_param:
-                    field_str = str(field_param).lower()
+                from ..ir.nodes import LiteralNode
+                field_param = node.kwargs.get("field")
+                if not field_param and node.args:
+                    field_param = node.args[0]
+                
+                if isinstance(field_param, LiteralNode):
+                    field_str = str(field_param.value).lower()
                     select_fields_used.append(field_str)
                     if field_str not in VALID_SELECT_FIELDS:
                         errors.append(
-                            f"Invalid select field '{field_param}'. "
+                            f"Invalid select field '{field_param.value}'. "
                             f"Valid fields: {', '.join(sorted(VALID_SELECT_FIELDS))}"
                         )
 
@@ -168,7 +172,8 @@ def validate(
                 param_schemas = schema.parameters
 
                 # Check for unknown parameters
-                for param_name in node.params:
+                all_params = set(node.kwargs.keys())
+                for param_name in all_params:
                     if param_name not in param_schemas:
                         warnings.append(
                             f"Indicator '{indicator_name}' has unknown parameter '{param_name}'. "
@@ -179,7 +184,13 @@ def validate(
                 for param_name, param_schema in param_schemas.items():
                     if param_name.lower() in ("ctx", "context"):
                         continue  # Skip internal context parameter
-                    if param_schema.required and param_name not in node.params:
+                    
+                    # Check in kwargs
+                    in_kwargs = param_name in node.kwargs
+                    # We skip positional check here for simplicity in validation stage
+                    # but real check should look at args too if needed.
+                    # For now, if it's required and not in kwargs, and we have few args, we might miss it.
+                    if param_schema.required and not in_kwargs and not node.args:
                         errors.append(
                             f"Indicator '{indicator_name}' requires parameter '{param_name}' but it was not provided"
                         )

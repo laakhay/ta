@@ -9,15 +9,10 @@ from ...registry.registry import get_global_registry
 from ...registry.schemas import IndicatorMetadata
 from ..algebra import alignment as alignment_ctx
 from ..algebra.alignment import get_policy as _get_alignment_policy
-from ..algebra.models import (
-    AggregateExpression,
-    BinaryOp,
-    ExpressionNode,
-    FilterExpression,
-    Literal,
-    SourceExpression,
-    TimeShiftExpression,
-    UnaryOp,
+from ..ir.nodes import (
+    CanonicalExpression, LiteralNode, CallNode, SourceRefNode,
+    BinaryOpNode, UnaryOpNode, FilterNode, AggregateNode,
+    TimeShiftNode
 )
 from .builder import build_graph
 from .types import (
@@ -59,11 +54,10 @@ def get_alignment_policy() -> AlignmentPolicy:
     )
 
 
-def _is_indicator_node(node: ExpressionNode) -> bool:
-    return node.__class__.__name__ == "IndicatorNode" and hasattr(node, "name") and hasattr(node, "params")
 
 
-def plan_expression(root: ExpressionNode) -> PlanResult:
+
+def plan_expression(root: CanonicalExpression) -> PlanResult:
     graph = build_graph(root)
     return compute_plan(graph)
 
@@ -136,21 +130,51 @@ def _collect_requirements(graph: Graph) -> SignalRequirements:
         expr_node = node.node
         current_lookback = node_lookbacks.get(node_id, 1)
 
-        if _is_indicator_node(expr_node):
+        if isinstance(expr_node, CallNode):
             name = expr_node.name
             handle = registry.get(name)
             metadata: IndicatorMetadata | None = handle.schema.metadata if handle else None
+            param_defs = [
+                param.name
+                for param in handle.schema.parameters.values()
+                if param.name.lower() not in {"ctx", "context"}
+            ] if handle else []
 
-            params = expr_node.params if hasattr(expr_node, "params") else {}
+            params = {}
+            for k, v in expr_node.kwargs.items():
+                if isinstance(v, LiteralNode):
+                    params[k] = v.value
+                else:
+                    params[k] = v
 
-            # Check if this indicator has an explicit input_series
-            has_input_series = hasattr(expr_node, "input_series") and expr_node.input_series is not None
+            has_input_series = expr_node.input_expr is not None
+            arg_offset = 1 if has_input_series else 0
+            param_start = 0
+            if has_input_series and param_defs and param_defs[0] in {"source", "input", "input_series", "series", "field"}:
+                param_start = 1
+            for idx, arg in enumerate(expr_node.args[arg_offset:]):
+                param_idx = param_start + idx
+                if param_idx >= len(param_defs):
+                    break
+                if not isinstance(arg, LiteralNode):
+                    continue
+                param_name = param_defs[param_idx]
+                if param_name not in params:
+                    params[param_name] = arg.value
 
             if "field" in params:
                 # If field is explicitly provided (e.g. mean(volume)), use it.
                 required_fields = (params["field"],)
-            elif name == "select" and "field" in params:
-                required_fields = (params["field"],)
+            elif name == "select":
+                # For select, the field can also be in args[0]
+                sel_field = params.get("field", "close")
+                if "field" not in params and len(expr_node.args) > 0:
+                    val = expr_node.args[0]
+                    if isinstance(val, LiteralNode) and isinstance(val.value, str):
+                        sel_field = val.value
+                    elif isinstance(val, str):
+                        sel_field = val
+                required_fields = (sel_field,)
             else:
                 required_fields = metadata.required_fields if metadata and metadata.required_fields else ("close",)
 
@@ -158,7 +182,7 @@ def _collect_requirements(graph: Graph) -> SignalRequirements:
             indicator_lookback = metadata.default_lookback or 1
             # Special handling for 'select' primitive which is used for terminal fields
             if name == "select":
-                field = params.get("field", "close")
+                field = required_fields[0]
                 # Source is usually ohlcv for select, but could be overridden if select is used on trades etc.
                 # However, for terminal SelectNodes in the graph, it's the default context.
                 merge_data_requirement(
@@ -185,30 +209,30 @@ def _collect_requirements(graph: Graph) -> SignalRequirements:
             # Formula: parent_required_lookback + indicator_window - 1
             total_required = current_lookback + indicator_lookback - 1
 
-            if node.children:
-                # Propagate requirement to all children (input_series and param-based inputs)
-                for child_id in node.children:
-                    node_lookbacks[child_id] = max(node_lookbacks.get(child_id, 0), total_required)
-            else:
+            if not has_input_series:
                 # Require standard fields if no inputs provided
                 for field_name in required_fields:
                     merge_field(field_name, None, max(total_required, 1))
 
-        elif isinstance(expr_node, Literal):
+            # Propagate requirement to all children (input_series and param-based inputs)
+            for child_id in node.children:
+                node_lookbacks[child_id] = max(node_lookbacks.get(child_id, 0), total_required)
+
+        elif isinstance(expr_node, LiteralNode):
             if isinstance(expr_node.value, Series):
                 merge_field("close", expr_node.value.timeframe, current_lookback)
 
-        elif isinstance(expr_node, BinaryOp):
+        elif isinstance(expr_node, BinaryOpNode):
             # Propagate requirement to both operands
             for child_id in node.children:
                 node_lookbacks[child_id] = max(node_lookbacks.get(child_id, 0), current_lookback)
 
-        elif isinstance(expr_node, UnaryOp):
+        elif isinstance(expr_node, UnaryOpNode):
             # Propagate requirement to operand
             for child_id in node.children:
                 node_lookbacks[child_id] = max(node_lookbacks.get(child_id, 0), current_lookback)
 
-        elif isinstance(expr_node, SourceExpression):
+        elif isinstance(expr_node, SourceRefNode):
             # Handle SourceExpression - map to DataRequirement
             # For OHLCV sources, also create FieldRequirement for backward compatibility
             if expr_node.source == "ohlcv" and expr_node.symbol is None and expr_node.exchange is None:
@@ -233,19 +257,19 @@ def _collect_requirements(graph: Graph) -> SignalRequirements:
                 current_lookback,
             )
 
-        elif isinstance(expr_node, TimeShiftExpression):
+        elif isinstance(expr_node, TimeShiftNode):
             # Track time-based queries
             time_based_queries.append(expr_node.shift)
             # Propagate requirement to child series
             for child_id in node.children:
                 node_lookbacks[child_id] = max(node_lookbacks.get(child_id, 0), current_lookback)
 
-        elif isinstance(expr_node, FilterExpression):
+        elif isinstance(expr_node, FilterNode):
             # Propagate requirement to both series and condition
             for child_id in node.children:
                 node_lookbacks[child_id] = max(node_lookbacks.get(child_id, 0), current_lookback)
 
-        elif isinstance(expr_node, AggregateExpression):
+        elif isinstance(expr_node, AggregateNode):
             # Propagate requirement to series
             for child_id in node.children:
                 node_lookbacks[child_id] = max(node_lookbacks.get(child_id, 0), current_lookback)

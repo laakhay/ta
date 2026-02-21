@@ -5,95 +5,92 @@ from __future__ import annotations
 import hashlib
 from typing import Any, Dict, Tuple
 
-from ..algebra.models import (
-    AggregateExpression,
-    BinaryOp,
-    ExpressionNode,
-    FilterExpression,
-    Literal,
-    SourceExpression,
-    TimeShiftExpression,
-    UnaryOp,
+from ..ir.nodes import (
+    CanonicalExpression, LiteralNode, CallNode, SourceRefNode,
+    BinaryOpNode, UnaryOpNode, FilterNode, AggregateNode,
+    TimeShiftNode, MemberAccessNode, IndexNode
 )
 from .types import Graph, GraphNode
 
 
-def _is_indicator_node(node: ExpressionNode) -> bool:
-    return node.__class__.__name__ == "IndicatorNode" and hasattr(node, "name") and hasattr(node, "params")
-
-
-def build_graph(root: ExpressionNode) -> Graph:
+def build_graph(root: CanonicalExpression) -> Graph:
     """Build a canonical graph representation for an expression node."""
 
     signature_cache: Dict[Tuple[Any, ...], int] = {}
     nodes: Dict[int, GraphNode] = {}
     counter = 0
 
-    def _hash_value(value: Any) -> str:
-        if isinstance(value, int | float | str):
-            rep = str(value)
-        else:
-            rep = repr(value)
-        return hashlib.sha1(rep.encode("utf-8")).hexdigest()
-
-    def visit(node: ExpressionNode) -> tuple[int, Tuple[Any, ...]]:
+    def visit(node: CanonicalExpression) -> tuple[int, Tuple[Any, ...]]:
         nonlocal counter
 
-        if isinstance(node, BinaryOp):
+        if isinstance(node, BinaryOpNode):
             left_id, left_sig = visit(node.left)
             right_id, right_sig = visit(node.right)
-            signature = ("BinaryOp", node.operator.value, left_sig, right_sig)
+            signature = ("BinaryOpNode", node.operator, left_sig, right_sig)
             children = (left_id, right_id)
-        elif isinstance(node, UnaryOp):
+        elif isinstance(node, UnaryOpNode):
             operand_id, operand_sig = visit(node.operand)
-            signature = ("UnaryOp", node.operator.value, operand_sig)
+            signature = ("UnaryOpNode", node.operator, operand_sig)
             children = (operand_id,)
-        elif isinstance(node, FilterExpression):
+        elif isinstance(node, FilterNode):
             series_id, series_sig = visit(node.series)
             condition_id, condition_sig = visit(node.condition)
-            signature = ("FilterExpression", series_sig, condition_sig)
+            signature = ("FilterNode", series_sig, condition_sig)
             children = (series_id, condition_id)
-        elif isinstance(node, AggregateExpression):
+        elif isinstance(node, AggregateNode):
             series_id, series_sig = visit(node.series)
-            signature = ("AggregateExpression", node.operation, node.field, series_sig)
+            signature = ("AggregateNode", node.operation, node.field, series_sig)
             children = (series_id,)
-        elif isinstance(node, TimeShiftExpression):
+        elif isinstance(node, TimeShiftNode):
             series_id, series_sig = visit(node.series)
-            signature = ("TimeShiftExpression", node.shift, node.operation, series_sig)
+            signature = ("TimeShiftNode", node.shift, node.operation, series_sig)
             children = (series_id,)
-        elif isinstance(node, SourceExpression):
-            signature = ("SourceExpression", node.symbol, node.field, node.exchange, node.timeframe, node.source)
+        elif isinstance(node, SourceRefNode):
+            signature = ("SourceRefNode", node.symbol, node.field, node.exchange, node.timeframe, node.source)
             children = ()
-        elif isinstance(node, Literal):
+        elif isinstance(node, LiteralNode):
             if isinstance(node.value, list):
                 literal_repr = tuple(node.value)
+            elif isinstance(node.value, dict):
+                literal_repr = tuple(node.value.items())
             else:
                 literal_repr = node.value
-            signature = ("Literal", literal_repr)
+            signature = ("LiteralNode", literal_repr)
             children = ()
-        elif _is_indicator_node(node):
+        elif isinstance(node, CallNode):
             params_sig_items = []
             param_children_ids = []
 
-            # Sort params for deterministic signature
-            for key, value in sorted(node.params.items()):
-                if isinstance(value, ExpressionNode):
-                    child_id, child_sig = visit(value)
-                    params_sig_items.append((key, child_sig))
-                    param_children_ids.append(child_id)
-                else:
-                    params_sig_items.append((key, value))
+            for key, value in sorted(node.kwargs.items()):
+                child_id, child_sig = visit(value)
+                params_sig_items.append((key, child_sig))
+                param_children_ids.append(child_id)
 
             params_sig = tuple(params_sig_items)
 
-            # If input_series is present, treat it as a child dependency
-            if hasattr(node, "input_series") and node.input_series is not None:
-                input_id, input_sig = visit(node.input_series)
-                signature = ("Indicator", node.name, params_sig, input_sig)
-                children = tuple(param_children_ids + [input_id])
-            else:
-                signature = ("Indicator", node.name, params_sig)
-                children = tuple(param_children_ids)
+            arg_children_ids = []
+            arg_sig_items = []
+            for arg in node.args:
+                child_id, child_sig = visit(arg)
+                arg_sig_items.append(child_sig)
+                arg_children_ids.append(child_id)
+                
+            arg_sig = tuple(arg_sig_items)
+            
+            signature = ("CallNode", node.name, arg_sig, params_sig)
+            children = tuple(arg_children_ids + param_children_ids)
+            
+        elif isinstance(node, MemberAccessNode):
+            expr_id, expr_sig = visit(node.expr)
+            signature = ("MemberAccessNode", expr_sig, node.member)
+            children = (expr_id,)
+            
+        elif isinstance(node, IndexNode):
+            expr_id, expr_sig = visit(node.expr)
+            index_id, index_sig = visit(node.index)
+            signature = ("IndexNode", expr_sig, index_sig)
+            children = (expr_id, index_id)
+            
         else:
             # Fallback for unknown node types: use object id to keep determinism per instance
             signature = (type(node).__name__, id(node))

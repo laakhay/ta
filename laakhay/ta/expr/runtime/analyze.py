@@ -10,7 +10,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from ..dsl import (
-    StrategyExpression,
+    CanonicalExpression,
     extract_indicator_nodes,
     parse_expression_text,
 )
@@ -36,7 +36,7 @@ class AnalysisResult:
         plan: Optional PlanResult if planning was successful
     """
 
-    expression: str | StrategyExpression
+    expression: str | CanonicalExpression
     valid: bool
     errors: list[str]
     warnings: list[str]
@@ -78,7 +78,7 @@ class AnalysisResult:
 
 
 def analyze(
-    expression: str | StrategyExpression,
+    expression: str | CanonicalExpression,
     *,
     exchange: str | None = None,
     check_capabilities: bool = True,

@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
-from ..algebra.models import ExpressionNode
+from ..ir.nodes import CanonicalExpression
 
 
 @dataclass(frozen=True)
@@ -13,7 +13,7 @@ class GraphNode:
     """Node inside a canonical expression graph."""
 
     id: int
-    node: ExpressionNode
+    node: CanonicalExpression
     children: tuple[int, ...]
     signature: tuple[Any, ...]
     hash: str
