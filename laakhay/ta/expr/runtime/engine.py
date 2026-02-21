@@ -10,6 +10,7 @@ from typing import Any
 
 from ...core import Series
 from ...core.dataset import Dataset
+from ..execution.backend import resolve_backend
 from ..ir.nodes import CanonicalExpression, LiteralNode
 
 
@@ -31,17 +32,19 @@ class Engine:
         supported via Literal nodes internally.
         """
         from ..algebra.operators import Expression
-        from ..planner.evaluator import Evaluator
 
         expr = expression if isinstance(expression, Expression) else Expression(expression)
-        result = Evaluator().evaluate(expr, dataset)
+        plan = expr._ensure_plan()
+        backend = resolve_backend()
+
+        result = backend.evaluate(plan, dataset)
 
         if isinstance(result, dict):
             if len(result) == 1:
                 return next(iter(result.values()))
             if len(result) == 0 and isinstance(dataset, Dataset):
                 # Allow scalar/literal expressions on empty datasets.
-                result = Evaluator().evaluate(expr, {})
+                result = backend.evaluate(plan, {})
             else:
                 return result
         if not isinstance(result, Series):

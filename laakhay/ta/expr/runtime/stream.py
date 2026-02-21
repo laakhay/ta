@@ -10,7 +10,7 @@ from ...core.bar import Bar
 from ...core.dataset import Dataset
 from ...core.ohlcv import OHLCV
 from ..algebra import Expression
-from ..planner.evaluator import Evaluator
+from ..execution.backend import resolve_backend
 
 
 @dataclass(frozen=True)
@@ -72,7 +72,9 @@ class Stream:
         self._dataset = dataset or Dataset()
         self._expressions: dict[str, Expression] = {}
         self._callbacks: dict[str, list[Callable[[AvailabilityTransition], None]]] = {}
-        self._evaluator = Evaluator()
+
+        self._backend = resolve_backend()
+
         self._last_masks: dict[str, dict[Tuple[str, ...], bool]] = {}
         self._last_lengths: dict[str, dict[Tuple[str, ...], int]] = {}
 
@@ -131,13 +133,14 @@ class Stream:
 
     def evaluate(self) -> StreamUpdate:
         """Evaluate all registered expressions and return outputs + transitions."""
-        # Reset evaluator cache so streaming updates reflect latest dataset state.
-        self._evaluator = Evaluator()
+        # Reset backend cache so streaming updates reflect latest dataset state.
+        self._backend.clear_cache()
         outputs: dict[str, Any] = {}
         transitions: list[AvailabilityTransition] = []
 
         for name, expr in self._expressions.items():
-            result = self._evaluator.evaluate(expr, self._dataset)
+            plan = expr._ensure_plan()
+            result = self._backend.evaluate(plan, self._dataset)
             outputs[name] = result
             transitions.extend(self._collect_transitions(name, result))
 
