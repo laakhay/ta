@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from ...core import Series
 from ...primitives import rolling_mean, rolling_std  # type: ignore
-from .. import Expression, Literal, Price, SeriesContext, register
+from .. import Price, SeriesContext, register
 
 
 @register(
@@ -51,12 +51,10 @@ def bbands(
     middle_band = rolling_mean(ctx, period)  # type: ignore
     std_deviation = rolling_std(ctx, period)  # type: ignore
 
-    # Calculate upper and lower bands using expressions
-    middle_expr = Expression(Literal(middle_band))  # type: ignore
-    std_expr = Expression(Literal(std_deviation))  # type: ignore
-
-    upper_band = (middle_expr + (std_expr * std_dev)).evaluate({})  # type: ignore
-    lower_band = (middle_expr - (std_expr * std_dev)).evaluate({})  # type: ignore
+    # Calculate upper and lower bands using direct Series math since we already evaluated
+    # the primitive rolling_mean and rolling_std components.
+    upper_band = middle_band + (std_deviation * std_dev)
+    lower_band = middle_band - (std_deviation * std_dev)
 
     return upper_band, middle_band, lower_band  # type: ignore
 

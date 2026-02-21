@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from ...core import Series
 from ...core.types import Price, Qty
-from ...expr.algebra.models import Literal
+from ...expr.ir.nodes import LiteralNode as Literal
 from ...expr.algebra.operators import Expression
 from ...primitives import cumulative_sum, sign
 from ...registry.models import SeriesContext

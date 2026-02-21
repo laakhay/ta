@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from decimal import Decimal
 
-from ...api.handle import IndicatorNode as TAIndicatorNode
+from ...expr.ir.nodes import CallNode as TAIndicatorNode
 from ...core import Series
 from ...core.series import align_series
 from ...core.types import Price
@@ -65,7 +65,7 @@ def _extract_series(
                 context_dict[field_name] = series
         result = value.evaluate(context_dict)
         if not isinstance(result, Series):
-            raise TypeError(f"IndicatorNode evaluated to {type(result)}, expected Series")
+            raise TypeError(f"CallNode evaluated to {type(result)}, expected Series")
         return result
     elif isinstance(value, Series):
         return value
