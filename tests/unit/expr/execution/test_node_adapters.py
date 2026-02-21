@@ -11,6 +11,7 @@ from laakhay.ta.expr.execution.node_adapters import (
     eval_time_shift_step,
     eval_unary_step,
 )
+from laakhay.ta.expr.execution.state.models import KernelState
 from laakhay.ta.expr.ir.nodes import (
     AggregateNode,
     BinaryOpNode,
@@ -20,7 +21,6 @@ from laakhay.ta.expr.ir.nodes import (
     TimeShiftNode,
     UnaryOpNode,
 )
-from laakhay.ta.expr.runtime.state.models import KernelState
 
 
 def test_eval_source_ref_step_prefers_source_field_key() -> None:
