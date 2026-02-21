@@ -6,7 +6,7 @@ from ...core import Series
 from ...core.types import Price
 from ...expr.algebra.operators import Expression
 from ...expr.ir.nodes import LiteralNode as Literal
-from ...primitives import rolling_max, rolling_mean, rolling_min
+from ...primitives.rolling_ops import rolling_max, rolling_mean, rolling_min
 from ...registry.models import SeriesContext
 from ...registry.registry import register
 

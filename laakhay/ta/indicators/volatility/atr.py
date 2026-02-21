@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from ...core import Series
 from ...core.types import Price
-from ...primitives import rolling_mean, true_range
+from ...primitives.elementwise_ops import true_range
 from ...registry.models import SeriesContext
 from ...registry.registry import register
 
@@ -32,6 +32,8 @@ def atr(ctx: SeriesContext, period: int = 14) -> Series[Price]:
     # Calculate True Range using primitive
     tr_series = true_range(ctx)
 
-    # Calculate ATR as rolling mean of True Range
-    tr_ctx = SeriesContext(close=tr_series)
-    return rolling_mean(tr_ctx, period)
+    from ...primitives.kernel import run_kernel
+    from ...primitives.kernels.atr import ATRKernel
+
+    # Calculate ATR statefully
+    return run_kernel(tr_series, ATRKernel(), min_periods=period, period=period)

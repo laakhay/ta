@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from ...core import Series
-from ...primitives import rolling_ema
+from ...primitives.rolling_ops import rolling_ema
 from .. import Expression, Literal, Price, SeriesContext, register
 
 

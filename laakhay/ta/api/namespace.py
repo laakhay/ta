@@ -9,7 +9,7 @@ from ..core import Dataset, Series
 from ..core.types import Price
 from ..expr.algebra import Expression, as_expression
 from ..expr.ir.nodes import LiteralNode
-from ..primitives import _select_field  # Import the function that handles derived fields
+from ..primitives.select import _select_field
 from ..registry import register
 from ..registry.models import SeriesContext
 from ..registry.registry import get_global_registry

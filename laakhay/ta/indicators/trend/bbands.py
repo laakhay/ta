@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from ...core import Series
-from ...primitives import rolling_mean, rolling_std  # type: ignore
+from ...primitives.rolling_ops import rolling_mean, rolling_std
 from .. import Price, SeriesContext, register
 
 

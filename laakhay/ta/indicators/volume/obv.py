@@ -6,7 +6,7 @@ from ...core import Series
 from ...core.types import Price, Qty
 from ...expr.algebra.operators import Expression
 from ...expr.ir.nodes import LiteralNode as Literal
-from ...primitives import cumulative_sum, sign
+from ...primitives.elementwise_ops import cumulative_sum, sign
 from ...registry.models import SeriesContext
 from ...registry.registry import register
 

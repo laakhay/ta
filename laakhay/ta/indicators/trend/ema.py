@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 from ...core import Series
-from ...primitives import _select_field, rolling_ema  # type: ignore
+from ...primitives.rolling_ops import rolling_ema
+from ...primitives.select import _select_field
 from .. import Price, SeriesContext, register
 
 
@@ -25,5 +26,5 @@ def ema(ctx: SeriesContext, period: int = 20, source: str | None = None) -> Seri
         selected_series = _select_field(ctx, source)
         # Create a new context with the selected series as 'price' for rolling_ema
         new_ctx = SeriesContext(price=selected_series)
-        return rolling_ema(new_ctx, period)  # type: ignore
-    return rolling_ema(ctx, period)  # type: ignore
+        return rolling_ema(new_ctx, period)
+    return rolling_ema(ctx, period)

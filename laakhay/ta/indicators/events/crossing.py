@@ -9,7 +9,7 @@ from ...core.series import align_series
 from ...core.types import Price
 from ...expr.algebra.operators import Expression
 from ...expr.ir.nodes import CallNode as TAIndicatorNode
-from ...primitives import _select
+from ...primitives.select import _select
 from ...registry.models import SeriesContext
 from ...registry.registry import register
 

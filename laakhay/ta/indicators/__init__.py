@@ -12,16 +12,20 @@ from ..core import Series
 from ..core.types import Price, Qty
 from ..expr.algebra.operators import Expression
 from ..expr.ir.nodes import LiteralNode as Literal
-
-# Import primitives directly from the module to avoid circular imports
-from ..primitives import (
+from ..primitives.elementwise_ops import (
     absolute_value as abs,
 )
-from ..primitives import (
+from ..primitives.elementwise_ops import (
     cumulative_sum,
     diff,
     negative_values,
     positive_values,
+    shift,
+    sign,
+    true_range,
+    typical_price,
+)
+from ..primitives.rolling_ops import (
     rolling_argmax,
     rolling_argmin,
     rolling_ema,
@@ -30,12 +34,8 @@ from ..primitives import (
     rolling_min,
     rolling_std,
     rolling_sum,
-    select,
-    shift,
-    sign,
-    true_range,
-    typical_price,
 )
+from ..primitives.select import select
 from ..registry.models import SeriesContext
 from ..registry.registry import register
 
