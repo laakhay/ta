@@ -108,3 +108,12 @@ def test_unary_recursive():
 
     with pytest.raises(TypeCheckError, match="expects a Series"):
         typecheck_expression(expr)
+
+
+def test_negative_period():
+    """Test error for negative period."""
+    close = SourceRefNode(symbol="BTC", field="close")
+    # rsi period must be positive
+    expr = CallNode("test_rsi", args=[close, LiteralNode(-5)])
+    with pytest.raises(TypeCheckError, match="must be positive"):
+        typecheck_expression(expr)

@@ -73,11 +73,11 @@ def _typecheck_call(node: CallNode) -> None:
     if effective_args:
         first_arg = effective_args[0]
         first_param = params[0] if params else None
-        
+
         is_implicit_series = not isinstance(first_arg, LiteralNode) and (
             first_param is None or first_param.type is not Series
         )
-        
+
         if is_implicit_series:
             effective_args.pop(0)
 
