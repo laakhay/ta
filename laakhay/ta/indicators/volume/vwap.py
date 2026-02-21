@@ -4,9 +4,7 @@ from __future__ import annotations
 
 from ...core import Series
 from ...core.types import Price
-from ...expr.algebra.operators import Expression
-from ...expr.ir.nodes import LiteralNode as Literal
-from ...primitives import cumulative_sum, typical_price
+from ...primitives.elementwise_ops import cumulative_sum, typical_price
 from ...registry.models import SeriesContext
 from ...registry.registry import register
 
@@ -33,11 +31,11 @@ def vwap(ctx: SeriesContext) -> Series[Price]:
     if all(vol == 0 for vol in ctx.volume.values):
         return typical_price(ctx)
 
-    # Calculate VWAP: (Price * Volume) / Volume
+    # Calculate VWAP: cumulative(typical*volume) / cumulative(volume)
     typical = typical_price(ctx)
-    pv_series = (Expression(Literal(typical)) * Expression(Literal(ctx.volume))).evaluate({})
+    pv_series = typical * ctx.volume
 
     cumulative_pv = cumulative_sum(SeriesContext(close=pv_series))
     cumulative_vol = cumulative_sum(SeriesContext(close=ctx.volume))
 
-    return (Expression(Literal(cumulative_pv)) / Expression(Literal(cumulative_vol))).evaluate({})
+    return cumulative_pv / cumulative_vol

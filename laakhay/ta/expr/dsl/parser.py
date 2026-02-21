@@ -18,6 +18,12 @@ from laakhay.ta.expr.ir.nodes import (
     TimeShiftNode,
     UnaryOpNode,
 )
+from laakhay.ta.expr.semantics.source_schema import (
+    DEFAULT_SOURCE_FIELDS,
+    KNOWN_SOURCES,
+    SOURCE_FIELDS,
+    canonical_select_field,
+)
 from laakhay.ta.registry.registry import get_global_registry
 
 
@@ -78,29 +84,6 @@ _INDICATOR_ALIASES = {
 
 _PARAM_ALIASES = {
     "lookback": "period",
-}
-
-_DEFAULT_SOURCE_FIELDS = {
-    "close",
-    "high",
-    "low",
-    "open",
-    "volume",
-    "price",
-    "amount",
-    "count",
-    "side",
-    "bid",
-    "ask",
-    "hlc3",
-    "ohlc4",
-    "hl2",
-    "typical_price",
-    "weighted_close",
-    "median_price",
-    "range",
-    "upper_wick",
-    "lower_wick",
 }
 
 
@@ -313,7 +296,7 @@ class ExpressionParser:
                 except StrategyError:
                     # Literal failed - try as expression as fallback
                     try:
-                        if isinstance(first_arg, ast.Name) and first_arg.id.lower() in _DEFAULT_SOURCE_FIELDS:
+                        if isinstance(first_arg, ast.Name) and first_arg.id.lower() in DEFAULT_SOURCE_FIELDS:
                             input_expr = SourceRefNode(symbol=None, field=first_arg.id.lower(), source="ohlcv")
                         else:
                             input_expr = self._convert_node(first_arg)
@@ -440,12 +423,11 @@ class ExpressionParser:
             return LiteralNode(value=1.0 if lowered == "true" else 0.0)
 
         # Support sources as bare names (for method calls like trades.filter)
-        known_sources = {"ohlcv", "trades", "orderbook", "liquidation"}
-        if lowered in known_sources:
+        if lowered in KNOWN_SOURCES:
             return SourceRefNode(symbol=None, field="close" if lowered == "ohlcv" else None, source=lowered)
 
-        if lowered in _DEFAULT_SOURCE_FIELDS:
-            return CallNode(name="select", args=(), kwargs={"field": LiteralNode(lowered)})
+        if lowered in DEFAULT_SOURCE_FIELDS:
+            return CallNode(name="select", args=(), kwargs={"field": LiteralNode(canonical_select_field(lowered))})
         raise StrategyError(f"Unknown identifier '{node.id}'")
 
     def _convert_attribute(self, node: ast.Attribute) -> CanonicalExpression:
@@ -524,8 +506,7 @@ class ExpressionParser:
 
         # Known exchanges (can be extended)
         known_exchanges = {"binance", "bybit", "okx", "coinbase", "kraken", "kucoin"}
-        # Known sources
-        known_sources = {"ohlcv", "trades", "orderbook", "liquidation"}
+        known_sources = KNOWN_SOURCES
         # Known timeframes (common patterns)
         # Note: Python AST can't parse numeric identifiers like "1h", so we support alternative formats:
         # - "h1" for "1h", "m15" for "15m", "d1" for "1d", etc.
@@ -580,31 +561,7 @@ class ExpressionParser:
         if len(chain) < 1:
             raise StrategyError("Missing symbol in attribute chain")
 
-        # Known field names (check these before treating as quote)
-        known_fields = {
-            "close",
-            "high",
-            "low",
-            "open",
-            "volume",
-            "hlc3",
-            "ohlc4",
-            "typical_price",
-            "weighted_close",
-            "median_price",
-            "range",
-            "upper_wick",
-            "lower_wick",
-            "price",
-            "amount",
-            "count",
-            "bid",
-            "ask",
-            "bid_size",
-            "ask_size",
-            "imbalance",
-            "liquidation",
-        }
+        known_fields = set().union(*SOURCE_FIELDS.values())
 
         # Check if we have Base/Quote pattern in chain: [BASE, QUOTE, instrument_type?, ...]
         # Look ahead to see if next element could be a quote
@@ -840,68 +797,14 @@ class ExpressionParser:
         field: str,
     ) -> None:
         """Validate that the attribute combination is valid."""
-        # Known sources and their allowed fields
-        source_fields = {
-            "ohlcv": {
-                "price",
-                "close",
-                "open",
-                "high",
-                "low",
-                "volume",
-                "hlc3",
-                "ohlc4",
-                "hl2",
-                "typical_price",
-                "weighted_close",
-                "median_price",
-                "range",
-                "upper_wick",
-                "lower_wick",
-            },
-            "trades": {
-                "volume",
-                "count",
-                "buy_volume",
-                "sell_volume",
-                "large_count",
-                "whale_count",
-                "avg_price",
-                "vwap",
-                "amount",
-            },
-            "orderbook": {
-                "best_bid",
-                "best_ask",
-                "spread",
-                "spread_bps",
-                "mid_price",
-                "bid_depth",
-                "ask_depth",
-                "imbalance",
-                "pressure",
-            },
-            "liquidation": {
-                "count",
-                "volume",
-                "value",
-                "long_count",
-                "short_count",
-                "long_value",
-                "short_value",
-                "large_count",
-                "large_value",
-            },
-        }
-
         # Validate source
-        if source not in source_fields:
-            raise StrategyError(f"Unknown source '{source}'. Valid sources: {', '.join(source_fields.keys())}")
+        if source not in SOURCE_FIELDS:
+            raise StrategyError(f"Unknown source '{source}'. Valid sources: {', '.join(SOURCE_FIELDS.keys())}")
 
         # Validate field for source (if field is provided)
         if field is not None:
-            if field.lower() not in source_fields[source]:
-                valid_fields = ", ".join(sorted(source_fields[source]))
+            if field.lower() not in SOURCE_FIELDS[source]:
+                valid_fields = ", ".join(sorted(SOURCE_FIELDS[source]))
                 raise StrategyError(
                     f"Field '{field}' not valid for source '{source}'. Valid fields for {source}: {valid_fields}"
                 )

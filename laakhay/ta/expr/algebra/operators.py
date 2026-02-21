@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 from ...core import Series
+from ..execution.runner import evaluate_plan
 from ..ir.nodes import (
     BinaryOpNode,
     CallNode,
@@ -132,10 +133,8 @@ class Expression:
         return _make_scalar_series(result)
 
     def run(self, data: Any, return_all_outputs: bool = False) -> Any:
-        from ..planner.evaluator import Evaluator
-
-        evaluator = Evaluator()
-        return evaluator.evaluate(self, data, return_all_outputs=return_all_outputs)
+        plan = self._ensure_plan()
+        return evaluate_plan(plan, data, return_all_outputs=return_all_outputs)
 
     def requirements(self) -> SignalRequirements:
         return self._ensure_plan().requirements

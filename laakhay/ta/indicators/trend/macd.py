@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 from ...core import Series
-from ...primitives import rolling_ema
-from .. import Expression, Literal, Price, SeriesContext, register
+from ...primitives.rolling_ops import rolling_ema
+from .. import Price, SeriesContext, register
 
 
 @register(
@@ -53,20 +53,12 @@ def macd(
     fast_ema = rolling_ema(ctx, fast_period)
     slow_ema = rolling_ema(ctx, slow_period)
 
-    # Use expressions to calculate MACD line (fast_ema - slow_ema)
-    fast_expr = Expression(Literal(fast_ema))
-    slow_expr = Expression(Literal(slow_ema))
-    macd_expr = fast_expr - slow_expr
-
-    context = {}
-    macd_line = macd_expr.evaluate(context)
+    macd_line = fast_ema - slow_ema
 
     # Calculate signal line (EMA of MACD line)
     macd_ctx = SeriesContext(close=macd_line)
     signal_line = rolling_ema(macd_ctx, signal_period)
 
-    # Use expressions to calculate histogram (macd_line - signal_line)
-    histogram_expr = Expression(Literal(macd_line)) - Expression(Literal(signal_line))
-    histogram = histogram_expr.evaluate(context)
+    histogram = macd_line - signal_line
 
     return macd_line, signal_line, histogram

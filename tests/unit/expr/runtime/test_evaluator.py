@@ -19,7 +19,7 @@ from laakhay.ta.expr.ir.nodes import (
     TimeShiftNode,
 )
 from laakhay.ta.expr.planner import plan_expression
-from laakhay.ta.expr.runtime.evaluator import RuntimeEvaluator
+from laakhay.ta.expr.runtime import RuntimeEvaluator
 
 
 def create_test_dataset() -> Dataset:

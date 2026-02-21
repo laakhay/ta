@@ -8,8 +8,7 @@ from ...core import Series
 from ...core.series import align_series
 from ...core.types import Price
 from ...expr.algebra.operators import Expression
-from ...expr.ir.nodes import CallNode as TAIndicatorNode
-from ...primitives import _select
+from ...primitives.select import _select
 from ...registry.models import SeriesContext
 from ...registry.registry import register
 
@@ -43,29 +42,6 @@ def _extract_series(
         result = value.evaluate(context_dict)
         if not isinstance(result, Series):
             raise TypeError(f"Expression evaluated to {type(result)}, expected Series")
-        return result
-    elif isinstance(value, TAIndicatorNode):
-        # Handle IndicatorNode (internal node from laakhay-ta)
-        # Convert SeriesContext to dict for IndicatorNode.evaluate()
-        # Use the reference series or close as the base context to ensure consistent evaluation
-        base_series = reference_series if reference_series is not None else _select(ctx)
-        context_dict: dict[str, Series[Price]] = {}
-        for field_name in ctx.available_series:
-            series = getattr(ctx, field_name)
-            # Ensure all context series have the same length as the base series
-            # by aligning them (this handles different lookback periods)
-            if len(series) != len(base_series):
-                try:
-                    aligned_base, aligned_series = align_series(base_series, series, how="inner")
-                    context_dict[field_name] = aligned_series
-                except ValueError:
-                    # If alignment fails, use the original series
-                    context_dict[field_name] = series
-            else:
-                context_dict[field_name] = series
-        result = value.evaluate(context_dict)
-        if not isinstance(result, Series):
-            raise TypeError(f"CallNode evaluated to {type(result)}, expected Series")
         return result
     elif isinstance(value, Series):
         return value

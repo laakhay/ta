@@ -75,21 +75,6 @@ class CapabilityValidator:
                             f"Source '{source}' is not supported by exchange '{exchange}'. Required for field '{field}'"
                         )
 
-        # Check required sources
-        for source in requirements.required_sources:
-            if source not in self._sources:
-                warnings.append(
-                    f"Source '{source}' is not available. Available sources: {', '.join(self._sources.keys())}"
-                )
-
-        # Check required exchanges
-        for req_exchange in requirements.required_exchanges:
-            if req_exchange not in self._exchange_support:
-                warnings.append(
-                    f"Exchange '{req_exchange}' capabilities are not known. "
-                    f"Available exchanges: {', '.join(self._exchange_support.keys())}"
-                )
-
         return warnings
 
     def validate_plan(
