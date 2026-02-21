@@ -5,8 +5,8 @@ from decimal import Decimal
 
 from laakhay.ta.core.series import Series
 from laakhay.ta.core.types import Price
+from laakhay.ta.expr.execution.engine import Engine
 from laakhay.ta.expr.ir.nodes import BinaryOpNode, LiteralNode
-from laakhay.ta.expr.runtime.engine import Engine
 
 
 class TestEngine:

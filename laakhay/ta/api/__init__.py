@@ -230,7 +230,7 @@ from .. import indicators  # noqa: F401,E402
 def __getattr__(name: str) -> Any:
     """Lazy import for Engine and expression types to avoid circular imports."""
     if name == "Engine":
-        from ..expr.runtime.engine import Engine
+        from ..expr.execution.engine import Engine
 
         return Engine
     elif name in (

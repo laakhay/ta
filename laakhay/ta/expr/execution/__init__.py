@@ -1,6 +1,7 @@
 """Shared expression execution helpers."""
 
 __all__ = [
+    "Engine",
     "DEFAULT_EXECUTION_MODE",
     "resolve_execution_mode",
     "resolve_backend",
@@ -19,6 +20,10 @@ __all__ = [
 
 
 def __getattr__(name: str):
+    if name == "Engine":
+        from .engine import Engine
+
+        return Engine
     if name in {"DEFAULT_EXECUTION_MODE", "resolve_execution_mode", "resolve_backend"}:
         from .backend import DEFAULT_EXECUTION_MODE, resolve_backend, resolve_execution_mode
 
