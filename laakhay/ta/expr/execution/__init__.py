@@ -4,6 +4,7 @@ __all__ = [
     "DEFAULT_EXECUTION_MODE",
     "resolve_execution_mode",
     "resolve_backend",
+    "evaluate_plan",
     "Availability",
     "MissingInputPolicy",
     "ErrorPolicy",
@@ -27,6 +28,10 @@ def __getattr__(name: str):
             "resolve_backend": resolve_backend,
         }
         return exports[name]
+    if name == "evaluate_plan":
+        from .runner import evaluate_plan
+
+        return evaluate_plan
     if name in {
         "Availability",
         "MissingInputPolicy",

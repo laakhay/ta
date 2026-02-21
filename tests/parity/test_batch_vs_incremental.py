@@ -36,6 +36,10 @@ def sample_dataset(sample_ohlcv_data) -> Dataset:
         "atr(14)",
         "close + 10",
         "close * 2",
+        "sma(ema(close, 10), 5)",
+        "(close > 10) and (close < 1000000)",
+        "close.change_1h",
+        "close.change_pct_1h",
     ],
 )
 def test_evaluation_parity(sample_dataset, expr_text):

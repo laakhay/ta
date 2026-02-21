@@ -10,7 +10,7 @@ from typing import Any
 
 from ...core import Series
 from ...core.dataset import Dataset
-from ..execution.backend import resolve_backend
+from ..execution.runner import evaluate_plan
 from ..ir.nodes import CanonicalExpression, LiteralNode
 
 
@@ -35,16 +35,14 @@ class Engine:
 
         expr = expression if isinstance(expression, Expression) else Expression(expression)
         plan = expr._ensure_plan()
-        backend = resolve_backend()
-
-        result = backend.evaluate(plan, dataset)
+        result = evaluate_plan(plan, dataset)
 
         if isinstance(result, dict):
             if len(result) == 1:
                 return next(iter(result.values()))
             if len(result) == 0 and isinstance(dataset, Dataset):
                 # Allow scalar/literal expressions on empty datasets.
-                result = backend.evaluate(plan, {})
+                result = evaluate_plan(plan, {})
             else:
                 return result
         if not isinstance(result, Series):

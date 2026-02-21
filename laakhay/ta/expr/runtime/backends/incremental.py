@@ -2,12 +2,29 @@ from typing import Any
 
 from laakhay.ta.core.dataset import Dataset
 from laakhay.ta.core.series import Series
-from laakhay.ta.expr.execution.node_adapters import eval_binary_step, eval_literal_step, eval_source_ref_step
-from laakhay.ta.expr.ir.nodes import BinaryOpNode, CallNode, LiteralNode, SourceRefNode
+from laakhay.ta.expr.execution.node_adapters import (
+    eval_aggregate_step,
+    eval_binary_step,
+    eval_call_step,
+    eval_filter_step,
+    eval_literal_step,
+    eval_source_ref_step,
+    eval_time_shift_step,
+    eval_unary_step,
+)
+from laakhay.ta.expr.execution.state.models import KernelState
+from laakhay.ta.expr.execution.state.store import StateStore
+from laakhay.ta.expr.ir.nodes import (
+    AggregateNode,
+    BinaryOpNode,
+    CallNode,
+    FilterNode,
+    LiteralNode,
+    SourceRefNode,
+    TimeShiftNode,
+    UnaryOpNode,
+)
 from laakhay.ta.expr.planner.types import PlanResult
-from laakhay.ta.expr.runtime.state.models import KernelState
-from laakhay.ta.expr.runtime.state.store import StateStore
-from laakhay.ta.primitives.adapters.registry_binding import coerce_incremental_input, resolve_kernel_for_indicator
 
 from .base import ExecutionBackend
 
@@ -180,70 +197,20 @@ class IncrementalBackend(ExecutionBackend):
         if isinstance(node, BinaryOpNode):
             return eval_binary_step(node, children_vals)
 
-        from laakhay.ta.registry.registry import get_global_registry
+        if isinstance(node, UnaryOpNode):
+            return eval_unary_step(node, children_vals[0] if children_vals else None)
+
+        if isinstance(node, FilterNode):
+            return eval_filter_step(node, children_vals)
+
+        if isinstance(node, AggregateNode):
+            return eval_aggregate_step(node, children_vals[0] if children_vals else None, state)
+
+        if isinstance(node, TimeShiftNode):
+            return eval_time_shift_step(node, children_vals[0] if children_vals else None, state)
 
         if isinstance(node, CallNode):
-            # This is an indicator call (e.g. SMA) that uses the Kernel protocol.
-            registry = get_global_registry()
-            # If the user registered it via the @register decorator,
-            # we need a way to extract the underlying Kernel instance.
-            name = node.name
-
-            # Map kwarg evaluated values
-            kwargs = {}
-            handle = registry.get(name)
-            if handle:
-                import inspect
-
-                sig = inspect.signature(handle.func)
-                # First child is always the input series (ctx / source), subsequent children are args
-                # kwargs are appended at the end
-
-                # filter out 'ctx' from signature if present
-                param_names = [p.name for p in sig.parameters.values() if p.name != "ctx"]
-
-                # 1. Map positional children to parameter names
-                arg_vals = children_vals[1 : 1 + len(node.args)] if len(children_vals) > 1 else []
-                for i, val in enumerate(arg_vals):
-                    if i < len(param_names):
-                        kwargs[param_names[i]] = val
-
-                # 2. Map explict kwargs
-                kwarg_vals = children_vals[1 + len(node.args) :]
-                for k, val in zip(sorted(node.kwargs.keys()), kwarg_vals, strict=False):
-                    kwargs[k] = val
-
-                # 3. Fill in missing defaults
-                for p in sig.parameters.values():
-                    if p.name != "ctx" and p.name not in kwargs and p.default is not inspect.Parameter.empty:
-                        kwargs[p.name] = p.default
-            else:
-                # Fallback if not in registry
-                kwarg_vals = children_vals[1 + len(node.args) :]
-                for k, val in zip(sorted(node.kwargs.keys()), kwarg_vals, strict=False):
-                    kwargs[k] = val
-
-            input_val = children_vals[0] if children_vals else None
-            if input_val is None:
-                return None
-
-            # Dynamically instantiate the kernel if it hasn't been yet
-            if state.algorithm_state is None:
-                kernel = resolve_kernel_for_indicator(name)
-                if kernel is None:
-                    # Fallback (not a pure kernel)
-                    return None
-                # Initialize state with empty history
-                state.algorithm_state = kernel.initialize([], **kwargs)
-                state._kernel_instance = kernel
-
-            # Execute one step
-            kernel = state._kernel_instance
-            input_val = coerce_incremental_input(name, input_val, tick, state.algorithm_state)
-
-            new_alg_state, out_val = kernel.step(state.algorithm_state, input_val, **kwargs)
-            state.algorithm_state = new_alg_state
-            return out_val
+            return eval_call_step(node, children_vals, tick, state)
 
         return None
 

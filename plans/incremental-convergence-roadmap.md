@@ -11,10 +11,11 @@ for all node execution, with `batch` and `incremental` as two runners over the s
 - Canonical evaluator path consolidated (`planner/evaluator.py` core, runtime wrapper legacy).
 - Mode resolver centralized (`expr/execution/backend.py`) and wired in main entrypoints.
 - Source/field schema unified (parser/typecheck/validate/manifest).
-- Initial parity harness added (`tests/parity/test_batch_vs_incremental.py` + utils).
+- [~] Parity harness expanded (`tests/parity/test_batch_vs_incremental.py` + utils) with nested, boolean, and time-shift cases.
 - [~] Canonical step contract module introduced (`expr/execution/contracts.py`) with initial tests.
-- [~] Incremental backend adapterization started; source/literal/binary step logic moved to `expr/execution/node_adapters.py`.
-- Single step runner used by both batch and incremental modes.
+- [~] Incremental backend adapterization advanced; source/literal/binary/unary/call/timeshift/filter/aggregate logic delegated to `expr/execution/node_adapters.py`.
+- [~] Single step runner entrypoint introduced (`expr/execution/runner.py`) and wired through `Expression.run`, `Engine`, and `Stream`.
+- [~] Versioned state snapshots introduced under `expr/execution/state/*`.
 
 ## Phase A: Canonical Step Contract
 
@@ -37,11 +38,9 @@ Exit gate:
 Goal: remove backend-specific node behavior and route through one adapter registry.
 
 - [x] Create `expr/execution/node_adapters.py` (or similar).
-- [~] Move binary/unary/source/call/timeshift/filter/aggregate step logic into adapters.
-  - done: `source`, `literal`, `binary`
-  - pending: `unary`, `call`, `timeshift`, `filter`, `aggregate`
-- Keep indicator-to-kernel binding inside primitives adapter layer only.
-- Remove residual hardcoded branching from incremental backend loop.
+- [x] Move binary/unary/source/call/timeshift/filter/aggregate step logic into adapters.
+- [x] Keep indicator-to-kernel binding inside primitives adapter layer only.
+- [x] Remove residual hardcoded branching from incremental backend loop.
 
 Exit gate:
 
@@ -51,43 +50,43 @@ Exit gate:
 
 Goal: both execution modes use the same graph step runner.
 
-- Create `expr/execution/runner.py` as canonical graph runner.
-- Implement batch as historical replay over runner.
-- Implement incremental as streaming updates over runner.
-- Keep vectorized shortcuts optional and parity-guarded.
+- [x] Create `expr/execution/runner.py` as canonical graph runner.
+- [~] Implement batch as historical replay over runner.
+- [~] Implement incremental as streaming updates over runner.
+- [x] Keep vectorized shortcuts optional and parity-guarded.
 
 Exit gate:
 
-- `Expression.run`, `Engine`, and `Stream` route through one runner API.
+- [x] `Expression.run`, `Engine`, and `Stream` route through one runner API.
 
 ## Phase D: State Model Unification
 
 Goal: state lifecycle is explicit, typed, and replay-safe.
 
-- Introduce graph state model (`execution/state/`*) for node state snapshots.
-- Ensure snapshot/restore parity for batch replay and incremental continuation.
-- Add state schema/version metadata for forward compatibility.
+- [x] Introduce graph state model (`execution/state/*`) for node state snapshots.
+- [~] Ensure snapshot/restore parity for batch replay and incremental continuation.
+- [x] Add state schema/version metadata for forward compatibility.
 
 Exit gate:
 
-- Replay tests and snapshot determinism tests pass.
+- [~] Replay tests and snapshot determinism tests pass.
 
 ## Phase E: Semantic Parity Hardening
 
 Goal: prevent drift permanently via test gates.
 
-- Expand parity matrix:
+- [~] Expand parity matrix:
   - nested indicators
   - multi-source expressions
   - boolean chains and comparison mixes
   - time shift / change / change_pct
   - warmup boundaries and availability transitions
-- Add CI parity gate as mandatory.
-- Add targeted tolerance rules only where mathematically justified.
+- [ ] Add CI parity gate as mandatory.
+- [~] Add targeted tolerance rules only where mathematically justified.
 
 Exit gate:
 
-- Batch vs incremental parity suite passes for all golden expressions.
+- [~] Batch vs incremental parity suite passes for current expanded expression set; continue expanding goldens.
 
 ## Phase F: Compatibility Cleanup
 

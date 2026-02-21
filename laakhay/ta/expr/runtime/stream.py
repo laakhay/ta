@@ -11,6 +11,7 @@ from ...core.dataset import Dataset
 from ...core.ohlcv import OHLCV
 from ..algebra import Expression
 from ..execution.backend import resolve_backend
+from ..execution.runner import evaluate_plan
 
 
 @dataclass(frozen=True)
@@ -140,7 +141,7 @@ class Stream:
 
         for name, expr in self._expressions.items():
             plan = expr._ensure_plan()
-            result = self._backend.evaluate(plan, self._dataset)
+            result = evaluate_plan(plan, self._dataset, backend=self._backend)
             outputs[name] = result
             transitions.extend(self._collect_transitions(name, result))
 
