@@ -133,25 +133,15 @@ def analyze(
 
         # Extract data requirements
         data_requirements = list(requirements.data_requirements)
-        required_sources = list(requirements.required_sources)
-        required_exchanges = list(requirements.required_exchanges)
+        required_sources = sorted({req.source for req in requirements.data_requirements if req.source})
+        required_exchanges = sorted({req.exchange for req in requirements.data_requirements if req.exchange})
 
-        # Extract timeframes from field requirements
-        timeframes = set()
-        for field_req in requirements.fields:
-            if field_req.timeframe:
-                timeframes.add(field_req.timeframe)
-        for data_req in requirements.data_requirements:
-            if data_req.timeframe:
-                timeframes.add(data_req.timeframe)
-        required_timeframes = sorted(list(timeframes))
+        # Extract timeframes directly from canonical data requirements.
+        required_timeframes = sorted({req.timeframe for req in requirements.data_requirements if req.timeframe})
 
         # Compute minimum lookback
-        if requirements.fields:
-            min_lookback = max((field.min_lookback for field in requirements.fields), default=0)
         if requirements.data_requirements:
-            data_lookback = max((req.min_lookback for req in requirements.data_requirements), default=0)
-            min_lookback = max(min_lookback, data_lookback)
+            min_lookback = max((req.min_lookback for req in requirements.data_requirements), default=0)
     else:
         # Try to compute lookback from indicators even if planning failed
         try:
