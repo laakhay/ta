@@ -2,15 +2,40 @@
 
 from __future__ import annotations
 
-SOURCE_FIELDS: dict[str, frozenset[str]] = {
-    "ohlcv": frozenset(
+from dataclasses import dataclass, field
+
+# -----------------------------------------------------------------------------
+# Structured source definitions (struct-like)
+# -----------------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class SourceDef:
+    """Defines a data source with its name, description, and available fields."""
+
+    name: str
+    description: str
+    field_names: frozenset[str] = field(default_factory=frozenset)
+
+    def __contains__(self, field_name: str) -> bool:
+        return field_name.lower() in self.field_names
+
+    def __iter__(self):
+        return iter(sorted(self.field_names))
+
+
+# OHLCV candlestick data
+OHLCV = SourceDef(
+    name="ohlcv",
+    description="OHLCV candlestick data",
+    field_names=frozenset(
         {
-            "price",
-            "close",
             "open",
             "high",
             "low",
+            "close",
             "volume",
+            "price",  # alias for close
             "hlc3",
             "ohlc4",
             "hl2",
@@ -22,7 +47,13 @@ SOURCE_FIELDS: dict[str, frozenset[str]] = {
             "lower_wick",
         }
     ),
-    "trades": frozenset(
+)
+
+# Trade aggregation data
+TRADES = SourceDef(
+    name="trades",
+    description="Trade aggregation data",
+    field_names=frozenset(
         {
             "price",
             "volume",
@@ -39,7 +70,13 @@ SOURCE_FIELDS: dict[str, frozenset[str]] = {
             "timestamp",
         }
     ),
-    "orderbook": frozenset(
+)
+
+# Order book snapshot data
+ORDERBOOK = SourceDef(
+    name="orderbook",
+    description="Order book snapshot data",
+    field_names=frozenset(
         {
             "best_bid",
             "best_ask",
@@ -50,14 +87,19 @@ SOURCE_FIELDS: dict[str, frozenset[str]] = {
             "ask_depth",
             "imbalance",
             "pressure",
-            # Backward-compatible aliases seen in older validators/tests.
             "bid",
             "ask",
             "bid_size",
             "ask_size",
         }
     ),
-    "liquidation": frozenset(
+)
+
+# Liquidation aggregation data
+LIQUIDATION = SourceDef(
+    name="liquidation",
+    description="Liquidation aggregation data",
+    field_names=frozenset(
         {
             "count",
             "volume",
@@ -75,7 +117,18 @@ SOURCE_FIELDS: dict[str, frozenset[str]] = {
             "timestamp",
         }
     ),
+)
+
+# Registry of all source definitions
+SOURCE_DEFS: dict[str, SourceDef] = {
+    OHLCV.name: OHLCV,
+    TRADES.name: TRADES,
+    ORDERBOOK.name: ORDERBOOK,
+    LIQUIDATION.name: LIQUIDATION,
 }
+
+# Legacy: SOURCE_FIELDS for backward compatibility (derived from structs)
+SOURCE_FIELDS: dict[str, frozenset[str]] = {src.name: src.field_names for src in SOURCE_DEFS.values()}
 
 KNOWN_SOURCES: frozenset[str] = frozenset(SOURCE_FIELDS.keys())
 
@@ -135,12 +188,8 @@ DEFAULT_SOURCE_FIELDS: frozenset[str] = frozenset(
     }
 )
 
-SOURCE_DESCRIPTIONS: dict[str, str] = {
-    "ohlcv": "OHLCV candlestick data",
-    "trades": "Trade aggregation data",
-    "orderbook": "Order book snapshot data",
-    "liquidation": "Liquidation aggregation data",
-}
+# Derived from SourceDef structs
+SOURCE_DESCRIPTIONS: dict[str, str] = {src.name: src.description for src in SOURCE_DEFS.values()}
 
 
 def canonical_select_field(field: str) -> str:
@@ -156,3 +205,43 @@ def is_valid_source_field(source: str, field: str | None) -> bool:
     if field is None:
         return True
     return field.lower() in valid_source_fields(source)
+
+
+# -----------------------------------------------------------------------------
+# Explicit source callables (ohlcv, trades, orderbook, liquidation)
+# -----------------------------------------------------------------------------
+
+
+def _make_source(src_def: SourceDef):
+    """Create a callable that selects a field from a named data source."""
+
+    def _source(field_name: str):
+        from ..algebra import Expression
+        from ..ir.nodes import SourceRefNode
+
+        canonical = canonical_select_field(field_name.lower()) if src_def.name == "ohlcv" else field_name.lower()
+        if canonical not in src_def:
+            raise ValueError(
+                f"Field {field_name!r} is not valid for source {src_def.name!r}. "
+                f"Valid fields: {sorted(src_def.field_names)}"
+            )
+        return Expression(
+            SourceRefNode(
+                source=src_def.name,
+                field=canonical,
+                symbol=None,
+                exchange=None,
+                timeframe=None,
+            )
+        )
+
+    _source.__name__ = src_def.name
+    _source.__doc__ = f"{src_def.description}. Valid fields: {sorted(src_def.field_names)}"
+    return _source
+
+
+# Explicitly defined sources – first-class API for data source selection
+ohlcv = _make_source(OHLCV)
+trades = _make_source(TRADES)
+orderbook = _make_source(ORDERBOOK)
+liquidation = _make_source(LIQUIDATION)

@@ -6,6 +6,13 @@ from typing import Any
 from ..core import Bar, Price, Qty, Rate, Series, Timestamp
 from ..core.dataset import dataset
 from ..data.csv import from_csv, to_csv
+from ..expr.semantics.source_schema import (
+    LIQUIDATION,
+    OHLCV,
+    ORDERBOOK,
+    SOURCE_DEFS,
+    TRADES,
+)
 
 # Expression types imported lazily to avoid circular imports
 from ..registry import (
@@ -25,11 +32,15 @@ from .namespace import (
     TANamespace,
     TASeries,
     indicator,
+    liquidation,
     literal,
+    ohlcv,
+    orderbook,
     ref,
     resample,
     source,
     ta,
+    trades,
 )
 
 # Primitive convenience wrappers -----------------------------------------------------------
@@ -282,6 +293,15 @@ __all__ = [
     "register",
     "indicator",
     "literal",
+    "OHLCV",
+    "TRADES",
+    "ORDERBOOK",
+    "LIQUIDATION",
+    "SOURCE_DEFS",
+    "ohlcv",
+    "trades",
+    "orderbook",
+    "liquidation",
     "ref",
     "resample",
     "source",
