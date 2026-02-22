@@ -34,7 +34,7 @@ class DatasetKey:
     - 'trades': Trade aggregation data
     - 'orderbook': Order book snapshot data
     - 'liquidation': Liquidation aggregation data
-    - 'default': Default/legacy source (typically OHLCV)
+    - 'default': Default source (typically OHLCV)
     """
 
     symbol: Symbol

@@ -99,7 +99,7 @@ class IndicatorSpec:
 
 
 # -----------------------------------------------------------------------------
-# Legacy schema models (kept for backward compatibility)
+# Schema models (runtime schema; IndicatorSpec is source of truth)
 # -----------------------------------------------------------------------------
 
 
@@ -273,12 +273,12 @@ class IndicatorMetadata:
 
 
 # -----------------------------------------------------------------------------
-# Conversion between IndicatorSpec and legacy IndicatorSchema
+# Conversion between IndicatorSpec and IndicatorSchema
 # -----------------------------------------------------------------------------
 
 
 def indicator_spec_to_schema(spec: IndicatorSpec) -> IndicatorSchema:
-    """Derive legacy IndicatorSchema from IndicatorSpec."""
+    """Derive IndicatorSchema from IndicatorSpec."""
     parameters: dict[str, ParamSchema] = {}
     for name, param in spec.params.items():
         parameters[name] = ParamSchema(
@@ -334,7 +334,7 @@ def indicator_spec_to_schema(spec: IndicatorSpec) -> IndicatorSchema:
 
 
 def schema_to_indicator_spec(schema: IndicatorSchema) -> IndicatorSpec:
-    """Build IndicatorSpec from existing IndicatorSchema (for migration)."""
+    """Build IndicatorSpec from existing IndicatorSchema."""
     params: dict[str, ParamSpec] = {}
     for name, param in schema.parameters.items():
         params[name] = ParamSpec(

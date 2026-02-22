@@ -18,7 +18,7 @@ NUMERIC_FIELDS = {"open", "high", "low", "close", "volume"}
 
 
 def dataset(*args: Any, **kwargs: Any) -> Dataset:
-    """Backwards-compatible factory that proxies to core.dataset.dataset."""
+    """Create a Dataset from CSV, bars, or other sources. Proxies to core.dataset.dataset."""
     return _dataset_builder(*args, **kwargs)
 
 

@@ -256,10 +256,6 @@ class OHLCV:
             timeframe=data["timeframe"],
         )
 
-    # Backwards-compatible alias for single-field access
-    def to_series_field(self, field: str) -> Any:
-        return self.to_series(field)
-
     def to_dict(self) -> dict[str, Any]:
         """Convert OHLCV to dictionary format."""
         return {

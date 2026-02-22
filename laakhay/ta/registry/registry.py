@@ -203,7 +203,7 @@ class Registry:
                 name = spec.name
                 aliases = list(spec.aliases)
             else:
-                # Legacy: build schema, derive spec
+                # No spec: build schema from function, derive spec
                 schema = self._build_schema(
                     func,
                     name,
@@ -453,7 +453,7 @@ class Registry:
         # Handle generic types like Series[Price]
         elif hasattr(annotation, "__origin__") and hasattr(annotation, "__args__"):
             # For complex generics, we'll store the full annotation for future use
-            # but return the base type for schema compatibility
+            # but return the base type for schema
             base_type = getattr(annotation, "__origin__", annotation)
             if base_type is not None and isinstance(base_type, type):
                 return base_type  # type: ignore[return-value]

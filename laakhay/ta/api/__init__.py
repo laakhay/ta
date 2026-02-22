@@ -4,8 +4,8 @@ from collections.abc import Iterable
 from typing import Any
 
 from ..core import Bar, Price, Qty, Rate, Series, Timestamp
-from ..core.dataset import dataset
 from ..data.csv import from_csv, to_csv
+from ..data.dataset import dataset, dataset_from_bars, trim_dataset
 from ..expr.semantics.source_schema import (
     LIQUIDATION,
     OHLCV,
@@ -264,6 +264,8 @@ __all__ = [
     "Rate",
     "Timestamp",
     "dataset",
+    "dataset_from_bars",
+    "trim_dataset",
     "Series",
     "from_csv",
     "to_csv",
