@@ -4,8 +4,8 @@ from collections.abc import Iterable
 from typing import Any
 
 from ..core import Bar, Price, Qty, Rate, Series, Timestamp
-from ..core.dataset import dataset
 from ..data.csv import from_csv, to_csv
+from ..data.dataset import dataset, dataset_from_bars, trim_dataset
 from ..expr.semantics.source_schema import (
     LIQUIDATION,
     OHLCV,
@@ -246,32 +246,12 @@ def __getattr__(name: str) -> Any:
         return Engine
     elif name in (
         "Expression",
-        "BinaryOpNode",
-        "ExpressionNode",
-        "LiteralNode",
-        "UnaryOpNode",
         "as_expression",
     ):
-        from ..expr.algebra import (
-            BinaryOpNode,
-            Expression,
-            LiteralNode,
-            UnaryOpNode,
-            as_expression,
-        )
+        from ..expr.algebra import Expression, as_expression
 
         if name == "Expression":
             return Expression
-        elif name == "BinaryOpNode":
-            return BinaryOpNode
-        elif name == "ExpressionNode":
-            from ..expr.ir.nodes import ExprNode
-
-            return ExprNode
-        elif name == "LiteralNode":
-            return LiteralNode
-        elif name == "UnaryOpNode":
-            return UnaryOpNode
         elif name == "as_expression":
             return as_expression
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
@@ -284,6 +264,8 @@ __all__ = [
     "Rate",
     "Timestamp",
     "dataset",
+    "dataset_from_bars",
+    "trim_dataset",
     "Series",
     "from_csv",
     "to_csv",
@@ -312,9 +294,6 @@ __all__ = [
     "list_indicators",
     "list_all_names",
     "Expression",
-    "BinaryOpNode",
-    "UnaryOpNode",
-    "LiteralNode",
     "as_expression",
     "Engine",  # Imported lazily
     "ta",

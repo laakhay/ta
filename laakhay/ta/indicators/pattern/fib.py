@@ -13,6 +13,13 @@ from ...core.series import Series as CoreSeries
 from ...core.types import Price
 from ...registry.models import SeriesContext
 from ...registry.registry import register
+from ...registry.schemas import (
+    IndicatorSpec,
+    OutputSpec,
+    ParamSpec,
+    RuntimeBindingSpec,
+    SemanticsSpec,
+)
 from .swing import _compute_swings, _ConfirmedPivot, _validate_inputs
 
 _PAIRING_MODES = ("strict_alternating", "latest_valid")
@@ -266,16 +273,33 @@ def _select_legs_timeline(
     return selected_legs, valid_mask
 
 
-@register(
-    "fib_retracement",
+FIB_RETRACEMENT_SPEC = IndicatorSpec(
+    name="fib_retracement",
     description="Compute Fibonacci retracement bands from recent swing structure",
-    output_metadata={
-        "anchor_high": {"type": "price", "role": "anchor_high"},
-        "anchor_low": {"type": "price", "role": "anchor_low"},
-        "down": {"type": "dict", "role": "levels_down"},
-        "up": {"type": "dict", "role": "levels_up"},
+    params={
+        "left": ParamSpec(name="left", type=int, default=2, required=False),
+        "right": ParamSpec(name="right", type=int, default=2, required=False),
+        "levels": ParamSpec(name="levels", type=tuple, default=(0.382, 0.5, 0.618), required=False),
+        "mode": ParamSpec(name="mode", type=str, default="both", required=False),
+        "leg": ParamSpec(name="leg", type=int, default=1, required=False),
+        "pairing_mode": ParamSpec(name="pairing_mode", type=str, default="strict_alternating", required=False),
+        "max_leg_age_bars": ParamSpec(name="max_leg_age_bars", type=int, default=None, required=False),
+        "min_leg_size_pct": ParamSpec(name="min_leg_size_pct", type=float, default=None, required=False),
+        "allow_equal_extremes": ParamSpec(name="allow_equal_extremes", type=bool, default=False, required=False),
+        "freeze_until_new_leg": ParamSpec(name="freeze_until_new_leg", type=bool, default=True, required=False),
     },
+    outputs={
+        "anchor_high": OutputSpec(name="anchor_high", type=Series, description="High anchor", role="anchor_high"),
+        "anchor_low": OutputSpec(name="anchor_low", type=Series, description="Low anchor", role="anchor_low"),
+        "down": OutputSpec(name="down", type=dict, description="Down retracement levels", role="levels_down"),
+        "up": OutputSpec(name="up", type=dict, description="Up retracement levels", role="levels_up"),
+    },
+    semantics=SemanticsSpec(required_fields=("high", "low"), lookback_params=("left", "right", "leg")),
+    runtime_binding=RuntimeBindingSpec(kernel_id="fib_retracement"),
 )
+
+
+@register(spec=FIB_RETRACEMENT_SPEC)
 def fib_retracement(
     ctx: SeriesContext,
     *,
@@ -442,12 +466,27 @@ def fib_retracement(
     return result
 
 
-@register(
-    "fib_anchor_high",
-    aliases=["fib_high_anchor"],
+FIB_ANCHOR_HIGH_SPEC = IndicatorSpec(
+    name="fib_anchor_high",
     description="High anchor from the selected confirmed Fibonacci leg",
-    output_metadata={"result": {"type": "price", "role": "anchor_high"}},
+    aliases=("fib_high_anchor",),
+    params={
+        "left": ParamSpec(name="left", type=int, default=2, required=False),
+        "right": ParamSpec(name="right", type=int, default=2, required=False),
+        "leg": ParamSpec(name="leg", type=int, default=1, required=False),
+        "pairing_mode": ParamSpec(name="pairing_mode", type=str, default="strict_alternating", required=False),
+        "max_leg_age_bars": ParamSpec(name="max_leg_age_bars", type=int, default=None, required=False),
+        "min_leg_size_pct": ParamSpec(name="min_leg_size_pct", type=float, default=None, required=False),
+        "allow_equal_extremes": ParamSpec(name="allow_equal_extremes", type=bool, default=False, required=False),
+        "freeze_until_new_leg": ParamSpec(name="freeze_until_new_leg", type=bool, default=True, required=False),
+    },
+    outputs={"result": OutputSpec(name="result", type=Series, description="High anchor", role="anchor_high")},
+    semantics=SemanticsSpec(required_fields=("high", "low"), lookback_params=("left", "right", "leg")),
+    runtime_binding=RuntimeBindingSpec(kernel_id="fib_anchor_high"),
 )
+
+
+@register(spec=FIB_ANCHOR_HIGH_SPEC)
 def fib_anchor_high(
     ctx: SeriesContext,
     *,
@@ -476,12 +515,27 @@ def fib_anchor_high(
     return result["anchor_high"]  # type: ignore[return-value]
 
 
-@register(
-    "fib_anchor_low",
-    aliases=["fib_low_anchor"],
+FIB_ANCHOR_LOW_SPEC = IndicatorSpec(
+    name="fib_anchor_low",
     description="Low anchor from the selected confirmed Fibonacci leg",
-    output_metadata={"result": {"type": "price", "role": "anchor_low"}},
+    aliases=("fib_low_anchor",),
+    params={
+        "left": ParamSpec(name="left", type=int, default=2, required=False),
+        "right": ParamSpec(name="right", type=int, default=2, required=False),
+        "leg": ParamSpec(name="leg", type=int, default=1, required=False),
+        "pairing_mode": ParamSpec(name="pairing_mode", type=str, default="strict_alternating", required=False),
+        "max_leg_age_bars": ParamSpec(name="max_leg_age_bars", type=int, default=None, required=False),
+        "min_leg_size_pct": ParamSpec(name="min_leg_size_pct", type=float, default=None, required=False),
+        "allow_equal_extremes": ParamSpec(name="allow_equal_extremes", type=bool, default=False, required=False),
+        "freeze_until_new_leg": ParamSpec(name="freeze_until_new_leg", type=bool, default=True, required=False),
+    },
+    outputs={"result": OutputSpec(name="result", type=Series, description="Low anchor", role="anchor_low")},
+    semantics=SemanticsSpec(required_fields=("high", "low"), lookback_params=("left", "right", "leg")),
+    runtime_binding=RuntimeBindingSpec(kernel_id="fib_anchor_low"),
 )
+
+
+@register(spec=FIB_ANCHOR_LOW_SPEC)
 def fib_anchor_low(
     ctx: SeriesContext,
     *,
@@ -510,12 +564,30 @@ def fib_anchor_low(
     return result["anchor_low"]  # type: ignore[return-value]
 
 
-@register(
-    "fib_level_down",
-    aliases=["fib_down_level", "fib_down"],
+FIB_LEVEL_DOWN_SPEC = IndicatorSpec(
+    name="fib_level_down",
     description="Single downward Fibonacci retracement level from a selected low->high leg",
-    output_metadata={"result": {"type": "price", "role": "fib_level_down"}},
+    aliases=("fib_down_level", "fib_down"),
+    params={
+        "level": ParamSpec(name="level", type=float, default=0.618, required=False),
+        "left": ParamSpec(name="left", type=int, default=2, required=False),
+        "right": ParamSpec(name="right", type=int, default=2, required=False),
+        "leg": ParamSpec(name="leg", type=int, default=1, required=False),
+        "pairing_mode": ParamSpec(name="pairing_mode", type=str, default="strict_alternating", required=False),
+        "max_leg_age_bars": ParamSpec(name="max_leg_age_bars", type=int, default=None, required=False),
+        "min_leg_size_pct": ParamSpec(name="min_leg_size_pct", type=float, default=None, required=False),
+        "allow_equal_extremes": ParamSpec(name="allow_equal_extremes", type=bool, default=False, required=False),
+        "freeze_until_new_leg": ParamSpec(name="freeze_until_new_leg", type=bool, default=True, required=False),
+    },
+    outputs={
+        "result": OutputSpec(name="result", type=Series, description="Down retracement level", role="fib_level_down")
+    },
+    semantics=SemanticsSpec(required_fields=("high", "low"), lookback_params=("left", "right", "leg")),
+    runtime_binding=RuntimeBindingSpec(kernel_id="fib_level_down"),
 )
+
+
+@register(spec=FIB_LEVEL_DOWN_SPEC)
 def fib_level_down(
     ctx: SeriesContext,
     *,
@@ -546,12 +618,28 @@ def fib_level_down(
     return result["down"][str(level_decimal)]  # type: ignore[index,return-value]
 
 
-@register(
-    "fib_level_up",
-    aliases=["fib_up_level", "fib_up"],
+FIB_LEVEL_UP_SPEC = IndicatorSpec(
+    name="fib_level_up",
     description="Single upward Fibonacci retracement level from a selected high->low leg",
-    output_metadata={"result": {"type": "price", "role": "fib_level_up"}},
+    aliases=("fib_up_level", "fib_up"),
+    params={
+        "level": ParamSpec(name="level", type=float, default=0.618, required=False),
+        "left": ParamSpec(name="left", type=int, default=2, required=False),
+        "right": ParamSpec(name="right", type=int, default=2, required=False),
+        "leg": ParamSpec(name="leg", type=int, default=1, required=False),
+        "pairing_mode": ParamSpec(name="pairing_mode", type=str, default="strict_alternating", required=False),
+        "max_leg_age_bars": ParamSpec(name="max_leg_age_bars", type=int, default=None, required=False),
+        "min_leg_size_pct": ParamSpec(name="min_leg_size_pct", type=float, default=None, required=False),
+        "allow_equal_extremes": ParamSpec(name="allow_equal_extremes", type=bool, default=False, required=False),
+        "freeze_until_new_leg": ParamSpec(name="freeze_until_new_leg", type=bool, default=True, required=False),
+    },
+    outputs={"result": OutputSpec(name="result", type=Series, description="Up retracement level", role="fib_level_up")},
+    semantics=SemanticsSpec(required_fields=("high", "low"), lookback_params=("left", "right", "leg")),
+    runtime_binding=RuntimeBindingSpec(kernel_id="fib_level_up"),
 )
+
+
+@register(spec=FIB_LEVEL_UP_SPEC)
 def fib_level_up(
     ctx: SeriesContext,
     *,

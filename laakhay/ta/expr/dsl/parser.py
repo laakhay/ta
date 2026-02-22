@@ -57,34 +57,7 @@ _UNARY_MAP = {
     ast.USub: "neg",
 }
 
-_INDICATOR_ALIASES = {
-    "mean": "rolling_mean",
-    "average": "rolling_mean",
-    "avg": "rolling_mean",
-    "median": "rolling_median",
-    "med": "rolling_median",
-    "std": "rolling_std",
-    "stddev": "rolling_std",
-    "sum": "rolling_sum",
-    "argmax": "rolling_argmax",
-    "argmin": "rolling_argmin",
-    "cumsum": "cumulative_sum",
-    "pos": "positive_values",
-    "positive": "positive_values",
-    "neg": "negative_values",
-    "negative": "negative_values",
-    "tr": "true_range",
-    "rma": "rolling_rma",
-    "fib_down": "fib_level_down",
-    "fib_up": "fib_level_up",
-    "fib_down_level": "fib_level_down",
-    "fib_up_level": "fib_level_up",
-    "stoch": "stochastic",
-}
-
-_PARAM_ALIASES = {
-    "lookback": "period",
-}
+# Indicator and param aliases come from registry spec (indicator_spec.param_aliases, schema.parameter_aliases)
 
 
 class ExpressionParser:
@@ -210,83 +183,48 @@ class ExpressionParser:
         if name == "select":
             return self._convert_select_call(node)
 
-        # Normalize indicator name if it's an alias
-        actual_name = _INDICATOR_ALIASES.get(name, name)
-
-        # Ensure indicators are loaded (in case registry was cleared)
+        # Registry resolves aliases; use canonical name from handle for CallNode
         from ... import indicators  # noqa: F401
 
-        descriptor = self._registry.get(actual_name)
+        descriptor = self._registry.get(name)
         if descriptor is None:
-            raise StrategyError(f"Indicator '{actual_name}' not found")
+            raise StrategyError(f"Indicator '{name}' not found")
+        actual_name = descriptor.name
 
         param_defs = [
             param for param in descriptor.schema.parameters.values() if param.name.lower() not in {"ctx", "context"}
         ]
+        param_aliases = descriptor.schema.parameter_aliases
         params: dict[str, Any] = {}
         positional_args: list[CanonicalExpression] = []
         positional_param_names: set[str] = set()
         input_expr: CanonicalExpression | None = None
 
-        supports_nested = name in {
-            "sma",
-            "ema",
-            "rma",
-            "rsi",
-            "atr",
-            "macd",
-            "bbands",
-            "stoch",
-            "stochastic",
-            "vwap",
-            "abs",
-            "crossup",
-            "crossdown",
-            "cross",
-            "rising",
-            "falling",
-            "rising_pct",
-            "falling_pct",
-            "in",
-            "in_channel",
-            "out",
-            "enter",
-            "exit",
-        }
+        # Supports nested expressions if indicator has input slot (from spec)
+        supports_nested = bool(descriptor.indicator_spec.inputs or descriptor.schema.metadata.input_series_param)
 
-        # Check if first positional argument is an expression (for explicit source input)
-        # This affects how we count arguments
-        # This allows patterns like sma(BTC.price, period=20) or sma(trades.volume, period=20)
+        # First arg: deterministic conversion (no fallback guessing)
+        # Order: expression types → expression; Name in DEFAULT_SOURCE_FIELDS → SourceRefNode;
+        # Constant → literal; else → try literal, raise if invalid
         if len(node.args) > 0:
             first_arg = node.args[0]
             first_arg_consumed_as_positional = False
-            # Try to convert as expression first - if it fails, fall back to literal
-            # Check if this looks like an expression (attribute access, binary op, etc.)
-            # Note: ast.Constant is NOT included - constants should be treated as literals first
             is_expression_type = isinstance(
                 first_arg,
                 (ast.Attribute | ast.Call | ast.BinOp | ast.UnaryOp | ast.Compare | ast.BoolOp),
             )
 
             if is_expression_type:
-                # This is an expression - try to convert it
-                try:
-                    input_expr = self._convert_node(first_arg)
-                    # Successfully converted as expression - skip adding it to params
-                except StrategyError:
-                    # Expression conversion failed - try as literal as fallback
-                    try:
-                        literal_val = self._literal_value(first_arg)
-                        if len(param_defs) > 0:
-                            positional_param_names.add(param_defs[0].name)
-                        positional_args.append(LiteralNode(literal_val))
-                        first_arg_consumed_as_positional = True
-                    except StrategyError:
-                        raise StrategyError(
-                            f"Indicator '{name}' first argument must be a literal value or valid expression"
-                        ) from None
+                input_expr = self._convert_node(first_arg)
+            elif isinstance(first_arg, ast.Name) and first_arg.id.lower() in DEFAULT_SOURCE_FIELDS:
+                input_expr = SourceRefNode(symbol=None, field=first_arg.id.lower(), source="ohlcv")
+            elif isinstance(first_arg, ast.Constant):
+                literal_val = self._literal_value(first_arg)
+                if len(param_defs) > 0:
+                    positional_param_names.add(param_defs[0].name)
+                positional_args.append(LiteralNode(literal_val))
+                first_arg_consumed_as_positional = True
             else:
-                # Not an expression type - try as literal first
                 try:
                     literal_val = self._literal_value(first_arg)
                     if len(param_defs) > 0:
@@ -294,16 +232,9 @@ class ExpressionParser:
                     positional_args.append(LiteralNode(literal_val))
                     first_arg_consumed_as_positional = True
                 except StrategyError:
-                    # Literal failed - try as expression as fallback
-                    try:
-                        if isinstance(first_arg, ast.Name) and first_arg.id.lower() in DEFAULT_SOURCE_FIELDS:
-                            input_expr = SourceRefNode(symbol=None, field=first_arg.id.lower(), source="ohlcv")
-                        else:
-                            input_expr = self._convert_node(first_arg)
-                    except StrategyError:
-                        raise StrategyError(
-                            f"Indicator '{name}' first argument must be a literal value or valid expression"
-                        ) from None
+                    raise StrategyError(
+                        f"Indicator '{actual_name}' first argument must be a literal value, field name, or valid expression"
+                    ) from None
 
             # Check if we should shift arguments due to field shorthand
             # Logic: If 1st arg is a field name AND indicator has 'field' param AND 1st param is NOT 'field' (e.g. period)
@@ -368,7 +299,7 @@ class ExpressionParser:
             # Check if this parameter was already set from a positional argument
             param_name = keyword.arg.lower()
             # Normalize parameter name if it's an alias
-            param_name = _PARAM_ALIASES.get(param_name, param_name)
+            param_name = param_aliases.get(param_name, param_name)
 
             if param_name in params:
                 raise StrategyError(

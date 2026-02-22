@@ -11,6 +11,29 @@ from ...core.types import Price
 from ...indicators._input_resolver import resolve_channel_tuple, resolve_series_input
 from ...registry.models import SeriesContext
 from ...registry.registry import register
+from ...registry.schemas import (
+    IndicatorSpec,
+    InputSlotSpec,
+    OutputSpec,
+    ParamSpec,
+    RuntimeBindingSpec,
+    SemanticsSpec,
+)
+
+IN_CHANNEL_SPEC = IndicatorSpec(
+    name="in_channel",
+    description="Detect when price is inside channel (between upper and lower bounds)",
+    aliases=("in",),
+    inputs=(InputSlotSpec(name="price", required=False, default_source="ohlcv", default_field="close"),),
+    params={
+        "price": ParamSpec(name="price", type=object, default=None, required=False),
+        "upper": ParamSpec(name="upper", type=object, default=None, required=False),
+        "lower": ParamSpec(name="lower", type=object, default=None, required=False),
+    },
+    outputs={"result": OutputSpec(name="result", type=Series, description="Price inside channel", role="line")},
+    semantics=SemanticsSpec(required_fields=("close",), input_field="close", input_series_param="price"),
+    runtime_binding=RuntimeBindingSpec(kernel_id="in_channel"),
+)
 
 
 def _align_price_upper_lower(
@@ -28,11 +51,7 @@ def _align_price_upper_lower(
     return price_aligned, upper_aligned, lower_aligned
 
 
-@register(
-    "in_channel",
-    aliases=["in"],
-    description="Detect when price is inside channel (between upper and lower bounds)",
-)
+@register(spec=IN_CHANNEL_SPEC)
 def in_channel(
     ctx: SeriesContext,
     price: Series[Price] | Any | None = None,
@@ -92,7 +111,22 @@ def in_channel(
     )
 
 
-@register("out", description="Detect when price is outside channel (above upper or below lower)")
+OUT_SPEC = IndicatorSpec(
+    name="out",
+    description="Detect when price is outside channel (above upper or below lower)",
+    inputs=(InputSlotSpec(name="price", required=False, default_source="ohlcv", default_field="close"),),
+    params={
+        "price": ParamSpec(name="price", type=object, default=None, required=False),
+        "upper": ParamSpec(name="upper", type=object, default=None, required=False),
+        "lower": ParamSpec(name="lower", type=object, default=None, required=False),
+    },
+    outputs={"result": OutputSpec(name="result", type=Series, description="Price outside channel", role="line")},
+    semantics=SemanticsSpec(required_fields=("close",), input_field="close", input_series_param="price"),
+    runtime_binding=RuntimeBindingSpec(kernel_id="out"),
+)
+
+
+@register(spec=OUT_SPEC)
 def out(
     ctx: SeriesContext,
     price: Series[Price] | Any | None = None,
@@ -149,7 +183,22 @@ def out(
     )
 
 
-@register("enter", description="Detect when price enters channel (was outside, now inside)")
+ENTER_SPEC = IndicatorSpec(
+    name="enter",
+    description="Detect when price enters channel (was outside, now inside)",
+    inputs=(InputSlotSpec(name="price", required=False, default_source="ohlcv", default_field="close"),),
+    params={
+        "price": ParamSpec(name="price", type=object, default=None, required=False),
+        "upper": ParamSpec(name="upper", type=object, default=None, required=False),
+        "lower": ParamSpec(name="lower", type=object, default=None, required=False),
+    },
+    outputs={"result": OutputSpec(name="result", type=Series, description="Price enters channel", role="line")},
+    semantics=SemanticsSpec(required_fields=("close",), input_field="close", input_series_param="price"),
+    runtime_binding=RuntimeBindingSpec(kernel_id="enter"),
+)
+
+
+@register(spec=ENTER_SPEC)
 def enter(
     ctx: SeriesContext,
     price: Series[Price] | Any | None = None,
@@ -239,7 +288,22 @@ def enter(
     )
 
 
-@register("exit", description="Detect when price exits channel (was inside, now outside)")
+EXIT_SPEC = IndicatorSpec(
+    name="exit",
+    description="Detect when price exits channel (was inside, now outside)",
+    inputs=(InputSlotSpec(name="price", required=False, default_source="ohlcv", default_field="close"),),
+    params={
+        "price": ParamSpec(name="price", type=object, default=None, required=False),
+        "upper": ParamSpec(name="upper", type=object, default=None, required=False),
+        "lower": ParamSpec(name="lower", type=object, default=None, required=False),
+    },
+    outputs={"result": OutputSpec(name="result", type=Series, description="Price exits channel", role="line")},
+    semantics=SemanticsSpec(required_fields=("close",), input_field="close", input_series_param="price"),
+    runtime_binding=RuntimeBindingSpec(kernel_id="exit"),
+)
+
+
+@register(spec=EXIT_SPEC)
 def exit(
     ctx: SeriesContext,
     price: Series[Price] | Any | None = None,

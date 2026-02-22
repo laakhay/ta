@@ -6,6 +6,13 @@ from ..core import Series
 from ..core.types import Price
 from ..registry.models import SeriesContext
 from ..registry.registry import register
+from ..registry.schemas import (
+    IndicatorSpec,
+    OutputSpec,
+    ParamSpec,
+    RuntimeBindingSpec,
+    SemanticsSpec,
+)
 from .math_ops import ew_binary
 
 
@@ -77,7 +84,17 @@ def _select_field(ctx: SeriesContext, field: str) -> Series[Price]:
     raise ValueError(f"SeriesContext missing required field '{field}'")
 
 
-@register("select", description="Select a named series from the context")
+_SELECT_SPEC = IndicatorSpec(
+    name="select",
+    description="Select a named series from the context",
+    params={"field": ParamSpec("field", str, default="close", required=False)},
+    outputs={"result": OutputSpec(name="result", type=Series, description="Selected series", role="selector")},
+    semantics=SemanticsSpec(required_fields=("close",), optional_fields=("field",), default_lookback=1),
+    runtime_binding=RuntimeBindingSpec(kernel_id="select"),
+)
+
+
+@register(spec=_SELECT_SPEC)
 def select(ctx: SeriesContext, field: str = "close") -> Series[Price]:
     return _select_field(ctx, field)
 

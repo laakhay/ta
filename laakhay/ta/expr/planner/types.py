@@ -40,19 +40,6 @@ class AlignmentPolicy:
 
 
 @dataclass(frozen=True)
-class FieldRequirement:
-    name: str
-    timeframe: str | None
-    min_lookback: int
-
-
-@dataclass(frozen=True)
-class DerivedRequirement:
-    name: str
-    params: tuple[tuple[str, Any], ...] = ()
-
-
-@dataclass(frozen=True)
 class DataRequirement:
     """Requirement for a specific data source."""
 

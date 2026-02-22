@@ -9,23 +9,35 @@ from ...core.types import Price
 from ...primitives.rolling_ops import rolling_max, rolling_mean, rolling_min
 from ...registry.models import SeriesContext
 from ...registry.registry import register
-
-
-@register(
-    "stochastic",
-    aliases=["stoch"],
-    description="Stochastic Oscillator (%K and %D)",
-    output_metadata={
-        "k": {
-            "role": "osc_main",
-            "description": "%K line of stochastic oscillator",
-        },
-        "d": {
-            "role": "osc_signal",
-            "description": "%D line (moving average of %K)",
-        },
-    },
+from ...registry.schemas import (
+    IndicatorSpec,
+    OutputSpec,
+    ParamSpec,
+    RuntimeBindingSpec,
+    SemanticsSpec,
 )
+
+STOCHASTIC_SPEC = IndicatorSpec(
+    name="stochastic",
+    description="Stochastic Oscillator (%K and %D)",
+    aliases=("stoch",),
+    params={
+        "k_period": ParamSpec(name="k_period", type=int, default=14, required=False),
+        "d_period": ParamSpec(name="d_period", type=int, default=3, required=False),
+    },
+    outputs={
+        "k": OutputSpec(name="k", type=Series, description="%K line of stochastic oscillator", role="osc_main"),
+        "d": OutputSpec(name="d", type=Series, description="%D line (moving average of %K)", role="osc_signal"),
+    },
+    semantics=SemanticsSpec(
+        required_fields=("high", "low", "close"),
+        lookback_params=("k_period", "d_period"),
+    ),
+    runtime_binding=RuntimeBindingSpec(kernel_id="stochastic"),
+)
+
+
+@register(spec=STOCHASTIC_SPEC)
 def stochastic(ctx: SeriesContext, k_period: int = 14, d_period: int = 3) -> tuple[Series[Price], Series[Price]]:
     """
     Stochastic Oscillator indicator using primitives.
@@ -93,7 +105,23 @@ def stochastic(ctx: SeriesContext, k_period: int = 14, d_period: int = 3) -> tup
     return k_series, d_series
 
 
-@register("stoch_k", description="Stochastic %K line")
+STOCH_K_SPEC = IndicatorSpec(
+    name="stoch_k",
+    description="Stochastic %K line",
+    params={
+        "k_period": ParamSpec(name="k_period", type=int, default=14, required=False),
+        "d_period": ParamSpec(name="d_period", type=int, default=3, required=False),
+    },
+    outputs={"result": OutputSpec(name="result", type=Series, description="%K line", role="osc_main")},
+    semantics=SemanticsSpec(
+        required_fields=("high", "low", "close"),
+        lookback_params=("k_period", "d_period"),
+    ),
+    runtime_binding=RuntimeBindingSpec(kernel_id="stoch_k"),
+)
+
+
+@register(spec=STOCH_K_SPEC)
 def stoch_k(ctx: SeriesContext, k_period: int = 14, d_period: int = 3) -> Series[Price]:
     """
     Convenience wrapper that returns only the %K line from stochastic().
@@ -102,7 +130,23 @@ def stoch_k(ctx: SeriesContext, k_period: int = 14, d_period: int = 3) -> Series
     return k_series
 
 
-@register("stoch_d", description="Stochastic %D line")
+STOCH_D_SPEC = IndicatorSpec(
+    name="stoch_d",
+    description="Stochastic %D line",
+    params={
+        "k_period": ParamSpec(name="k_period", type=int, default=14, required=False),
+        "d_period": ParamSpec(name="d_period", type=int, default=3, required=False),
+    },
+    outputs={"result": OutputSpec(name="result", type=Series, description="%D line", role="osc_signal")},
+    semantics=SemanticsSpec(
+        required_fields=("high", "low", "close"),
+        lookback_params=("k_period", "d_period"),
+    ),
+    runtime_binding=RuntimeBindingSpec(kernel_id="stoch_d"),
+)
+
+
+@register(spec=STOCH_D_SPEC)
 def stoch_d(ctx: SeriesContext, k_period: int = 14, d_period: int = 3) -> Series[Price]:
     """
     Convenience wrapper that returns only the %D line from stochastic().

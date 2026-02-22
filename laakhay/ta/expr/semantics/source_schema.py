@@ -127,7 +127,6 @@ SOURCE_DEFS: dict[str, SourceDef] = {
     LIQUIDATION.name: LIQUIDATION,
 }
 
-# Legacy: SOURCE_FIELDS for backward compatibility (derived from structs)
 SOURCE_FIELDS: dict[str, frozenset[str]] = {src.name: src.field_names for src in SOURCE_DEFS.values()}
 
 KNOWN_SOURCES: frozenset[str] = frozenset(SOURCE_FIELDS.keys())

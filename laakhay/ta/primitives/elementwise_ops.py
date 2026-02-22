@@ -8,6 +8,14 @@ from ..core.series import Series as CoreSeries
 from ..core.types import Price
 from ..registry.models import SeriesContext
 from ..registry.registry import register
+from ..registry.schemas import (
+    IndicatorSpec,
+    InputSlotSpec,
+    OutputSpec,
+    ParamSpec,
+    RuntimeBindingSpec,
+    SemanticsSpec,
+)
 from .kernel import run_kernel
 from .kernels.math import (
     AbsoluteValueKernel,
@@ -44,21 +52,52 @@ def _zip_hlc_series(high: Series[Price], low: Series[Price], close: Series[Price
     return Series[Any](timestamps=high.timestamps, values=vals, symbol=high.symbol, timeframe=high.timeframe)
 
 
-@register("elementwise_max", description="Element-wise maximum of two series")
+def _elem_spec(name: str, sem: SemanticsSpec, **kw: Any) -> IndicatorSpec:
+    return IndicatorSpec(
+        name=name,
+        params=kw.get("params", {}),
+        outputs={"result": OutputSpec(name="result", type=Series, description="Result", role="line")},
+        semantics=sem,
+        runtime_binding=RuntimeBindingSpec(kernel_id=name),
+        **{k: v for k, v in kw.items() if k != "params"},
+    )
+
+
+@register(
+    spec=_elem_spec(
+        "elementwise_max",
+        SemanticsSpec(required_fields=("close",), optional_fields=("other_series",), default_lookback=1),
+    )
+)
 def elementwise_max(ctx: SeriesContext, other_series: Series[Price]) -> Series[Price]:
     src = _select(ctx)
     pair_series = _zip_binary_series(src, other_series)
     return run_kernel(pair_series, PairMaxKernel(), min_periods=1, coerce_input=lambda x: x)
 
 
-@register("elementwise_min", description="Element-wise minimum of two series")
+@register(
+    spec=_elem_spec(
+        "elementwise_min",
+        SemanticsSpec(required_fields=("close",), optional_fields=("other_series",), default_lookback=1),
+    )
+)
 def elementwise_min(ctx: SeriesContext, other_series: Series[Price]) -> Series[Price]:
     src = _select(ctx)
     pair_series = _zip_binary_series(src, other_series)
     return run_kernel(pair_series, PairMinKernel(), min_periods=1, coerce_input=lambda x: x)
 
 
-@register("cumulative_sum", aliases=["cumsum"], description="Cumulative sum of a series")
+@register(
+    spec=IndicatorSpec(
+        name="cumulative_sum",
+        description="Cumulative sum of a series",
+        aliases=("cumsum",),
+        params={"field": ParamSpec("field", str, default=None, required=False)},
+        outputs={"result": OutputSpec(name="result", type=Series, description="Result", role="line")},
+        semantics=SemanticsSpec(required_fields=("close",), optional_fields=(), lookback_params=(), default_lookback=1),
+        runtime_binding=RuntimeBindingSpec(kernel_id="cumulative_sum"),
+    )
+)
 def cumulative_sum(ctx: SeriesContext, field: str | None = None) -> Series[Price]:
     src = _select_field(ctx, field) if field else _select(ctx)
     res = run_kernel(src, CumulativeSumKernel(), min_periods=1)
@@ -71,7 +110,16 @@ def cumulative_sum(ctx: SeriesContext, field: str | None = None) -> Series[Price
     )
 
 
-@register("diff", description="Difference between consecutive values")
+@register(
+    spec=IndicatorSpec(
+        name="diff",
+        description="Difference between consecutive values",
+        params={"field": ParamSpec("field", str, default=None, required=False)},
+        outputs={"result": OutputSpec(name="result", type=Series, description="Result", role="line")},
+        semantics=SemanticsSpec(required_fields=("close",), optional_fields=(), lookback_params=(), default_lookback=2),
+        runtime_binding=RuntimeBindingSpec(kernel_id="diff"),
+    )
+)
 def diff(ctx: SeriesContext, field: str | None = None) -> Series[Price]:
     src = _select_field(ctx, field) if field else _select(ctx)
     res = run_kernel(src, DiffKernel(), min_periods=2)
@@ -84,7 +132,21 @@ def diff(ctx: SeriesContext, field: str | None = None) -> Series[Price]:
     )
 
 
-@register("shift", description="Shift series by n periods")
+@register(
+    spec=IndicatorSpec(
+        name="shift",
+        description="Shift series by n periods",
+        params={
+            "periods": ParamSpec("periods", int, default=1, required=False),
+            "field": ParamSpec("field", str, default=None, required=False),
+        },
+        outputs={"result": OutputSpec(name="result", type=Series, description="Result", role="line")},
+        semantics=SemanticsSpec(
+            required_fields=("close",), optional_fields=(), lookback_params=("periods",), default_lookback=1
+        ),
+        runtime_binding=RuntimeBindingSpec(kernel_id="shift"),
+    )
+)
 def shift(ctx: SeriesContext, periods: int = 1, field: str | None = None) -> Series[Price]:
     src = _select_field(ctx, field) if field else _select(ctx)
     n = len(src)
@@ -117,25 +179,63 @@ def shift(ctx: SeriesContext, periods: int = 1, field: str | None = None) -> Ser
     )
 
 
-@register("positive_values", aliases=["pos", "positive"], description="Replace negatives with 0")
+@register(
+    spec=IndicatorSpec(
+        name="positive_values",
+        description="Replace negatives with 0",
+        aliases=("pos", "positive"),
+        params={"field": ParamSpec("field", str, default=None, required=False)},
+        outputs={"result": OutputSpec(name="result", type=Series, description="Result", role="line")},
+        semantics=SemanticsSpec(required_fields=("close",), optional_fields=(), default_lookback=1),
+        runtime_binding=RuntimeBindingSpec(kernel_id="positive_values"),
+    )
+)
 def positive_values(ctx: SeriesContext, field: str | None = None) -> Series[Price]:
     src = _select_field(ctx, field) if field else _select(ctx)
     return run_kernel(src, PositiveKernel(), min_periods=1)
 
 
-@register("negative_values", aliases=["neg", "negative"], description="Replace positives with 0")
+@register(
+    spec=IndicatorSpec(
+        name="negative_values",
+        description="Replace positives with 0",
+        aliases=("neg", "negative"),
+        params={"field": ParamSpec("field", str, default=None, required=False)},
+        outputs={"result": OutputSpec(name="result", type=Series, description="Result", role="line")},
+        semantics=SemanticsSpec(required_fields=("close",), optional_fields=(), default_lookback=1),
+        runtime_binding=RuntimeBindingSpec(kernel_id="negative_values"),
+    )
+)
 def negative_values(ctx: SeriesContext, field: str | None = None) -> Series[Price]:
     src = _select_field(ctx, field) if field else _select(ctx)
     return run_kernel(src, NegativeKernel(), min_periods=1)
 
 
-@register("abs", description="Absolute value of a series")
+@register(
+    spec=IndicatorSpec(
+        name="abs",
+        description="Absolute value of a series",
+        params={"field": ParamSpec("field", str, default=None, required=False)},
+        outputs={"result": OutputSpec(name="result", type=Series, description="Result", role="line")},
+        semantics=SemanticsSpec(required_fields=("close",), optional_fields=(), default_lookback=1),
+        runtime_binding=RuntimeBindingSpec(kernel_id="abs"),
+    )
+)
 def absolute_value(ctx: SeriesContext, field: str | None = None) -> Series[Price]:
     src = _select_field(ctx, field) if field else _select(ctx)
     return run_kernel(src, AbsoluteValueKernel(), min_periods=1)
 
 
-@register("true_range", aliases=["tr"], description="True Range for ATR")
+@register(
+    spec=IndicatorSpec(
+        name="true_range",
+        description="True Range for ATR",
+        aliases=("tr",),
+        outputs={"result": OutputSpec(name="result", type=Series, description="Result", role="line")},
+        semantics=SemanticsSpec(required_fields=("high", "low", "close"), optional_fields=(), default_lookback=2),
+        runtime_binding=RuntimeBindingSpec(kernel_id="true_range"),
+    )
+)
 def true_range(ctx: SeriesContext) -> Series[Price]:
     for name in ("high", "low", "close"):
         if not hasattr(ctx, name):
@@ -154,7 +254,15 @@ def true_range(ctx: SeriesContext) -> Series[Price]:
     )
 
 
-@register("typical_price", description="(H+L+C)/3")
+@register(
+    spec=IndicatorSpec(
+        name="typical_price",
+        description="(H+L+C)/3",
+        outputs={"result": OutputSpec(name="result", type=Series, description="Result", role="line")},
+        semantics=SemanticsSpec(required_fields=("high", "low", "close"), optional_fields=(), default_lookback=1),
+        runtime_binding=RuntimeBindingSpec(kernel_id="typical_price"),
+    )
+)
 def typical_price(ctx: SeriesContext) -> Series[Price]:
     for name in ("high", "low", "close"):
         if not hasattr(ctx, name):
@@ -173,7 +281,16 @@ def typical_price(ctx: SeriesContext) -> Series[Price]:
     )
 
 
-@register("sign", description="Sign of price changes (1, 0, -1)")
+@register(
+    spec=IndicatorSpec(
+        name="sign",
+        description="Sign of price changes (1, 0, -1)",
+        params={"field": ParamSpec("field", str, default=None, required=False)},
+        outputs={"result": OutputSpec(name="result", type=Series, description="Result", role="line")},
+        semantics=SemanticsSpec(required_fields=("close",), optional_fields=(), default_lookback=2),
+        runtime_binding=RuntimeBindingSpec(kernel_id="sign"),
+    )
+)
 def sign(ctx: SeriesContext, field: str | None = None) -> Series[Price]:
     src = _select_field(ctx, field) if field else _select(ctx)
     res = run_kernel(src, SignKernel(), min_periods=2)
@@ -187,8 +304,19 @@ def sign(ctx: SeriesContext, field: str | None = None) -> Series[Price]:
 
 
 @register(
-    "downsample",
-    description="Downsample by factor with aggregation. For OHLCV, uses O/H/L/C/V rules.",
+    spec=IndicatorSpec(
+        name="downsample",
+        description="Downsample by factor with aggregation. For OHLCV, uses O/H/L/C/V rules.",
+        params={
+            "factor": ParamSpec("factor", int, default=2, required=False),
+            "agg": ParamSpec("agg", str, default="last", required=False),
+            "target": ParamSpec("target", str, default="close", required=False),
+            "target_timeframe": ParamSpec("target_timeframe", str, default=None, required=False),
+        },
+        outputs={"result": OutputSpec(name="result", type=Series, description="Result", role="line")},
+        semantics=SemanticsSpec(required_fields=("close",), optional_fields=(), default_lookback=1),
+        runtime_binding=RuntimeBindingSpec(kernel_id="downsample"),
+    )
 )
 def downsample(
     ctx: SeriesContext,
@@ -298,7 +426,19 @@ def downsample(
     )
 
 
-@register("upsample", description="Upsample a series by integer factor with forward-fill")
+@register(
+    spec=IndicatorSpec(
+        name="upsample",
+        description="Upsample a series by integer factor with forward-fill",
+        params={
+            "factor": ParamSpec("factor", int, default=2, required=False),
+            "method": ParamSpec("method", str, default="ffill", required=False),
+        },
+        outputs={"result": OutputSpec(name="result", type=Series, description="Result", role="line")},
+        semantics=SemanticsSpec(required_fields=("close",), optional_fields=(), default_lookback=1),
+        runtime_binding=RuntimeBindingSpec(kernel_id="upsample"),
+    )
+)
 def upsample(ctx: SeriesContext, *, factor: int = 2, method: str = "ffill") -> Series[Price]:
     src = _select(ctx)
     if factor <= 1:
@@ -326,8 +466,15 @@ def upsample(ctx: SeriesContext, *, factor: int = 2, method: str = "ffill") -> S
 
 
 @register(
-    "sync_timeframe",
-    description="Align a series to a reference's timestamps with ffill or linear interpolation",
+    spec=IndicatorSpec(
+        name="sync_timeframe",
+        description="Align a series to a reference's timestamps with ffill or linear interpolation",
+        inputs=(InputSlotSpec("reference", "Reference series for timestamp alignment", required=True),),
+        params={"fill": ParamSpec("fill", str, default="ffill", required=False)},
+        outputs={"result": OutputSpec(name="result", type=Series, description="Result", role="line")},
+        semantics=SemanticsSpec(required_fields=("close",), optional_fields=(), default_lookback=1),
+        runtime_binding=RuntimeBindingSpec(kernel_id="sync_timeframe"),
+    )
 )
 def sync_timeframe(ctx: SeriesContext, reference: Series[Price], *, fill: str = "ffill") -> Series[Price]:
     src = _select(ctx)

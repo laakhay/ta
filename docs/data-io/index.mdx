@@ -4,10 +4,13 @@
 
 ## Main Helpers
 
+Available via `from laakhay.ta import dataset, dataset_from_bars, trim_dataset, from_csv, to_csv`:
+
 - `from_csv(...)` / `to_csv(...)`
-- `dataset_from_bars(...)`
-- `dataset_from_multisource(...)`
-- `trim_dataset(...)`
+- `dataset(...)` – create Dataset from CSV or other sources
+- `dataset_from_bars(...)` – from raw OHLCV bar mappings
+- `dataset_from_multisource(...)` – from bars, trades, orderbook, liquidations (in `laakhay.ta.data.dataset`)
+- `trim_dataset(...)` – trim for indicator lookback
 
 ## Philosophy
 

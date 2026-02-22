@@ -28,7 +28,7 @@ class LiteralNode(ExprNode):
 
 @dataclass(slots=True, unsafe_hash=True)
 class SourceRefNode(ExprNode):
-    """Fully resolved source/field identity. Replaces AttributeNode."""
+    """Fully resolved source/field identity."""
 
     symbol: str | None
     field: str | None
@@ -45,7 +45,7 @@ class SourceRefNode(ExprNode):
 
 @dataclass(slots=True, unsafe_hash=True)
 class CallNode(ExprNode):
-    """Indicator or function call. Replaces IndicatorNode."""
+    """Indicator or function call."""
 
     name: str
     args: list[CanonicalExpression] = field(default_factory=list)

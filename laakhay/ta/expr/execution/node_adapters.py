@@ -144,38 +144,35 @@ def eval_call_step(node: CallNode, children_vals: list[Any], tick: dict[str, Any
     from ...registry.registry import get_global_registry
 
     registry = get_global_registry()
-    name = node.name
-    kwargs = _resolve_call_kwargs(node, children_vals, registry)
+    handle = registry.get(node.name)
+    if not handle:
+        raise ValueError(f"Indicator '{node.name}' not found in registry")
+    kwargs = _resolve_call_kwargs(node, children_vals, handle)
 
     input_val = children_vals[0] if children_vals else None
     if input_val is None:
         return None
 
     if state.algorithm_state is None:
-        kernel = resolve_kernel_for_indicator(name)
+        kernel = resolve_kernel_for_indicator(handle)
         if kernel is None:
             return None
         state.algorithm_state = kernel.initialize([], **kwargs)
         state._kernel_instance = kernel
 
+    kernel_id = handle.indicator_spec.runtime_binding.kernel_id
+    input_val = coerce_incremental_input(kernel_id, input_val, tick, state.algorithm_state)
     kernel = state._kernel_instance
-    input_val = coerce_incremental_input(name, input_val, tick, state.algorithm_state)
     new_alg_state, out_val = kernel.step(state.algorithm_state, input_val, **kwargs)
     state.algorithm_state = new_alg_state
     return out_val
 
 
-def _resolve_call_kwargs(node: CallNode, children_vals: list[Any], registry: Any) -> dict[str, Any]:
-    kwargs: dict[str, Any] = {}
-    handle = registry.get(node.name)
-    if not handle:
-        kwarg_vals = children_vals[1 + len(node.args) :]
-        for key, val in zip(sorted(node.kwargs.keys()), kwarg_vals, strict=False):
-            kwargs[key] = val
-        return kwargs
-
+def _resolve_call_kwargs(node: CallNode, children_vals: list[Any], handle: Any) -> dict[str, Any]:
+    """Bind CallNode args/kwargs to indicator params per spec."""
     import inspect
 
+    kwargs: dict[str, Any] = {}
     sig = inspect.signature(handle.func)
     param_names = [p.name for p in sig.parameters.values() if p.name != "ctx"]
     arg_vals = children_vals[1 : 1 + len(node.args)] if len(children_vals) > 1 else []

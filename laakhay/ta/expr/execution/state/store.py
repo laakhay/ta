@@ -37,5 +37,5 @@ class StateStore:
                 )
             self._states = copy.deepcopy(snapshot.states)
             return
-        # Backward compatibility for old raw dict snapshots.
+        # Accept raw dict snapshots from prior schema versions.
         self._states = copy.deepcopy(snapshot)

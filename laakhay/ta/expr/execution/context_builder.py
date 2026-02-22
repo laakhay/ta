@@ -27,6 +27,7 @@ def build_evaluation_context(
         context = dataset.to_multisource_context(symbol=symbol, timeframe=timeframe)
         context_dict: dict[str, Series[Any]] = {name: getattr(context, name) for name in context.available_series}
     except (ValueError, AttributeError):
+        # Fallback for datasets without to_multisource_context (e.g. minimal/single-source)
         context = dataset.build_context(symbol, timeframe, required_fields)
         context_dict = {name: getattr(context, name) for name in context.available_series}
 

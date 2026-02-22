@@ -7,9 +7,26 @@ from ...core.types import Price, Qty
 from ...primitives.elementwise_ops import cumulative_sum, sign
 from ...registry.models import SeriesContext
 from ...registry.registry import register
+from ...registry.schemas import (
+    IndicatorSpec,
+    OutputSpec,
+    RuntimeBindingSpec,
+    SemanticsSpec,
+)
+
+OBV_SPEC = IndicatorSpec(
+    name="obv",
+    description="On-Balance Volume indicator",
+    outputs={"result": OutputSpec(name="result", type=Series, description="OBV values", role="line")},
+    semantics=SemanticsSpec(
+        required_fields=("close", "volume"),
+        default_lookback=2,
+    ),
+    runtime_binding=RuntimeBindingSpec(kernel_id="obv"),
+)
 
 
-@register("obv", description="On-Balance Volume indicator")
+@register(spec=OBV_SPEC)
 def obv(ctx: SeriesContext) -> Series[Qty]:
     """
     On-Balance Volume indicator using primitives.

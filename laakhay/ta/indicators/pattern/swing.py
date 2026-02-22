@@ -11,6 +11,13 @@ from ...core.series import Series as CoreSeries
 from ...core.types import Price
 from ...registry.models import SeriesContext
 from ...registry.registry import register
+from ...registry.schemas import (
+    IndicatorSpec,
+    OutputSpec,
+    ParamSpec,
+    RuntimeBindingSpec,
+    SemanticsSpec,
+)
 
 
 def _validate_inputs(ctx: SeriesContext, left: int, right: int) -> tuple[Series[Price], Series[Price]]:
@@ -194,14 +201,29 @@ def _build_result(
     return output
 
 
-@register(
-    "swing_points",
+SWING_POINTS_SPEC = IndicatorSpec(
+    name="swing_points",
     description="Detect swing highs and lows using fractal-style lookbacks",
-    output_metadata={
-        "swing_high": {"type": "price", "role": "level", "polarity": "high"},
-        "swing_low": {"type": "price", "role": "level", "polarity": "low"},
+    params={
+        "left": ParamSpec(name="left", type=int, default=2, required=False),
+        "right": ParamSpec(name="right", type=int, default=2, required=False),
+        "return_mode": ParamSpec(name="return_mode", type=str, default="flags", required=False),
+        "allow_equal_extremes": ParamSpec(name="allow_equal_extremes", type=bool, default=False, required=False),
     },
+    outputs={
+        "swing_high": OutputSpec(
+            name="swing_high", type=Series, description="Swing high flags/levels", role="level", polarity="high"
+        ),
+        "swing_low": OutputSpec(
+            name="swing_low", type=Series, description="Swing low flags/levels", role="level", polarity="low"
+        ),
+    },
+    semantics=SemanticsSpec(required_fields=("high", "low"), lookback_params=("left", "right")),
+    runtime_binding=RuntimeBindingSpec(kernel_id="swing_points"),
 )
+
+
+@register(spec=SWING_POINTS_SPEC)
 def swing_points(
     ctx: SeriesContext,
     *,
@@ -232,11 +254,26 @@ def swing_points(
     )
 
 
-@register(
-    "swing_highs",
+SWING_HIGHS_SPEC = IndicatorSpec(
+    name="swing_highs",
     description="Detect swing highs using fractal-style lookbacks",
-    output_metadata={"result": {"type": "price", "role": "level", "polarity": "high"}},
+    params={
+        "left": ParamSpec(name="left", type=int, default=2, required=False),
+        "right": ParamSpec(name="right", type=int, default=2, required=False),
+        "return_mode": ParamSpec(name="return_mode", type=str, default="flags", required=False),
+        "allow_equal_extremes": ParamSpec(name="allow_equal_extremes", type=bool, default=False, required=False),
+    },
+    outputs={
+        "result": OutputSpec(
+            name="result", type=Series, description="Swing high flags/levels", role="level", polarity="high"
+        )
+    },
+    semantics=SemanticsSpec(required_fields=("high", "low"), lookback_params=("left", "right")),
+    runtime_binding=RuntimeBindingSpec(kernel_id="swing_highs"),
 )
+
+
+@register(spec=SWING_HIGHS_SPEC)
 def swing_highs(
     ctx: SeriesContext,
     *,
@@ -256,11 +293,26 @@ def swing_highs(
     return result["swing_high"]
 
 
-@register(
-    "swing_lows",
+SWING_LOWS_SPEC = IndicatorSpec(
+    name="swing_lows",
     description="Detect swing lows using fractal-style lookbacks",
-    output_metadata={"result": {"type": "price", "role": "level", "polarity": "low"}},
+    params={
+        "left": ParamSpec(name="left", type=int, default=2, required=False),
+        "right": ParamSpec(name="right", type=int, default=2, required=False),
+        "return_mode": ParamSpec(name="return_mode", type=str, default="flags", required=False),
+        "allow_equal_extremes": ParamSpec(name="allow_equal_extremes", type=bool, default=False, required=False),
+    },
+    outputs={
+        "result": OutputSpec(
+            name="result", type=Series, description="Swing low flags/levels", role="level", polarity="low"
+        )
+    },
+    semantics=SemanticsSpec(required_fields=("high", "low"), lookback_params=("left", "right")),
+    runtime_binding=RuntimeBindingSpec(kernel_id="swing_lows"),
 )
+
+
+@register(spec=SWING_LOWS_SPEC)
 def swing_lows(
     ctx: SeriesContext,
     *,
@@ -317,11 +369,26 @@ def _build_indexed_level_series(
     )
 
 
-@register(
-    "swing_high_at",
+SWING_HIGH_AT_SPEC = IndicatorSpec(
+    name="swing_high_at",
     description="Price series for the nth latest confirmed swing high",
-    output_metadata={"result": {"type": "price", "role": "level", "polarity": "high"}},
+    params={
+        "index": ParamSpec(name="index", type=int, default=1, required=False),
+        "left": ParamSpec(name="left", type=int, default=2, required=False),
+        "right": ParamSpec(name="right", type=int, default=2, required=False),
+        "allow_equal_extremes": ParamSpec(name="allow_equal_extremes", type=bool, default=False, required=False),
+    },
+    outputs={
+        "result": OutputSpec(
+            name="result", type=Series, description="Nth swing high price", role="level", polarity="high"
+        )
+    },
+    semantics=SemanticsSpec(required_fields=("high", "low"), lookback_params=("left", "right", "index")),
+    runtime_binding=RuntimeBindingSpec(kernel_id="swing_high_at"),
 )
+
+
+@register(spec=SWING_HIGH_AT_SPEC)
 def swing_high_at(
     ctx: SeriesContext,
     *,
@@ -335,11 +402,26 @@ def swing_high_at(
     return _build_indexed_level_series(high, swings.confirmed_high, index=index)
 
 
-@register(
-    "swing_low_at",
+SWING_LOW_AT_SPEC = IndicatorSpec(
+    name="swing_low_at",
     description="Price series for the nth latest confirmed swing low",
-    output_metadata={"result": {"type": "price", "role": "level", "polarity": "low"}},
+    params={
+        "index": ParamSpec(name="index", type=int, default=1, required=False),
+        "left": ParamSpec(name="left", type=int, default=2, required=False),
+        "right": ParamSpec(name="right", type=int, default=2, required=False),
+        "allow_equal_extremes": ParamSpec(name="allow_equal_extremes", type=bool, default=False, required=False),
+    },
+    outputs={
+        "result": OutputSpec(
+            name="result", type=Series, description="Nth swing low price", role="level", polarity="low"
+        )
+    },
+    semantics=SemanticsSpec(required_fields=("high", "low"), lookback_params=("left", "right", "index")),
+    runtime_binding=RuntimeBindingSpec(kernel_id="swing_low_at"),
 )
+
+
+@register(spec=SWING_LOW_AT_SPEC)
 def swing_low_at(
     ctx: SeriesContext,
     *,

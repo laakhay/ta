@@ -10,7 +10,7 @@ from laakhay.ta.core.series import Series
 from laakhay.ta.core.types import Price
 from laakhay.ta.registry.models import IndicatorHandle, SeriesContext
 from laakhay.ta.registry.registry import Registry
-from laakhay.ta.registry.schemas import IndicatorSchema, ParamSchema
+from laakhay.ta.registry.schemas import IndicatorSchema, ParamSchema, schema_to_indicator_spec
 
 
 @pytest.fixture
@@ -72,5 +72,6 @@ def indicator_handle(test_function, indicator_schema):
         func=test_function,
         signature=signature(test_function),
         schema=indicator_schema,
+        indicator_spec=schema_to_indicator_spec(indicator_schema),
         aliases=[],
     )

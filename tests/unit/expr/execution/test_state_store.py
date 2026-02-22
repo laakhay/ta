@@ -29,7 +29,7 @@ def test_state_store_restore_rejects_wrong_schema() -> None:
         store.restore(bad)
 
 
-def test_state_store_restore_supports_legacy_dict() -> None:
+def test_state_store_restore_supports_raw_dict_snapshot() -> None:
     store = StateStore()
     legacy = {2: KernelState(last_value=Decimal("3"))}
     store.restore(legacy)

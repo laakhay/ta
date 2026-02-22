@@ -14,6 +14,13 @@ from ..primitives.select import _select_field
 from ..registry import register
 from ..registry.models import SeriesContext
 from ..registry.registry import get_global_registry
+from ..registry.schemas import (
+    IndicatorSpec,
+    OutputSpec,
+    ParamSpec,
+    RuntimeBindingSpec,
+    SemanticsSpec,
+)
 from .handle import IndicatorHandle
 
 
@@ -62,10 +69,17 @@ _TIMEFRAME_MULTIPLIERS: dict[str, int] = {
 }
 
 _SELECT_DESCRIPTION = "Select a field from the evaluation context"
-_SELECT_OUTPUT_METADATA = {"result": {"type": "price", "role": "selector", "polarity": "neutral"}}
+_SELECT_SPEC = IndicatorSpec(
+    name="select",
+    description=_SELECT_DESCRIPTION,
+    params={"field": ParamSpec("field", str, default="close", required=False)},
+    outputs={"result": OutputSpec(name="result", type=Series, description="Selected series", role="selector")},
+    semantics=SemanticsSpec(required_fields=("close",), optional_fields=("field",), default_lookback=1),
+    runtime_binding=RuntimeBindingSpec(kernel_id="select"),
+)
 
 
-@register("select", description=_SELECT_DESCRIPTION, output_metadata=_SELECT_OUTPUT_METADATA)
+@register(spec=_SELECT_SPEC)
 def _select_indicator(ctx: SeriesContext, field: str) -> Series[Any]:
     """Select a field from the context, supporting both standard and derived fields."""
     # Use _select_field from primitives which handles derived fields (hlc3, ohlc4, etc.)
@@ -77,11 +91,7 @@ def ensure_namespace_registered() -> None:
     registry = get_global_registry()
     if "select" not in registry._indicators:
         # Re-apply the decorator to register the select helper without reloading modules.
-        register(
-            "select",
-            description=_SELECT_DESCRIPTION,
-            output_metadata=_SELECT_OUTPUT_METADATA,
-        )(_select_indicator)
+        register(spec=_SELECT_SPEC)(_select_indicator)
 
 
 def indicator(name: str, **params: Any) -> IndicatorHandle:

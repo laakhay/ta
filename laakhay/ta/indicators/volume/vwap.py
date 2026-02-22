@@ -7,9 +7,26 @@ from ...core.types import Price
 from ...primitives.elementwise_ops import cumulative_sum, typical_price
 from ...registry.models import SeriesContext
 from ...registry.registry import register
+from ...registry.schemas import (
+    IndicatorSpec,
+    OutputSpec,
+    RuntimeBindingSpec,
+    SemanticsSpec,
+)
+
+VWAP_SPEC = IndicatorSpec(
+    name="vwap",
+    description="Volume Weighted Average Price",
+    outputs={"result": OutputSpec(name="result", type=Series, description="VWAP values", role="line")},
+    semantics=SemanticsSpec(
+        required_fields=("high", "low", "close", "volume"),
+        default_lookback=1,
+    ),
+    runtime_binding=RuntimeBindingSpec(kernel_id="vwap"),
+)
 
 
-@register("vwap", description="Volume Weighted Average Price")
+@register(spec=VWAP_SPEC)
 def vwap(ctx: SeriesContext) -> Series[Price]:
     """
     Volume Weighted Average Price indicator using primitives.

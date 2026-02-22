@@ -9,7 +9,15 @@ from typing import Any, Union
 
 from ..core.series import Series
 from .models import IndicatorHandle, SeriesContext
-from .schemas import IndicatorMetadata, IndicatorSchema, OutputSchema, ParamSchema
+from .schemas import (
+    IndicatorMetadata,
+    IndicatorSchema,
+    IndicatorSpec,
+    OutputSchema,
+    ParamSchema,
+    indicator_spec_to_schema,
+    schema_to_indicator_spec,
+)
 
 # Metadata hints for built-in indicators/primitives. These entries drive the
 # planner so we can infer required fields and lookback windows without relying
@@ -97,6 +105,63 @@ _METADATA_HINTS: dict[str, IndicatorMetadata] = {
     "fib_anchor_low": IndicatorMetadata(required_fields=("high", "low"), lookback_params=("left", "right", "leg")),
     "fib_level_down": IndicatorMetadata(required_fields=("high", "low"), lookback_params=("left", "right", "leg")),
     "fib_level_up": IndicatorMetadata(required_fields=("high", "low"), lookback_params=("left", "right", "leg")),
+    # Channel / event indicators (price, upper, lower accept series or scalars)
+    "in_channel": IndicatorMetadata(
+        required_fields=("close",),
+        input_field="close",
+        input_series_param="price",
+    ),
+    "out": IndicatorMetadata(
+        required_fields=("close",),
+        input_field="close",
+        input_series_param="price",
+    ),
+    "enter": IndicatorMetadata(
+        required_fields=("close",),
+        input_field="close",
+        input_series_param="price",
+    ),
+    "exit": IndicatorMetadata(
+        required_fields=("close",),
+        input_field="close",
+        input_series_param="price",
+    ),
+    # Crossing / trend patterns (a, b accept series or scalars)
+    "crossup": IndicatorMetadata(
+        required_fields=("close",),
+        input_field="close",
+        input_series_param="a",
+    ),
+    "crossdown": IndicatorMetadata(
+        required_fields=("close",),
+        input_field="close",
+        input_series_param="a",
+    ),
+    "cross": IndicatorMetadata(
+        required_fields=("close",),
+        input_field="close",
+        input_series_param="a",
+    ),
+    "rising": IndicatorMetadata(
+        required_fields=("close",),
+        input_field="close",
+        input_series_param="a",
+    ),
+    "falling": IndicatorMetadata(
+        required_fields=("close",),
+        input_field="close",
+        input_series_param="a",
+    ),
+    "rising_pct": IndicatorMetadata(
+        required_fields=("close",),
+        input_field="close",
+        input_series_param="a",
+    ),
+    "falling_pct": IndicatorMetadata(
+        required_fields=("close",),
+        input_field="close",
+        input_series_param="a",
+    ),
 }
 
 
@@ -116,8 +181,13 @@ class Registry:
         aliases: list[str] | None = None,
         description: str | None = None,
         output_metadata: dict[str, dict[str, Any]] | None = None,
+        spec: IndicatorSpec | None = None,
     ) -> Callable[..., Any]:
-        """Register an indicator function."""
+        """Register an indicator function.
+
+        If spec is provided, it is the source of truth and schema is derived from it.
+        Otherwise, schema is built from the function and spec is derived from schema.
+        """
         with self._lock:
             # Use function name if no name provided
             if name is None:
@@ -126,13 +196,23 @@ class Registry:
             # Validate function signature and return type
             self._validate_function(func)
 
-            schema = self._build_schema(
-                func,
-                name,
-                description or func.__doc__ or "",
-                aliases=aliases or [],
-                output_metadata=output_metadata or {},
-            )
+            if spec is not None:
+                # Spec-first: use explicit IndicatorSpec, derive schema
+                indicator_spec = spec
+                schema = indicator_spec_to_schema(spec)
+                name = spec.name
+                aliases = list(spec.aliases)
+            else:
+                # No spec: build schema from function, derive spec
+                schema = self._build_schema(
+                    func,
+                    name,
+                    description or func.__doc__ or "",
+                    aliases=aliases or [],
+                    output_metadata=output_metadata or {},
+                )
+                indicator_spec = schema_to_indicator_spec(schema)
+                aliases = aliases or []
 
             # Create handle
             handle = IndicatorHandle(
@@ -140,7 +220,8 @@ class Registry:
                 func=func,
                 signature=inspect.signature(func),
                 schema=schema,
-                aliases=aliases or [],
+                indicator_spec=indicator_spec,
+                aliases=aliases,
             )
 
             # Register main name
@@ -372,7 +453,7 @@ class Registry:
         # Handle generic types like Series[Price]
         elif hasattr(annotation, "__origin__") and hasattr(annotation, "__args__"):
             # For complex generics, we'll store the full annotation for future use
-            # but return the base type for schema compatibility
+            # but return the base type for schema
             base_type = getattr(annotation, "__origin__", annotation)
             if base_type is not None and isinstance(base_type, type):
                 return base_type  # type: ignore[return-value]
@@ -472,8 +553,12 @@ def register(
     aliases: list[str] | None = None,
     description: str | None = None,
     output_metadata: dict[str, dict[str, Any]] | None = None,
+    spec: IndicatorSpec | None = None,
 ) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
-    """Decorator to register an indicator function."""
+    """Decorator to register an indicator function.
+
+    Pass spec=... for spec-first registration; otherwise schema is inferred from the function.
+    """
 
     def decorator(func: Callable[..., Any]) -> Callable[..., Any]:
         return get_global_registry().register(
@@ -482,6 +567,7 @@ def register(
             aliases,
             description,
             output_metadata=output_metadata,
+            spec=spec,
         )
 
     return decorator

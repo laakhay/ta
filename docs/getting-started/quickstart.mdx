@@ -6,7 +6,7 @@ This is the shortest practical script that creates a dataset, compiles a DSL exp
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 
-from laakhay.ta.data.dataset import dataset_from_bars
+from laakhay.ta import dataset_from_bars
 from laakhay.ta.expr.dsl import compile_expression
 
 start = datetime(2026, 1, 1, tzinfo=UTC)

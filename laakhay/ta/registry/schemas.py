@@ -7,6 +7,101 @@ from typing import Any
 
 from ..core.series import Series
 
+# -----------------------------------------------------------------------------
+# Strict IndicatorSpec models (Phase 1.1)
+# -----------------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class InputSlotSpec:
+    """Optional input expression slot (source/field binding)."""
+
+    name: str
+    description: str = ""
+    required: bool = True
+    default_source: str | None = None  # e.g., "ohlcv"
+    default_field: str | None = None  # e.g., "close"
+
+
+@dataclass(frozen=True)
+class ParamSpec:
+    """Strict parameter specification (extends ParamSchema with min/max)."""
+
+    name: str
+    type: type
+    default: Any | None = None
+    required: bool = True
+    description: str = ""
+    valid_values: list[Any] | None = None
+    min_value: int | float | None = None
+    max_value: int | float | None = None
+
+
+@dataclass(frozen=True)
+class OutputSpec:
+    """Strict output specification (extends OutputSchema with role/polarity)."""
+
+    name: str
+    type: type
+    description: str = ""
+    role: str = "line"
+    polarity: str | None = None  # e.g., "high", "low" for swing levels
+    extra: dict[str, Any] = field(default_factory=dict)  # e.g., area_pair for bands
+
+
+@dataclass(frozen=True)
+class SemanticsSpec:
+    """Lookback and data requirements."""
+
+    required_fields: tuple[str, ...] = ()
+    optional_fields: tuple[str, ...] = ()
+    lookback_params: tuple[str, ...] = ()
+    default_lookback: int | None = None
+    input_field: str | None = None
+    input_series_param: str | None = None
+
+
+@dataclass(frozen=True)
+class RuntimeBindingSpec:
+    """Kernel binding for runtime dispatch."""
+
+    kernel_id: str
+
+
+@dataclass(frozen=True)
+class ConstraintSpec:
+    """Cross-parameter constraint."""
+
+    param_names: tuple[str, ...]
+    constraint_type: str  # e.g., "less_than", "greater_than", "sum_bounds"
+    extra: dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass(frozen=True)
+class IndicatorSpec:
+    """Top-level strict indicator specification."""
+
+    name: str
+    description: str = ""
+    inputs: tuple[InputSlotSpec, ...] = ()
+    params: dict[str, ParamSpec] = field(default_factory=dict)
+    outputs: dict[str, OutputSpec] = field(default_factory=dict)
+    semantics: SemanticsSpec = field(default_factory=SemanticsSpec)
+    runtime_binding: RuntimeBindingSpec = field(default_factory=lambda: RuntimeBindingSpec(kernel_id=""))
+    constraints: tuple[ConstraintSpec, ...] = ()
+    aliases: tuple[str, ...] = ()
+    param_aliases: dict[str, str] = field(default_factory=dict)
+
+    def __post_init__(self) -> None:
+        """Validate indicator spec."""
+        if not self.name:
+            raise ValueError("Indicator name must be a non-empty string")
+
+
+# -----------------------------------------------------------------------------
+# Schema models (runtime schema; IndicatorSpec is source of truth)
+# -----------------------------------------------------------------------------
+
 
 @dataclass(frozen=True)
 class ParamSchema:
@@ -175,3 +270,130 @@ class IndicatorMetadata:
             input_field=data.get("input_field"),
             input_series_param=data.get("input_series_param"),
         )
+
+
+# -----------------------------------------------------------------------------
+# Conversion between IndicatorSpec and IndicatorSchema
+# -----------------------------------------------------------------------------
+
+
+def indicator_spec_to_schema(spec: IndicatorSpec) -> IndicatorSchema:
+    """Derive IndicatorSchema from IndicatorSpec."""
+    parameters: dict[str, ParamSchema] = {}
+    for name, param in spec.params.items():
+        parameters[name] = ParamSchema(
+            name=param.name,
+            type=param.type,
+            default=param.default,
+            required=param.required,
+            description=param.description,
+            valid_values=param.valid_values,
+        )
+
+    outputs: dict[str, OutputSchema] = {}
+    output_metadata: dict[str, dict[str, Any]] = {}
+    for name, out in spec.outputs.items():
+        outputs[name] = OutputSchema(
+            name=out.name,
+            type=out.type,
+            description=out.description,
+        )
+        meta: dict[str, Any] = {"type": out.type.__name__.lower(), "role": out.role}
+        if out.polarity is not None:
+            meta["polarity"] = out.polarity
+        meta.update(out.extra)
+        output_metadata[name] = meta
+
+    # Merge semantics with input slots for metadata
+    meta = spec.semantics
+    input_field = meta.input_field
+    input_series_param = meta.input_series_param
+    if spec.inputs and not input_field:
+        first = spec.inputs[0]
+        input_field = first.default_field
+        input_series_param = input_series_param or first.name
+    metadata = IndicatorMetadata(
+        required_fields=meta.required_fields,
+        optional_fields=meta.optional_fields,
+        lookback_params=meta.lookback_params,
+        default_lookback=meta.default_lookback,
+        input_field=input_field,
+        input_series_param=input_series_param,
+    )
+
+    return IndicatorSchema(
+        name=spec.name,
+        description=spec.description,
+        parameters=parameters,
+        outputs=outputs,
+        aliases=list(spec.aliases),
+        metadata=metadata,
+        output_metadata=output_metadata,
+        parameter_aliases=dict(spec.param_aliases),
+    )
+
+
+def schema_to_indicator_spec(schema: IndicatorSchema) -> IndicatorSpec:
+    """Build IndicatorSpec from existing IndicatorSchema."""
+    params: dict[str, ParamSpec] = {}
+    for name, param in schema.parameters.items():
+        params[name] = ParamSpec(
+            name=param.name,
+            type=param.type,
+            default=param.default,
+            required=param.required,
+            description=param.description,
+            valid_values=param.valid_values,
+            min_value=None,
+            max_value=None,
+        )
+
+    outputs: dict[str, OutputSpec] = {}
+    for name, out in schema.outputs.items():
+        meta = schema.output_metadata.get(name, {})
+        extra = {k: v for k, v in meta.items() if k not in ("role", "polarity", "type")}
+        outputs[name] = OutputSpec(
+            name=out.name,
+            type=out.type,
+            description=out.description,
+            role=str(meta.get("role", "line")),
+            polarity=meta.get("polarity"),
+            extra=extra,
+        )
+
+    semantics = SemanticsSpec(
+        required_fields=schema.metadata.required_fields,
+        optional_fields=schema.metadata.optional_fields,
+        lookback_params=schema.metadata.lookback_params,
+        default_lookback=schema.metadata.default_lookback,
+        input_field=schema.metadata.input_field,
+        input_series_param=schema.metadata.input_series_param,
+    )
+
+    inputs: tuple[InputSlotSpec, ...] = ()
+    if schema.metadata.input_field or schema.metadata.input_series_param:
+        slot_name = schema.metadata.input_series_param or "input_series"
+        inputs = (
+            InputSlotSpec(
+                name=slot_name,
+                description="Input series override",
+                required=False,
+                default_source="ohlcv",
+                default_field=schema.metadata.input_field,
+            ),
+        )
+
+    runtime_binding = RuntimeBindingSpec(kernel_id=schema.name)
+
+    return IndicatorSpec(
+        name=schema.name,
+        description=schema.description,
+        inputs=inputs,
+        params=params,
+        outputs=outputs,
+        semantics=semantics,
+        runtime_binding=runtime_binding,
+        constraints=(),
+        aliases=tuple(schema.aliases),
+        param_aliases=dict(schema.parameter_aliases),
+    )
