@@ -1,3 +1,17 @@
+"""Laakhay TA: Technical analysis and expression engine.
+
+Public API (primary entry points):
+- dataset: Build datasets from CSV, bars, or other sources
+- ta: Strategy expression builder (e.g., ta.sma(20), ta.ohlcv("close"))
+- indicator, literal, Expression: Programmatic expression construction
+- sma, ema, macd, rsi, atr, ...: Indicator shortcuts for functional use
+- Series, Bar, Price: Core types
+- validate, preview, analyze: Expression validation and evaluation (via expr)
+- Engine: Batch expression evaluation
+
+See laakhay.ta.api for full API surface.
+"""
+
 import importlib
 
 from .api import *  # noqa: F401,F403

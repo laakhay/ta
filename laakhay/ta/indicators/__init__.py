@@ -1,8 +1,11 @@
-"""
-Central indicator registry and imports.
+"""Indicator registry and implementation imports.
 
-This module provides a clean import interface for all indicators and primitives,
-eliminating circular import issues and providing a single source of truth for dependencies.
+Internal module: imports here trigger registration of all indicators and primitives.
+For public API use laakhay.ta (e.g., ta.sma(20), indicator("sma", period=20)).
+
+Exports are intended for:
+- Registry discovery and expression compilation
+- Advanced users constructing expressions programmatically (Expression, Literal)
 """
 
 # Import core dependencies once
