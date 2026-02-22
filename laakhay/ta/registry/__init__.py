@@ -12,7 +12,21 @@ from .registry import (
     list_indicators,
     register,
 )
-from .schemas import IndicatorMetadata, IndicatorSchema, OutputSchema, ParamSchema
+from .schemas import (
+    ConstraintSpec,
+    IndicatorMetadata,
+    IndicatorSchema,
+    IndicatorSpec,
+    InputSlotSpec,
+    OutputSchema,
+    OutputSpec,
+    ParamSchema,
+    ParamSpec,
+    RuntimeBindingSpec,
+    SemanticsSpec,
+    indicator_spec_to_schema,
+    schema_to_indicator_spec,
+)
 
 __all__ = [
     "IndicatorHandle",
@@ -21,6 +35,15 @@ __all__ = [
     "OutputSchema",
     "IndicatorSchema",
     "IndicatorMetadata",
+    "InputSlotSpec",
+    "ParamSpec",
+    "OutputSpec",
+    "SemanticsSpec",
+    "RuntimeBindingSpec",
+    "ConstraintSpec",
+    "IndicatorSpec",
+    "indicator_spec_to_schema",
+    "schema_to_indicator_spec",
     "Registry",
     "register",
     "indicator",

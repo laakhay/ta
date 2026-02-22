@@ -9,7 +9,13 @@ from typing import Any, Union
 
 from ..core.series import Series
 from .models import IndicatorHandle, SeriesContext
-from .schemas import IndicatorMetadata, IndicatorSchema, OutputSchema, ParamSchema
+from .schemas import (
+    IndicatorMetadata,
+    IndicatorSchema,
+    OutputSchema,
+    ParamSchema,
+    schema_to_indicator_spec,
+)
 
 # Metadata hints for built-in indicators/primitives. These entries drive the
 # planner so we can infer required fields and lookback windows without relying
@@ -134,12 +140,16 @@ class Registry:
                 output_metadata=output_metadata or {},
             )
 
+            # Derive IndicatorSpec from schema (spec-driven architecture)
+            indicator_spec = schema_to_indicator_spec(schema)
+
             # Create handle
             handle = IndicatorHandle(
                 name=name,
                 func=func,
                 signature=inspect.signature(func),
                 schema=schema,
+                indicator_spec=indicator_spec,
                 aliases=aliases or [],
             )
 

@@ -11,10 +11,13 @@ from laakhay.ta.core.types import Price
 from laakhay.ta.registry import (
     IndicatorHandle,
     IndicatorSchema,
+    OutputSchema,
+    ParamSchema,
     SeriesContext,
     get_global_registry,
     indicator,
     register,
+    schema_to_indicator_spec,
 )
 
 
@@ -88,8 +91,6 @@ class TestIndicatorHandle:
 
         from inspect import signature
 
-        from laakhay.ta.registry import OutputSchema, ParamSchema
-
         schema = IndicatorSchema(
             name="dummy",
             description="Dummy indicator",
@@ -110,6 +111,7 @@ class TestIndicatorHandle:
             func=dummy_indicator,
             signature=signature(dummy_indicator),
             schema=schema,
+            indicator_spec=schema_to_indicator_spec(schema),
             aliases=["dummy_ind"],
         )
 
@@ -130,8 +132,6 @@ class TestIndicatorHandle:
 
         from inspect import signature
 
-        from laakhay.ta.registry import OutputSchema, ParamSchema
-
         schema = IndicatorSchema(
             name="dummy",
             description="Dummy indicator",
@@ -152,6 +152,7 @@ class TestIndicatorHandle:
             func=dummy_indicator,
             signature=signature(dummy_indicator),
             schema=schema,
+            indicator_spec=schema_to_indicator_spec(schema),
             aliases=[],
         )
 
@@ -174,8 +175,6 @@ class TestIndicatorHandle:
 
         from inspect import signature
 
-        from laakhay.ta.registry import OutputSchema, ParamSchema
-
         schema = IndicatorSchema(
             name="dummy",
             description="Dummy indicator",
@@ -196,6 +195,7 @@ class TestIndicatorHandle:
             func=dummy_indicator,
             signature=signature(dummy_indicator),
             schema=schema,
+            indicator_spec=schema_to_indicator_spec(schema),
             aliases=[],
         )
 
@@ -231,8 +231,6 @@ class TestIndicatorHandle:
 
         from inspect import signature
 
-        from laakhay.ta.registry import OutputSchema, ParamSchema
-
         schema = IndicatorSchema(
             name="dummy",
             description="Dummy indicator",
@@ -253,6 +251,7 @@ class TestIndicatorHandle:
             func=dummy_indicator,
             signature=signature(dummy_indicator),
             schema=schema,
+            indicator_spec=schema_to_indicator_spec(schema),
             aliases=[],
         )
 
@@ -308,8 +307,6 @@ class TestIndicatorHandle:
 
         from inspect import signature
 
-        from laakhay.ta.registry import OutputSchema, ParamSchema
-
         schema = IndicatorSchema(
             name="optional_indicator",
             description="Optional parameter indicator",
@@ -330,6 +327,7 @@ class TestIndicatorHandle:
             func=optional_indicator,
             signature=signature(optional_indicator),
             schema=schema,
+            indicator_spec=schema_to_indicator_spec(schema),
             aliases=[],
         )
 

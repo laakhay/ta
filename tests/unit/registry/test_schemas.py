@@ -3,10 +3,19 @@
 import pytest
 
 from laakhay.ta.registry import (
+    ConstraintSpec,
     IndicatorMetadata,
     IndicatorSchema,
+    IndicatorSpec,
+    InputSlotSpec,
     OutputSchema,
+    OutputSpec,
     ParamSchema,
+    ParamSpec,
+    RuntimeBindingSpec,
+    SemanticsSpec,
+    indicator_spec_to_schema,
+    schema_to_indicator_spec,
 )
 
 
@@ -301,6 +310,7 @@ class TestRegistryCriticalIssues:
             func=test_indicator,
             signature=signature(test_indicator),
             schema=schema,
+            indicator_spec=schema_to_indicator_spec(schema),
             aliases=[],
         )
 
@@ -346,9 +356,209 @@ class TestRegistryCriticalIssues:
             func=test_indicator,
             signature=signature(test_indicator),
             schema=schema,
+            indicator_spec=schema_to_indicator_spec(schema),
             aliases=[],
         )
 
         # This should work without providing the optional parameter
         result = handle.with_overrides()
         assert result is not None
+
+
+class TestIndicatorSpecModels:
+    """Tests for strict IndicatorSpec models (Phase 1.1)."""
+
+    def test_input_slot_spec(self) -> None:
+        slot = InputSlotSpec(
+            name="input_series",
+            description="Override input series",
+            required=False,
+            default_source="ohlcv",
+            default_field="close",
+        )
+        assert slot.name == "input_series"
+        assert slot.default_field == "close"
+
+    def test_param_spec_with_min_max(self) -> None:
+        param = ParamSpec(
+            name="period",
+            type=int,
+            default=14,
+            required=False,
+            min_value=1,
+            max_value=500,
+        )
+        assert param.min_value == 1
+        assert param.max_value == 500
+
+    def test_output_spec_with_role_polarity(self) -> None:
+        out = OutputSpec(
+            name="swing_high",
+            type=float,
+            role="level",
+            polarity="high",
+        )
+        assert out.role == "level"
+        assert out.polarity == "high"
+
+    def test_semantics_spec(self) -> None:
+        sem = SemanticsSpec(
+            required_fields=("close",),
+            lookback_params=("period",),
+            default_lookback=14,
+            input_field="close",
+            input_series_param="input_series",
+        )
+        assert sem.required_fields == ("close",)
+        assert sem.input_field == "close"
+
+    def test_runtime_binding_spec(self) -> None:
+        binding = RuntimeBindingSpec(kernel_id="sma")
+        assert binding.kernel_id == "sma"
+
+    def test_constraint_spec(self) -> None:
+        constraint = ConstraintSpec(
+            param_names=("fast", "slow"),
+            constraint_type="less_than",
+            extra={"message": "fast must be less than slow"},
+        )
+        assert constraint.param_names == ("fast", "slow")
+        assert constraint.constraint_type == "less_than"
+
+    def test_indicator_spec_full(self) -> None:
+        spec = IndicatorSpec(
+            name="rsi",
+            description="RSI indicator",
+            inputs=(
+                InputSlotSpec(
+                    name="input_series",
+                    default_field="close",
+                ),
+            ),
+            params={
+                "period": ParamSpec(name="period", type=int, default=14, required=False),
+            },
+            outputs={
+                "rsi": OutputSpec(
+                    name="rsi",
+                    type=float,
+                    role="oscillator",
+                ),
+            },
+            semantics=SemanticsSpec(
+                required_fields=("close",),
+                lookback_params=("period",),
+            ),
+            runtime_binding=RuntimeBindingSpec(kernel_id="rsi"),
+            aliases=("rsi_14",),
+            param_aliases={"lookback": "period"},
+        )
+        assert spec.name == "rsi"
+        assert len(spec.inputs) == 1
+        assert "period" in spec.params
+        assert "rsi" in spec.outputs
+        assert spec.semantics.required_fields == ("close",)
+
+    def test_indicator_spec_empty_name_fails(self) -> None:
+        with pytest.raises(ValueError, match="Indicator name must be a non-empty string"):
+            IndicatorSpec(name="")
+
+
+class TestIndicatorSpecConversion:
+    """Tests for indicator_spec_to_schema and schema_to_indicator_spec."""
+
+    def test_indicator_spec_to_schema(self) -> None:
+        spec = IndicatorSpec(
+            name="sma",
+            description="SMA",
+            params={"period": ParamSpec(name="period", type=int, required=True)},
+            outputs={"result": OutputSpec(name="result", type=float, role="line")},
+            semantics=SemanticsSpec(
+                required_fields=("close",),
+                lookback_params=("period",),
+                input_field="close",
+                input_series_param="input_series",
+            ),
+            runtime_binding=RuntimeBindingSpec(kernel_id="sma"),
+            aliases=("simple_ma",),
+            param_aliases={"lookback": "period"},
+        )
+        schema = indicator_spec_to_schema(spec)
+
+        assert schema.name == "sma"
+        assert "period" in schema.parameters
+        assert schema.parameters["period"].type == int
+        assert "result" in schema.outputs
+        assert schema.metadata.required_fields == ("close",)
+        assert schema.metadata.input_field == "close"
+        assert schema.output_metadata["result"]["role"] == "line"
+        assert schema.aliases == ["simple_ma"]
+        assert schema.parameter_aliases == {"lookback": "period"}
+
+    def test_schema_to_indicator_spec(self) -> None:
+        schema = IndicatorSchema(
+            name="rsi",
+            description="RSI",
+            parameters={
+                "period": ParamSchema(name="period", type=int, default=14, required=False),
+            },
+            outputs={"rsi": OutputSchema(name="rsi", type=float, description="RSI values")},
+            metadata=IndicatorMetadata(
+                required_fields=("close",),
+                lookback_params=("period",),
+                input_field="close",
+                input_series_param="input_series",
+            ),
+            output_metadata={"rsi": {"role": "oscillator", "polarity": None}},
+            aliases=["rsi_14"],
+            parameter_aliases={"lookback": "period"},
+        )
+        spec = schema_to_indicator_spec(schema)
+
+        assert spec.name == "rsi"
+        assert spec.params["period"].type == int
+        assert spec.outputs["rsi"].role == "oscillator"
+        assert spec.semantics.required_fields == ("close",)
+        assert spec.runtime_binding.kernel_id == "rsi"
+        assert "rsi_14" in spec.aliases
+        assert spec.param_aliases["lookback"] == "period"
+
+    def test_schema_to_indicator_spec_preserves_polarity(self) -> None:
+        schema = IndicatorSchema(
+            name="swing",
+            outputs={"swing_high": OutputSchema(name="swing_high", type=float)},
+            output_metadata={"swing_high": {"role": "level", "polarity": "high"}},
+        )
+        spec = schema_to_indicator_spec(schema)
+        assert spec.outputs["swing_high"].polarity == "high"
+        assert spec.outputs["swing_high"].role == "level"
+
+    def test_spec_to_schema_round_trip(self) -> None:
+        """Round-trip: spec -> schema -> spec preserves key fields."""
+        orig = IndicatorSpec(
+            name="macd",
+            description="MACD",
+            params={
+                "fast": ParamSpec(name="fast", type=int, default=12, required=False),
+                "slow": ParamSpec(name="slow", type=int, default=26, required=False),
+            },
+            outputs={
+                "macd": OutputSpec(name="macd", type=float, role="line"),
+                "signal": OutputSpec(name="signal", type=float, role="signal"),
+                "histogram": OutputSpec(name="histogram", type=float, role="histogram"),
+            },
+            semantics=SemanticsSpec(
+                required_fields=("close",),
+                lookback_params=("fast_period", "slow_period"),
+            ),
+            runtime_binding=RuntimeBindingSpec(kernel_id="macd"),
+        )
+        schema = indicator_spec_to_schema(orig)
+        back = schema_to_indicator_spec(schema)
+
+        assert back.name == orig.name
+        assert set(back.params.keys()) == set(orig.params.keys())
+        assert set(back.outputs.keys()) == set(orig.outputs.keys())
+        assert back.semantics.required_fields == orig.semantics.required_fields
+        assert back.outputs["macd"].role == "line"
+        assert back.outputs["histogram"].role == "histogram"

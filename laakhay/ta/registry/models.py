@@ -8,7 +8,7 @@ from inspect import Signature
 from typing import Any
 
 from ..core.series import Series
-from .schemas import IndicatorSchema
+from .schemas import IndicatorSchema, IndicatorSpec
 
 
 @dataclass(frozen=True)
@@ -43,6 +43,7 @@ class IndicatorHandle:
     func: Callable[..., Series[Any]]
     signature: Signature
     schema: IndicatorSchema
+    indicator_spec: IndicatorSpec
     aliases: list[str]
 
     def __call__(self, *args: Any, **kwargs: Any) -> Series[Any]:
@@ -101,5 +102,6 @@ class IndicatorHandle:
             func=partial_func,  # type: ignore[arg-type]
             signature=self.signature,
             schema=self.schema,
+            indicator_spec=self.indicator_spec,
             aliases=self.aliases,
         )
