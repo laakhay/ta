@@ -49,21 +49,21 @@ def generate_capability_manifest() -> dict[str, Any]:
                 params = descriptor.get_parameter_specs()
                 outputs = [o.name for o in descriptor.outputs]
             except Exception:
-                # Fallback if catalog description fails
-                schema = handle.schema
+                # Fallback: derive from IndicatorSpec (canonical source)
+                spec = handle.indicator_spec
                 category = "custom"
-                description = schema.description or name
+                description = spec.description or name
                 params = {
                     p_name: {
-                        "name": p_schema.name,
-                        "param_type": p_schema.type.__name__ if p_schema.type else "unknown",
-                        "required": p_schema.required,
-                        "default_value": p_schema.default,
+                        "name": p.name,
+                        "param_type": p.type.__name__ if p.type else "unknown",
+                        "required": p.required,
+                        "default_value": p.default,
                     }
-                    for p_name, p_schema in schema.parameters.items()
+                    for p_name, p in spec.params.items()
                     if p_name.lower() not in ("ctx", "context")
                 }
-                outputs = list(schema.outputs.keys()) if schema.outputs else []
+                outputs = list(spec.outputs.keys()) if spec.outputs else []
 
             indicators.append(
                 {

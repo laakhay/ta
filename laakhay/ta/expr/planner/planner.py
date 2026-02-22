@@ -6,7 +6,6 @@ from typing import Any, Dict, List, Set, Tuple
 
 from ...core import Series
 from ...registry.registry import get_global_registry
-from ...registry.schemas import IndicatorMetadata
 from ..algebra import alignment as alignment_ctx
 from ..algebra.alignment import get_policy as _get_alignment_policy
 from ..ir.nodes import (
@@ -133,33 +132,20 @@ def _collect_requirements(graph: Graph) -> SignalRequirements:
         if isinstance(expr_node, CallNode):
             name = expr_node.name
             handle = registry.get(name)
-            metadata: IndicatorMetadata | None = handle.schema.metadata if handle else None
-            param_defs = (
-                [
-                    param.name
-                    for param in handle.schema.parameters.values()
-                    if param.name.lower() not in {"ctx", "context"}
-                ]
-                if handle
-                else []
-            )
+            if not handle:
+                continue
+            spec = handle.indicator_spec
+            semantics = spec.semantics
+            param_defs = [p.name for p in handle.schema.parameters.values() if p.name.lower() not in {"ctx", "context"}]
 
             params = {}
             for k, v in expr_node.kwargs.items():
-                if isinstance(v, LiteralNode):
-                    params[k] = v.value
-                else:
-                    params[k] = v
+                params[k] = v.value if isinstance(v, LiteralNode) else v
 
             has_input_series = len(expr_node.args) > 0 and not isinstance(expr_node.args[0], LiteralNode)
             arg_offset = 1 if has_input_series else 0
-            param_start = 0
-            if (
-                has_input_series
-                and param_defs
-                and param_defs[0] in {"source", "input", "input_series", "series", "field"}
-            ):
-                param_start = 1
+            input_series_param = semantics.input_series_param or (spec.inputs[0].name if spec.inputs else None)
+            param_start = 1 if (has_input_series and param_defs and param_defs[0] == input_series_param) else 0
             for idx, arg in enumerate(expr_node.args[arg_offset:]):
                 param_idx = param_start + idx
                 if param_idx >= len(param_defs):
@@ -171,10 +157,8 @@ def _collect_requirements(graph: Graph) -> SignalRequirements:
                     params[param_name] = arg.value
 
             if "field" in params:
-                # If field is explicitly provided (e.g. mean(volume)), use it.
                 required_fields = (params["field"],)
             elif name == "select":
-                # For select, the field can also be in args[0]
                 sel_field = params.get("field", "close")
                 if "field" not in params and len(expr_node.args) > 0:
                     val = expr_node.args[0]
@@ -184,10 +168,11 @@ def _collect_requirements(graph: Graph) -> SignalRequirements:
                         sel_field = val
                 required_fields = (sel_field,)
             else:
-                required_fields = metadata.required_fields if metadata and metadata.required_fields else ("close",)
+                required_fields = semantics.required_fields or (
+                    (spec.inputs[0].default_field,) if spec.inputs and spec.inputs[0].default_field else ("close",)
+                )
 
-            # Determine lookback of this indicator
-            indicator_lookback = metadata.default_lookback or 1
+            indicator_lookback = semantics.default_lookback or 1
             # Special handling for 'select' primitive which is used for terminal fields
             if name == "select":
                 field = required_fields[0]
@@ -202,9 +187,9 @@ def _collect_requirements(graph: Graph) -> SignalRequirements:
                     current_lookback,
                 )
 
-            if metadata and metadata.lookback_params:
+            if semantics.lookback_params:
                 collected: List[int] = []
-                for param in metadata.lookback_params:
+                for param in semantics.lookback_params:
                     value = params.get(param)
                     if isinstance(value, int | float):
                         collected.append(int(value))
