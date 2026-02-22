@@ -49,7 +49,7 @@ Raw Data -> Dataset/Series -> Indicators -> Expression Graph -> Plan -> Runtime 
 
 ```python
 from laakhay.ta.expr.dsl import compile_expression
-from laakhay.ta.data.dataset import dataset_from_bars
+from laakhay.ta import dataset_from_bars
 
 expr = compile_expression(
     "close > sma(20) and rsi(14) > 50 and close < fib_level_down(level=0.618, left=3, right=3)"
