@@ -220,12 +220,3 @@ def ir_from_dict(data: dict[str, Any]) -> CanonicalExpression:
             **kwargs,
         )
     raise IRSearializationError(f"Unsupported node type '{node_type}'")
-
-
-# Legacy compatibility aliases
-def serialize_ir(expr: CanonicalExpression) -> dict[str, Any]:
-    return ir_to_dict(expr)
-
-
-def deserialize_ir(data: dict[str, Any]) -> CanonicalExpression:
-    return ir_from_dict(data)

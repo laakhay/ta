@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, Literal, Union
+from typing import Literal, Union
 
 from .types import ExprType
 
@@ -54,22 +54,6 @@ class CallNode(ExprNode):
     span_start: int | None = None
     span_end: int | None = None
     type_tag: ExprType = "series_number"
-
-    @property
-    def input_expr(self) -> CanonicalExpression | None:
-        """Legacy compatibility: first positional argument as explicit input."""
-        if not self.args:
-            return None
-        first = self.args[0]
-        return None if isinstance(first, LiteralNode) else first
-
-    @property
-    def params(self) -> dict[str, Any]:
-        """Legacy compatibility alias for kwargs."""
-        out: dict[str, Any] = {}
-        for key, value in self.kwargs.items():
-            out[key] = value.value if isinstance(value, LiteralNode) else value
-        return out
 
 
 BinaryOperator = Literal["add", "sub", "mul", "div", "mod", "pow", "gt", "gte", "lt", "lte", "eq", "neq", "and", "or"]

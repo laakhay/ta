@@ -151,7 +151,7 @@ def _collect_requirements(graph: Graph) -> SignalRequirements:
                 else:
                     params[k] = v
 
-            has_input_series = expr_node.input_expr is not None
+            has_input_series = len(expr_node.args) > 0 and not isinstance(expr_node.args[0], LiteralNode)
             arg_offset = 1 if has_input_series else 0
             param_start = 0
             if (
