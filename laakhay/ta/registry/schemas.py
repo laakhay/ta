@@ -46,6 +46,7 @@ class OutputSpec:
     description: str = ""
     role: str = "line"
     polarity: str | None = None  # e.g., "high", "low" for swing levels
+    extra: dict[str, Any] = field(default_factory=dict)  # e.g., area_pair for bands
 
 
 @dataclass(frozen=True)
@@ -300,6 +301,7 @@ def indicator_spec_to_schema(spec: IndicatorSpec) -> IndicatorSchema:
         meta: dict[str, Any] = {"type": out.type.__name__.lower(), "role": out.role}
         if out.polarity is not None:
             meta["polarity"] = out.polarity
+        meta.update(out.extra)
         output_metadata[name] = meta
 
     # Merge semantics with input slots for metadata
@@ -349,12 +351,14 @@ def schema_to_indicator_spec(schema: IndicatorSchema) -> IndicatorSpec:
     outputs: dict[str, OutputSpec] = {}
     for name, out in schema.outputs.items():
         meta = schema.output_metadata.get(name, {})
+        extra = {k: v for k, v in meta.items() if k not in ("role", "polarity", "type")}
         outputs[name] = OutputSpec(
             name=out.name,
             type=out.type,
             description=out.description,
             role=str(meta.get("role", "line")),
             polarity=meta.get("polarity"),
+            extra=extra,
         )
 
     semantics = SemanticsSpec(

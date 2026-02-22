@@ -4,27 +4,40 @@ from __future__ import annotations
 
 from ...core import Series
 from ...primitives.rolling_ops import rolling_ema
+from ...registry.schemas import (
+    IndicatorSpec,
+    OutputSpec,
+    ParamSpec,
+    RuntimeBindingSpec,
+    SemanticsSpec,
+)
 from .. import Price, SeriesContext, register
 
-
-@register(
-    "macd",
+MACD_SPEC = IndicatorSpec(
+    name="macd",
     description="MACD (Moving Average Convergence Divergence)",
-    output_metadata={
-        "macd": {
-            "role": "line",
-            "description": "MACD line (fast EMA - slow EMA)",
-        },
-        "signal": {
-            "role": "signal",
-            "description": "Signal line (EMA of MACD line)",
-        },
-        "histogram": {
-            "role": "histogram",
-            "description": "MACD histogram (macd - signal)",
-        },
+    params={
+        "fast_period": ParamSpec(name="fast_period", type=int, default=12, required=False),
+        "slow_period": ParamSpec(name="slow_period", type=int, default=26, required=False),
+        "signal_period": ParamSpec(name="signal_period", type=int, default=9, required=False),
     },
+    outputs={
+        "macd": OutputSpec(name="macd", type=Series, description="MACD line (fast EMA - slow EMA)", role="line"),
+        "signal": OutputSpec(name="signal", type=Series, description="Signal line (EMA of MACD line)", role="signal"),
+        "histogram": OutputSpec(
+            name="histogram", type=Series, description="MACD histogram (macd - signal)", role="histogram"
+        ),
+    },
+    semantics=SemanticsSpec(
+        required_fields=("close",),
+        lookback_params=("fast_period", "slow_period", "signal_period"),
+        default_lookback=1,
+    ),
+    runtime_binding=RuntimeBindingSpec(kernel_id="macd"),
 )
+
+
+@register(spec=MACD_SPEC)
 def macd(
     ctx: SeriesContext,
     fast_period: int = 12,

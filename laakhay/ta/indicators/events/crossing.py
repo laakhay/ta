@@ -11,9 +11,30 @@ from ...core.types import Price
 from ...indicators._input_resolver import resolve_series_input
 from ...registry.models import SeriesContext
 from ...registry.registry import register
+from ...registry.schemas import (
+    IndicatorSpec,
+    InputSlotSpec,
+    OutputSpec,
+    ParamSpec,
+    RuntimeBindingSpec,
+    SemanticsSpec,
+)
+
+CROSSUP_SPEC = IndicatorSpec(
+    name="crossup",
+    description="Detect when series a crosses above series b",
+    inputs=(InputSlotSpec(name="a", required=False, default_source="ohlcv", default_field="close"),),
+    params={
+        "a": ParamSpec(name="a", type=object, default=None, required=False),
+        "b": ParamSpec(name="b", type=object, default=None, required=False),
+    },
+    outputs={"result": OutputSpec(name="result", type=Series, description="Cross above events", role="line")},
+    semantics=SemanticsSpec(required_fields=("close",), input_field="close", input_series_param="a"),
+    runtime_binding=RuntimeBindingSpec(kernel_id="crossup"),
+)
 
 
-@register("crossup", description="Detect when series a crosses above series b")
+@register(spec=CROSSUP_SPEC)
 def crossup(
     ctx: SeriesContext,
     a: Series[Price] | Any | None = None,
@@ -92,7 +113,21 @@ def crossup(
     )
 
 
-@register("crossdown", description="Detect when series a crosses below series b")
+CROSSDOWN_SPEC = IndicatorSpec(
+    name="crossdown",
+    description="Detect when series a crosses below series b",
+    inputs=(InputSlotSpec(name="a", required=False, default_source="ohlcv", default_field="close"),),
+    params={
+        "a": ParamSpec(name="a", type=object, default=None, required=False),
+        "b": ParamSpec(name="b", type=object, default=None, required=False),
+    },
+    outputs={"result": OutputSpec(name="result", type=Series, description="Cross below events", role="line")},
+    semantics=SemanticsSpec(required_fields=("close",), input_field="close", input_series_param="a"),
+    runtime_binding=RuntimeBindingSpec(kernel_id="crossdown"),
+)
+
+
+@register(spec=CROSSDOWN_SPEC)
 def crossdown(
     ctx: SeriesContext,
     a: Series[Price] | Any | None = None,
@@ -141,14 +176,6 @@ def crossdown(
             timeframe=a_aligned.timeframe,
         )
 
-    if len(a_aligned) < 2:
-        return Series[bool](
-            timestamps=a_aligned.timestamps,
-            values=tuple(False for _ in a_aligned.values),
-            symbol=a_aligned.symbol,
-            timeframe=a_aligned.timeframe,
-        )
-
     result_values: list[bool] = [False]
     result_timestamps: list = [a_aligned.timestamps[0]]
 
@@ -172,7 +199,21 @@ def crossdown(
     )
 
 
-@register("cross", description="Detect when series a crosses series b in either direction")
+CROSS_SPEC = IndicatorSpec(
+    name="cross",
+    description="Detect when series a crosses series b in either direction",
+    inputs=(InputSlotSpec(name="a", required=False, default_source="ohlcv", default_field="close"),),
+    params={
+        "a": ParamSpec(name="a", type=object, default=None, required=False),
+        "b": ParamSpec(name="b", type=object, default=None, required=False),
+    },
+    outputs={"result": OutputSpec(name="result", type=Series, description="Any cross events", role="line")},
+    semantics=SemanticsSpec(required_fields=("close",), input_field="close", input_series_param="a"),
+    runtime_binding=RuntimeBindingSpec(kernel_id="cross"),
+)
+
+
+@register(spec=CROSS_SPEC)
 def cross(
     ctx: SeriesContext,
     a: Series[Price] | Any | None = None,

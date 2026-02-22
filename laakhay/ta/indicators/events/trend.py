@@ -10,9 +10,27 @@ from ...core.types import Price
 from ...indicators._input_resolver import resolve_series_input
 from ...registry.models import SeriesContext
 from ...registry.registry import register
+from ...registry.schemas import (
+    IndicatorSpec,
+    InputSlotSpec,
+    OutputSpec,
+    ParamSpec,
+    RuntimeBindingSpec,
+    SemanticsSpec,
+)
+
+RISING_SPEC = IndicatorSpec(
+    name="rising",
+    description="Detect when series is moving up (current > previous)",
+    inputs=(InputSlotSpec(name="a", required=False, default_source="ohlcv", default_field="close"),),
+    params={"a": ParamSpec(name="a", type=object, default=None, required=False)},
+    outputs={"result": OutputSpec(name="result", type=Series, description="Rising events", role="line")},
+    semantics=SemanticsSpec(required_fields=("close",), input_field="close", input_series_param="a"),
+    runtime_binding=RuntimeBindingSpec(kernel_id="rising"),
+)
 
 
-@register("rising", description="Detect when series is moving up (current > previous)")
+@register(spec=RISING_SPEC)
 def rising(
     ctx: SeriesContext,
     a: Series[Price] | Any | None = None,
@@ -68,7 +86,18 @@ def rising(
     )
 
 
-@register("falling", description="Detect when series is moving down (current < previous)")
+FALLING_SPEC = IndicatorSpec(
+    name="falling",
+    description="Detect when series is moving down (current < previous)",
+    inputs=(InputSlotSpec(name="a", required=False, default_source="ohlcv", default_field="close"),),
+    params={"a": ParamSpec(name="a", type=object, default=None, required=False)},
+    outputs={"result": OutputSpec(name="result", type=Series, description="Falling events", role="line")},
+    semantics=SemanticsSpec(required_fields=("close",), input_field="close", input_series_param="a"),
+    runtime_binding=RuntimeBindingSpec(kernel_id="falling"),
+)
+
+
+@register(spec=FALLING_SPEC)
 def falling(
     ctx: SeriesContext,
     a: Series[Price] | Any | None = None,
@@ -121,7 +150,21 @@ def falling(
     )
 
 
-@register("rising_pct", description="Detect when series has risen by at least pct percent")
+RISING_PCT_SPEC = IndicatorSpec(
+    name="rising_pct",
+    description="Detect when series has risen by at least pct percent",
+    inputs=(InputSlotSpec(name="a", required=False, default_source="ohlcv", default_field="close"),),
+    params={
+        "a": ParamSpec(name="a", type=object, default=None, required=False),
+        "pct": ParamSpec(name="pct", type=float, default=5, required=False),
+    },
+    outputs={"result": OutputSpec(name="result", type=Series, description="Rising by pct events", role="line")},
+    semantics=SemanticsSpec(required_fields=("close",), input_field="close", input_series_param="a"),
+    runtime_binding=RuntimeBindingSpec(kernel_id="rising_pct"),
+)
+
+
+@register(spec=RISING_PCT_SPEC)
 def rising_pct(
     ctx: SeriesContext,
     a: Series[Price] | Any | None = None,
@@ -180,7 +223,21 @@ def rising_pct(
     )
 
 
-@register("falling_pct", description="Detect when series has fallen by at least pct percent")
+FALLING_PCT_SPEC = IndicatorSpec(
+    name="falling_pct",
+    description="Detect when series has fallen by at least pct percent",
+    inputs=(InputSlotSpec(name="a", required=False, default_source="ohlcv", default_field="close"),),
+    params={
+        "a": ParamSpec(name="a", type=object, default=None, required=False),
+        "pct": ParamSpec(name="pct", type=float, default=5, required=False),
+    },
+    outputs={"result": OutputSpec(name="result", type=Series, description="Falling by pct events", role="line")},
+    semantics=SemanticsSpec(required_fields=("close",), input_field="close", input_series_param="a"),
+    runtime_binding=RuntimeBindingSpec(kernel_id="falling_pct"),
+)
+
+
+@register(spec=FALLING_PCT_SPEC)
 def falling_pct(
     ctx: SeriesContext,
     a: Series[Price] | Any | None = None,

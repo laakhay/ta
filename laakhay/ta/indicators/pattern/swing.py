@@ -11,6 +11,13 @@ from ...core.series import Series as CoreSeries
 from ...core.types import Price
 from ...registry.models import SeriesContext
 from ...registry.registry import register
+from ...registry.schemas import (
+    IndicatorSpec,
+    ParamSpec,
+    OutputSpec,
+    RuntimeBindingSpec,
+    SemanticsSpec,
+)
 
 
 def _validate_inputs(ctx: SeriesContext, left: int, right: int) -> tuple[Series[Price], Series[Price]]:

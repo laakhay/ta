@@ -7,9 +7,29 @@ from ...core.types import Price
 from ...primitives.elementwise_ops import true_range
 from ...registry.models import SeriesContext
 from ...registry.registry import register
+from ...registry.schemas import (
+    IndicatorSpec,
+    OutputSpec,
+    ParamSpec,
+    RuntimeBindingSpec,
+    SemanticsSpec,
+)
+
+ATR_SPEC = IndicatorSpec(
+    name="atr",
+    description="Average True Range indicator",
+    params={"period": ParamSpec(name="period", type=int, default=14, required=False)},
+    outputs={"result": OutputSpec(name="result", type=Series, description="ATR values", role="line")},
+    semantics=SemanticsSpec(
+        required_fields=("high", "low", "close"),
+        lookback_params=("period",),
+    ),
+    runtime_binding=RuntimeBindingSpec(kernel_id="atr"),
+    param_aliases={"lookback": "period"},
+)
 
 
-@register("atr", description="Average True Range indicator")
+@register(spec=ATR_SPEC)
 def atr(ctx: SeriesContext, period: int = 14) -> Series[Price]:
     """
     Average True Range indicator using primitives.

@@ -6,13 +6,63 @@ from ...core import Series
 from ...core.types import Price
 from ...primitives.kernel import run_kernel
 from ...primitives.kernels.rsi import RSIKernel
+from ...registry.schemas import (
+    IndicatorSpec,
+    InputSlotSpec,
+    OutputSpec,
+    ParamSpec,
+    RuntimeBindingSpec,
+    SemanticsSpec,
+)
 from .. import (
     SeriesContext,
     register,
 )
 
+RSI_SPEC = IndicatorSpec(
+    name="rsi",
+    description="Relative Strength Index using Wilder's Smoothing",
+    inputs=(
+        InputSlotSpec(
+            name="input_series",
+            description="Price series (defaults to close)",
+            required=False,
+            default_source="ohlcv",
+            default_field="close",
+        ),
+    ),
+    params={
+        "period": ParamSpec(
+            name="period",
+            type=int,
+            default=14,
+            required=False,
+            description="Lookback period",
+            min_value=1,
+            max_value=500,
+        ),
+    },
+    outputs={
+        "result": OutputSpec(
+            name="result",
+            type=Series,
+            description="RSI values 0-100",
+            role="osc_main",
+        ),
+    },
+    semantics=SemanticsSpec(
+        required_fields=("close",),
+        lookback_params=("period",),
+        default_lookback=None,
+        input_field="close",
+        input_series_param="input_series",
+    ),
+    runtime_binding=RuntimeBindingSpec(kernel_id="rsi"),
+    param_aliases={"lookback": "period"},
+)
 
-@register("rsi", description="Relative Strength Index")
+
+@register(spec=RSI_SPEC)
 def rsi(ctx: SeriesContext, period: int = 14) -> Series[Price]:
     """
     Relative Strength Index indicator using Wilder's Smoothing.
