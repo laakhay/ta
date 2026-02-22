@@ -119,20 +119,20 @@ def test_compile_indicator_with_nested_expression():
 
 
 def test_serialize_indicator_with_input_expr():
-    """Test serialization of IndicatorNode with input_expr."""
-    from laakhay.ta.expr.ir.serialize import deserialize_ir, serialize_ir
+    """Test serialization of CallNode with explicit input in args[0]."""
+    from laakhay.ta.expr.ir.serialize import ir_from_dict, ir_to_dict
 
     expr = parse_expression_text("sma(BTC.price, period=20)")
     indicators = extract_indicator_nodes(expr)
     indicator = indicators[0]
 
     # Serialize
-    serialized = serialize_ir(indicator)
+    serialized = ir_to_dict(indicator)
     assert "args" in serialized
     assert serialized["args"][0]["type"] == "source_ref"
 
     # Deserialize
-    deserialized = deserialize_ir(serialized)
+    deserialized = ir_from_dict(serialized)
     assert deserialized.name == "sma"
     assert deserialized.kwargs.get("period").value == 20
     assert len(deserialized.args) == 1

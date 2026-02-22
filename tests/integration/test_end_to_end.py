@@ -8,7 +8,8 @@ import pytest
 from laakhay.ta import Bar, Engine, dataset, indicator
 from laakhay.ta.core import OHLCV, Series
 from laakhay.ta.core.types import Price
-from laakhay.ta.expr.algebra import BinaryOp, Literal, OperatorType
+from laakhay.ta.expr.algebra.operators import _to_node
+from laakhay.ta.expr.ir.nodes import BinaryOpNode, LiteralNode
 
 
 class TestEndToEnd:
@@ -83,7 +84,7 @@ class TestEndToEnd:
         engine = Engine()
 
         # Create expression: SMA(2) + 10 (using same period to avoid alignment issues)
-        sma_plus_10 = BinaryOp(OperatorType.ADD, sma_2, Literal(10))
+        sma_plus_10 = BinaryOpNode("add", _to_node(sma_2), LiteralNode(10))
 
         # Evaluate expression
         result = engine.evaluate(sma_plus_10, ds)
@@ -181,7 +182,7 @@ class TestEndToEnd:
         sma_3 = indicator("sma", period=3)
 
         # Create simple expression: SMA(2) > 105
-        sma_gt_105 = BinaryOp(OperatorType.GT, sma_2, Literal(105))
+        sma_gt_105 = BinaryOpNode("gt", _to_node(sma_2), LiteralNode(105))
 
         # Evaluate with engine
         engine = Engine()

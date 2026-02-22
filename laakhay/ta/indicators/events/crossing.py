@@ -3,69 +3,21 @@
 from __future__ import annotations
 
 from decimal import Decimal
+from typing import Any
 
 from ...core import Series
 from ...core.series import align_series
 from ...core.types import Price
-from ...expr.algebra.operators import Expression
-from ...primitives.select import _select
+from ...indicators._input_resolver import resolve_series_input
 from ...registry.models import SeriesContext
 from ...registry.registry import register
-
-
-def _extract_series(
-    value: Series[Price] | Expression | float | int | Decimal | None,
-    ctx: SeriesContext,
-    reference_series: Series[Price] | None = None,
-) -> Series[Price]:
-    """Extract a Series from various input types."""
-    if value is None:
-        return _select(ctx)
-    elif isinstance(value, Expression):
-        # Convert SeriesContext to dict for Expression.evaluate()
-        # Use the reference series or close as the base context to ensure consistent evaluation
-        base_series = reference_series if reference_series is not None else _select(ctx)
-        context_dict: dict[str, Series[Price]] = {}
-        for field_name in ctx.available_series:
-            series = getattr(ctx, field_name)
-            # Ensure all context series have the same length as the base series
-            # by aligning them (this handles different lookback periods)
-            if len(series) != len(base_series):
-                try:
-                    aligned_base, aligned_series = align_series(base_series, series, how="inner")
-                    context_dict[field_name] = aligned_series
-                except ValueError:
-                    # If alignment fails, use the original series
-                    context_dict[field_name] = series
-            else:
-                context_dict[field_name] = series
-        result = value.evaluate(context_dict)
-        if not isinstance(result, Series):
-            raise TypeError(f"Expression evaluated to {type(result)}, expected Series")
-        return result
-    elif isinstance(value, Series):
-        return value
-    elif isinstance(value, int | float | Decimal):
-        # Convert scalar to series matching reference or context
-        if reference_series is not None:
-            ref = reference_series
-        else:
-            ref = _select(ctx)
-        return Series[Price](
-            timestamps=ref.timestamps,
-            values=tuple(Decimal(str(value)) for _ in ref.timestamps),
-            symbol=ref.symbol,
-            timeframe=ref.timeframe,
-        )
-    else:
-        raise TypeError(f"Unsupported type for series extraction: {type(value)}")
 
 
 @register("crossup", description="Detect when series a crosses above series b")
 def crossup(
     ctx: SeriesContext,
-    a: Series[Price] | Expression | None = None,
-    b: Series[Price] | Expression | float | int | Decimal | None = None,
+    a: Series[Price] | Any | None = None,
+    b: Series[Price] | Any | float | int | Decimal | None = None,
 ) -> Series[bool]:
     """
     Detect when series a crosses above series b.
@@ -90,9 +42,9 @@ def crossup(
         # RSI crosses above 70 (overbought)
         crossup(rsi(14), 70)
     """
-    # Extract series
-    a_series = _extract_series(a, ctx)
-    b_series = _extract_series(b, ctx, reference_series=a_series)
+    # Extract series (Expression resolved via _input_resolver boundary)
+    a_series = resolve_series_input(a, ctx)
+    b_series = resolve_series_input(b, ctx, reference_series=a_series)
 
     # Handle empty series
     if len(a_series) == 0 or len(b_series) == 0:
@@ -143,8 +95,8 @@ def crossup(
 @register("crossdown", description="Detect when series a crosses below series b")
 def crossdown(
     ctx: SeriesContext,
-    a: Series[Price] | Expression | None = None,
-    b: Series[Price] | Expression | float | int | Decimal | None = None,
+    a: Series[Price] | Any | None = None,
+    b: Series[Price] | Any | float | int | Decimal | None = None,
 ) -> Series[bool]:
     """
     Detect when series a crosses below series b.
@@ -169,9 +121,9 @@ def crossdown(
         # RSI crosses below 30 (oversold)
         crossdown(rsi(14), 30)
     """
-    # Extract series (same as crossup)
-    a_series = _extract_series(a, ctx)
-    b_series = _extract_series(b, ctx, reference_series=a_series)
+    # Extract series (Expression resolved via _input_resolver boundary)
+    a_series = resolve_series_input(a, ctx)
+    b_series = resolve_series_input(b, ctx, reference_series=a_series)
 
     if len(a_series) == 0 or len(b_series) == 0:
         return Series[bool](timestamps=(), values=(), symbol=a_series.symbol, timeframe=a_series.timeframe)
@@ -223,8 +175,8 @@ def crossdown(
 @register("cross", description="Detect when series a crosses series b in either direction")
 def cross(
     ctx: SeriesContext,
-    a: Series[Price] | Expression | None = None,
-    b: Series[Price] | Expression | float | int | Decimal | None = None,
+    a: Series[Price] | Any | None = None,
+    b: Series[Price] | Any | float | int | Decimal | None = None,
 ) -> Series[bool]:
     """
     Detect when series a crosses series b in either direction.

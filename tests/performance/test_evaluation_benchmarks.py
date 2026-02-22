@@ -20,7 +20,7 @@ from laakhay.ta.core.series import Series
 from laakhay.ta.core.types import Price
 from laakhay.ta.expr.dsl import compile_expression
 from laakhay.ta.expr.planner import plan_expression
-from laakhay.ta.expr.runtime import RuntimeEvaluator
+from laakhay.ta.expr.planner.evaluator import Evaluator
 
 # Try to import pytest-benchmark, fall back to None if not available
 try:
@@ -87,15 +87,14 @@ class TestEvaluationBenchmarks:
         result = benchmark(evaluate)
         assert result is not None
 
-    def test_runtime_evaluator_benchmark(self, benchmark):
-        """Benchmark RuntimeEvaluator directly."""
+    def test_evaluator_benchmark(self, benchmark):
+        """Benchmark Evaluator directly."""
         ds = create_large_dataset(1000)
-        evaluator = RuntimeEvaluator()
+        evaluator = Evaluator()
         expr = compile_expression("sma(20)")
-        plan = plan_expression(expr._node)
 
         def evaluate():
-            return evaluator.evaluate(plan, ds, symbol="BTCUSDT", timeframe="1h")
+            return evaluator.evaluate(expr, ds)
 
         result = benchmark(evaluate)
         assert result is not None
@@ -103,16 +102,15 @@ class TestEvaluationBenchmarks:
     def test_cached_evaluation_benchmark(self, benchmark):
         """Benchmark cached evaluation (second run should be faster)."""
         ds = create_large_dataset(1000)
-        evaluator = RuntimeEvaluator()
+        evaluator = Evaluator()
         expr = compile_expression("sma(20)")
-        plan = plan_expression(expr._node)
 
         # First evaluation (populates cache)
-        evaluator.evaluate(plan, ds, symbol="BTCUSDT", timeframe="1h")
+        evaluator.evaluate(expr, ds)
 
         # Second evaluation (uses cache)
         def evaluate_cached():
-            return evaluator.evaluate(plan, ds, symbol="BTCUSDT", timeframe="1h")
+            return evaluator.evaluate(expr, ds)
 
         result = benchmark(evaluate_cached)
         assert result is not None

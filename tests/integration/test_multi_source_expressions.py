@@ -14,7 +14,8 @@ from laakhay.ta.core.series import Series
 from laakhay.ta.core.types import Price
 from laakhay.ta.expr.dsl import compile_expression
 from laakhay.ta.expr.planner import plan_expression
-from laakhay.ta.expr.runtime import RuntimeEvaluator, validate
+from laakhay.ta.expr.planner.evaluator import Evaluator
+from laakhay.ta.expr.runtime import validate
 
 
 def create_synthetic_multi_source_dataset() -> Dataset:
@@ -143,22 +144,17 @@ class TestMultiSourceExpressions:
         series = result[("BTCUSDT", "1h", "default")]
         assert len(series.values) > 0
 
-    def test_runtime_evaluator_multi_source(self):
-        """Test RuntimeEvaluator with multi-source data."""
+    def test_evaluator_multi_source(self):
+        """Test Evaluator with multi-source data."""
         ds = create_synthetic_multi_source_dataset()
-        evaluator = RuntimeEvaluator()
+        evaluator = Evaluator()
 
         expr = compile_expression("sma(BTC.trades.volume, period=10)")
-        plan = plan_expression(expr._node)
-
-        result = evaluator.evaluate(plan, ds, symbol="BTCUSDT", timeframe="1h")
-
-        assert isinstance(result, Series)
-        assert len(result.values) > 0
-
-        # Check cache was populated
-        cache_stats = evaluator.get_cache_stats()
-        assert cache_stats["cache_size"] > 0
+        results = evaluator.evaluate(expr, ds)
+        series = results[("BTCUSDT", "1h", "default")]
+        assert isinstance(series, Series)
+        assert len(series.values) > 0
+        assert len(evaluator._cache) > 0
 
     def test_plan_requirements_multi_source(self):
         """Test that plan correctly identifies multi-source requirements."""

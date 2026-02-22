@@ -6,6 +6,13 @@ from typing import Any
 from ..core import Bar, Price, Qty, Rate, Series, Timestamp
 from ..core.dataset import dataset
 from ..data.csv import from_csv, to_csv
+from ..expr.semantics.source_schema import (
+    LIQUIDATION,
+    OHLCV,
+    ORDERBOOK,
+    SOURCE_DEFS,
+    TRADES,
+)
 
 # Expression types imported lazily to avoid circular imports
 from ..registry import (
@@ -25,11 +32,15 @@ from .namespace import (
     TANamespace,
     TASeries,
     indicator,
+    liquidation,
     literal,
+    ohlcv,
+    orderbook,
     ref,
     resample,
     source,
     ta,
+    trades,
 )
 
 # Primitive convenience wrappers -----------------------------------------------------------
@@ -230,43 +241,36 @@ from .. import indicators  # noqa: F401,E402
 def __getattr__(name: str) -> Any:
     """Lazy import for Engine and expression types to avoid circular imports."""
     if name == "Engine":
-        from ..expr.runtime.engine import Engine
+        from ..expr.execution.engine import Engine
 
         return Engine
     elif name in (
         "Expression",
-        "BinaryOp",
         "BinaryOpNode",
         "ExpressionNode",
-        "Literal",
         "LiteralNode",
-        "UnaryOp",
         "UnaryOpNode",
         "as_expression",
     ):
         from ..expr.algebra import (
-            BinaryOp,  # noqa: F401
             BinaryOpNode,
             Expression,
-            Literal,  # noqa: F401
             LiteralNode,
-            OperatorType,  # noqa: F401
-            UnaryOp,  # noqa: F401
             UnaryOpNode,
             as_expression,
         )
 
         if name == "Expression":
             return Expression
-        elif name in ("BinaryOp", "BinaryOpNode"):
+        elif name == "BinaryOpNode":
             return BinaryOpNode
         elif name == "ExpressionNode":
             from ..expr.ir.nodes import ExprNode
 
             return ExprNode
-        elif name in ("Literal", "LiteralNode"):
+        elif name == "LiteralNode":
             return LiteralNode
-        elif name in ("UnaryOp", "UnaryOpNode"):
+        elif name == "UnaryOpNode":
             return UnaryOpNode
         elif name == "as_expression":
             return as_expression
@@ -289,6 +293,15 @@ __all__ = [
     "register",
     "indicator",
     "literal",
+    "OHLCV",
+    "TRADES",
+    "ORDERBOOK",
+    "LIQUIDATION",
+    "SOURCE_DEFS",
+    "ohlcv",
+    "trades",
+    "orderbook",
+    "liquidation",
     "ref",
     "resample",
     "source",
@@ -299,11 +312,8 @@ __all__ = [
     "list_indicators",
     "list_all_names",
     "Expression",
-    "BinaryOp",
     "BinaryOpNode",
-    "UnaryOp",
     "UnaryOpNode",
-    "Literal",
     "LiteralNode",
     "as_expression",
     "Engine",  # Imported lazily

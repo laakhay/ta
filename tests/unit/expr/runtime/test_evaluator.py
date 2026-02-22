@@ -1,4 +1,4 @@
-"""Tests for RuntimeEvaluator."""
+"""Tests for canonical Evaluator."""
 
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
@@ -10,7 +10,9 @@ from laakhay.ta.core.dataset import Dataset
 from laakhay.ta.core.ohlcv import OHLCV
 from laakhay.ta.core.series import Series
 from laakhay.ta.core.types import Price
+from laakhay.ta.expr.algebra.operators import Expression
 from laakhay.ta.expr.dsl import compile_expression
+from laakhay.ta.expr.execution.time_shift import parse_shift_periods
 from laakhay.ta.expr.ir.nodes import (
     AggregateNode,
     FilterNode,
@@ -18,8 +20,7 @@ from laakhay.ta.expr.ir.nodes import (
     SourceRefNode,
     TimeShiftNode,
 )
-from laakhay.ta.expr.planner import plan_expression
-from laakhay.ta.expr.runtime import RuntimeEvaluator
+from laakhay.ta.expr.planner.evaluator import Evaluator
 
 
 def create_test_dataset() -> Dataset:
@@ -33,26 +34,28 @@ def create_test_dataset() -> Dataset:
     return ds
 
 
-class TestRuntimeEvaluator:
-    """Test RuntimeEvaluator functionality."""
+def _extract_single_series(result, symbol: str = "BTCUSDT", timeframe: str = "1h") -> Series:
+    if isinstance(result, Series):
+        return result
+    return result[(symbol, timeframe, "default")]
+
+
+class TestEvaluator:
+    """Test Evaluator functionality."""
 
     def test_evaluator_initialization(self):
         """Test evaluator initialization."""
-        evaluator = RuntimeEvaluator()
+        evaluator = Evaluator()
         assert evaluator._cache == {}
-        assert evaluator.get_cache_stats()["cache_size"] == 0
+        assert len(evaluator._cache) == 0
 
     def test_evaluate_simple_expression(self):
         """Test evaluating a simple expression."""
-        evaluator = RuntimeEvaluator()
+        evaluator = Evaluator()
         ds = create_test_dataset()
 
-        # Compile and plan expression
         expr = compile_expression("BTC.price > 100")
-        plan = plan_expression(expr._node)
-
-        # Evaluate
-        result = evaluator.evaluate(plan, ds, symbol="BTCUSDT", timeframe="1h")
+        result = _extract_single_series(evaluator.evaluate(expr, ds))
 
         assert isinstance(result, Series)
         assert result.symbol == "BTCUSDT"
@@ -61,15 +64,11 @@ class TestRuntimeEvaluator:
 
     def test_evaluate_with_indicator(self):
         """Test evaluating expression with indicator."""
-        evaluator = RuntimeEvaluator()
+        evaluator = Evaluator()
         ds = create_test_dataset()
 
-        # Compile and plan expression
         expr = compile_expression("sma(BTC.price, period=5)")
-        plan = plan_expression(expr._node)
-
-        # Evaluate
-        result = evaluator.evaluate(plan, ds, symbol="BTCUSDT", timeframe="1h")
+        result = _extract_single_series(evaluator.evaluate(expr, ds))
 
         assert isinstance(result, Series)
         assert result.symbol == "BTCUSDT"
@@ -77,7 +76,7 @@ class TestRuntimeEvaluator:
 
     def test_evaluate_multi_symbol_timeframe(self):
         """Test evaluating for multiple symbol/timeframe combinations."""
-        evaluator = RuntimeEvaluator()
+        evaluator = Evaluator()
         ds = create_test_dataset()
 
         # Add another symbol
@@ -88,12 +87,8 @@ class TestRuntimeEvaluator:
         ]
         ds.add_series("ETHUSDT", "1h", OHLCV.from_bars(eth_bars, symbol="ETHUSDT", timeframe="1h"))
 
-        # Compile and plan expression
         expr = compile_expression("BTC.price > 100")
-        plan = plan_expression(expr._node)
-
-        # Evaluate for all symbols
-        results = evaluator.evaluate(plan, ds)
+        results = evaluator.evaluate(expr, ds)
 
         assert isinstance(results, dict)
         assert ("BTCUSDT", "1h", "default") in results
@@ -101,7 +96,7 @@ class TestRuntimeEvaluator:
 
     def test_evaluate_source_expression(self):
         """Test evaluating SourceExpression."""
-        evaluator = RuntimeEvaluator()
+        evaluator = Evaluator()
         ds = create_test_dataset()
 
         # Create SourceRefNode directly
@@ -113,15 +108,7 @@ class TestRuntimeEvaluator:
             source="ohlcv",
         )
 
-        # Plan it (wrap in a simple plan)
-        from laakhay.ta.expr.planner.builder import build_graph
-        from laakhay.ta.expr.planner.planner import compute_plan
-
-        graph = build_graph(source_expr)
-        plan = compute_plan(graph)
-
-        # Evaluate
-        result = evaluator.evaluate(plan, ds, symbol="BTCUSDT", timeframe="1h")
+        result = _extract_single_series(evaluator.evaluate(Expression(source_expr), ds))
 
         assert isinstance(result, Series)
         assert result.symbol == "BTCUSDT"
@@ -129,7 +116,7 @@ class TestRuntimeEvaluator:
 
     def test_evaluate_filter_expression(self):
         """Test evaluating FilterExpression."""
-        evaluator = RuntimeEvaluator()
+        evaluator = Evaluator()
         ds = create_test_dataset()
 
         # Create a filter expression: filter series where value > 102
@@ -149,16 +136,7 @@ class TestRuntimeEvaluator:
         )
 
         filter_expr = FilterNode(series=LiteralNode(values_series), condition=LiteralNode(condition_series))
-
-        # Plan it
-        from laakhay.ta.expr.planner.builder import build_graph
-        from laakhay.ta.expr.planner.planner import compute_plan
-
-        graph = build_graph(filter_expr)
-        plan = compute_plan(graph)
-
-        # Evaluate
-        result = evaluator.evaluate(plan, ds, symbol="BTCUSDT", timeframe="1h")
+        result = _extract_single_series(evaluator.evaluate(Expression(filter_expr), ds))
 
         assert isinstance(result, Series)
         assert len(result.values) < len(values_series.values)  # Filtered should be shorter
@@ -166,7 +144,7 @@ class TestRuntimeEvaluator:
 
     def test_evaluate_aggregate_expression(self):
         """Test evaluating AggregateExpression."""
-        evaluator = RuntimeEvaluator()
+        evaluator = Evaluator()
         ds = create_test_dataset()
 
         # Create aggregate expression: sum of series
@@ -179,16 +157,7 @@ class TestRuntimeEvaluator:
         )
 
         aggregate_expr = AggregateNode(series=LiteralNode(values_series), operation="sum", field=None)
-
-        # Plan it
-        from laakhay.ta.expr.planner.builder import build_graph
-        from laakhay.ta.expr.planner.planner import compute_plan
-
-        graph = build_graph(aggregate_expr)
-        plan = compute_plan(graph)
-
-        # Evaluate
-        result = evaluator.evaluate(plan, ds, symbol="BTCUSDT", timeframe="1h")
+        result = _extract_single_series(evaluator.evaluate(Expression(aggregate_expr), ds))
 
         assert isinstance(result, Series)
         # Sum should return a single value
@@ -196,7 +165,7 @@ class TestRuntimeEvaluator:
 
     def test_evaluate_time_shift_expression(self):
         """Test evaluating TimeShiftExpression."""
-        evaluator = RuntimeEvaluator()
+        evaluator = Evaluator()
         ds = create_test_dataset()
 
         # Create time shift expression: shift by 1 period
@@ -209,23 +178,14 @@ class TestRuntimeEvaluator:
         )
 
         shift_expr = TimeShiftNode(series=LiteralNode(values_series), shift="1h_ago", operation=None)
-
-        # Plan it
-        from laakhay.ta.expr.planner.builder import build_graph
-        from laakhay.ta.expr.planner.planner import compute_plan
-
-        graph = build_graph(shift_expr)
-        plan = compute_plan(graph)
-
-        # Evaluate
-        result = evaluator.evaluate(plan, ds, symbol="BTCUSDT", timeframe="1h")
+        result = _extract_single_series(evaluator.evaluate(Expression(shift_expr), ds))
 
         assert isinstance(result, Series)
         assert len(result.values) > 0
 
     def test_evaluate_time_shift_with_change(self):
         """Test evaluating TimeShiftExpression with change operation."""
-        evaluator = RuntimeEvaluator()
+        evaluator = Evaluator()
         ds = create_test_dataset()
 
         # Create time shift expression with change operation
@@ -238,79 +198,54 @@ class TestRuntimeEvaluator:
         )
 
         shift_expr = TimeShiftNode(series=LiteralNode(values_series), shift="1h", operation="change")
-
-        # Plan it
-        from laakhay.ta.expr.planner.builder import build_graph
-        from laakhay.ta.expr.planner.planner import compute_plan
-
-        graph = build_graph(shift_expr)
-        plan = compute_plan(graph)
-
-        # Evaluate
-        result = evaluator.evaluate(plan, ds, symbol="BTCUSDT", timeframe="1h")
+        result = _extract_single_series(evaluator.evaluate(Expression(shift_expr), ds))
 
         assert isinstance(result, Series)
         assert len(result.values) > 0
 
     def test_cache_functionality(self):
         """Test that caching works correctly."""
-        evaluator = RuntimeEvaluator()
+        evaluator = Evaluator()
         ds = create_test_dataset()
 
-        # Compile and plan expression
         expr = compile_expression("sma(BTC.price, period=5)")
-        plan = plan_expression(expr._node)
 
-        # First evaluation - should populate cache
-        result1 = evaluator.evaluate(plan, ds, symbol="BTCUSDT", timeframe="1h")
-        cache_stats1 = evaluator.get_cache_stats()
+        result1 = _extract_single_series(evaluator.evaluate(expr, ds))
+        cache_size1 = len(evaluator._cache)
 
-        # Second evaluation - should use cache
-        result2 = evaluator.evaluate(plan, ds, symbol="BTCUSDT", timeframe="1h")
-        cache_stats2 = evaluator.get_cache_stats()
+        result2 = _extract_single_series(evaluator.evaluate(expr, ds))
+        cache_size2 = len(evaluator._cache)
 
         # Results should be the same
         assert result1.values == result2.values
 
-        # Cache should have entries
-        assert cache_stats2["cache_size"] > 0
-
-        # Clear cache
-        evaluator.clear_cache()
-        cache_stats3 = evaluator.get_cache_stats()
-        assert cache_stats3["cache_size"] == 0
+        assert cache_size1 > 0
+        assert cache_size2 > 0
+        evaluator._cache.clear()
+        assert len(evaluator._cache) == 0
 
     def test_evaluate_empty_dataset(self):
         """Test evaluating with empty dataset."""
-        evaluator = RuntimeEvaluator()
+        evaluator = Evaluator()
         ds = Dataset()
 
         expr = compile_expression("BTC.price > 100")
-        plan = plan_expression(expr._node)
-
-        result = evaluator.evaluate(plan, ds, symbol="BTCUSDT", timeframe="1h")
-
-        # Should return empty series
-        assert isinstance(result, Series)
-        assert len(result.values) == 0
+        result = evaluator.evaluate(expr, ds)
+        assert isinstance(result, dict)
+        assert result == {}
 
     def test_parse_shift_periods(self):
         """Test parsing shift period strings."""
-        evaluator = RuntimeEvaluator()
-
-        assert evaluator._parse_shift_periods("1h_ago") == 1
-        assert evaluator._parse_shift_periods("24h_ago") == 24
-        assert evaluator._parse_shift_periods("1h") == 1
-        assert evaluator._parse_shift_periods("1") == 1
-
-        from laakhay.ta.exceptions import EvaluationError
-
-        with pytest.raises(EvaluationError, match="Invalid shift format"):
-            evaluator._parse_shift_periods("invalid")
+        assert parse_shift_periods("1h_ago") == 1
+        assert parse_shift_periods("24h_ago") == 24
+        assert parse_shift_periods("1h") == 1
+        assert parse_shift_periods("1") == 1
+        with pytest.raises(ValueError):
+            parse_shift_periods("invalid")
 
     def test_evaluate_with_trades_source(self):
         """Test evaluating expression with trades source."""
-        evaluator = RuntimeEvaluator()
+        evaluator = Evaluator()
         ds = create_test_dataset()
 
         # Add trades series
@@ -323,12 +258,8 @@ class TestRuntimeEvaluator:
         )
         ds.add_trade_series("BTCUSDT", "1h", trades_series)
 
-        # Compile expression that uses trades
         expr = compile_expression("sma(BTC.trades.volume, period=5)")
-        plan = plan_expression(expr._node)
-
-        # Evaluate
-        result = evaluator.evaluate(plan, ds, symbol="BTCUSDT", timeframe="1h")
+        result = _extract_single_series(evaluator.evaluate(expr, ds))
 
         assert isinstance(result, Series)
         assert len(result.values) > 0

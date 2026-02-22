@@ -3,9 +3,9 @@ from typing import Any
 from laakhay.ta.core.dataset import Dataset
 from laakhay.ta.core.series import Series
 from laakhay.ta.expr.algebra.operators import Expression
+from laakhay.ta.expr.execution.backends.base import ExecutionBackend
 from laakhay.ta.expr.planner.evaluator import Evaluator
 from laakhay.ta.expr.planner.types import PlanResult
-from laakhay.ta.expr.runtime.backends.base import ExecutionBackend
 
 
 class BatchBackend(ExecutionBackend):

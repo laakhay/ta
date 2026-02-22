@@ -1,7 +1,7 @@
 import pytest
 
 from laakhay.ta.core.dataset import Dataset
-from laakhay.ta.expr.runtime.backends.batch import BatchBackend
+from laakhay.ta.expr.execution.backends.batch import BatchBackend
 
 from .utils import assert_dict_parity, assert_series_parity
 
@@ -59,7 +59,7 @@ def test_evaluation_parity(sample_dataset, expr_text):
     res1 = backend1.evaluate(plan, sample_dataset)
 
     # Backend 2 (IncrementalBackend)
-    from laakhay.ta.expr.runtime.backends.incremental import IncrementalBackend
+    from laakhay.ta.expr.execution.backends.incremental import IncrementalBackend
 
     backend2 = IncrementalBackend()
     res2 = backend2.evaluate(plan, sample_dataset)
@@ -77,7 +77,7 @@ def test_incremental_replay(sample_dataset):
     from laakhay.ta.core.types import Price
     from laakhay.ta.expr.algebra.operators import Expression
     from laakhay.ta.expr.compile import compile_to_ir
-    from laakhay.ta.expr.runtime.backends.incremental import IncrementalBackend
+    from laakhay.ta.expr.execution.backends.incremental import IncrementalBackend
 
     expr = Expression(compile_to_ir("sma(close, 14)"))
     plan = expr._ensure_plan()

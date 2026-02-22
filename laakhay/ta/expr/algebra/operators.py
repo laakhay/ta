@@ -122,12 +122,20 @@ class Expression:
     # ------------------------------------------------------------------
 
     def evaluate(self, context: dict[str, Series[Any]] | None) -> Series[Any]:
-        # Handled by evaluator
-        from ..planner.evaluator import Evaluator
-
-        result = Evaluator().evaluate(self, context or {})
+        """Evaluate expression against a context dict. Delegates to runner (evaluate_plan)."""
+        plan = self._ensure_plan()
+        result = evaluate_plan(plan, context or {})
         if isinstance(result, Series):
             return result
+        if isinstance(result, dict):
+            if len(result) == 0:
+                result = evaluate_plan(plan, {})
+                if isinstance(result, Series):
+                    return result
+                if isinstance(result, dict) and len(result) == 1:
+                    return next(iter(result.values()))
+            else:
+                return next(iter(result.values()))
         from .scalar_helpers import _make_scalar_series
 
         return _make_scalar_series(result)

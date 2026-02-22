@@ -3,126 +3,14 @@
 from __future__ import annotations
 
 from decimal import Decimal
-from typing import Any, cast
+from typing import Any
 
 from ...core import Series
 from ...core.series import align_series
 from ...core.types import Price
-from ...expr.algebra.operators import Expression
-from ...expr.ir.nodes import CallNode as TAIndicatorNode
-from ...primitives.select import _select
+from ...indicators._input_resolver import resolve_channel_tuple, resolve_series_input
 from ...registry.models import SeriesContext
 from ...registry.registry import register
-
-
-def _extract_series(
-    value: Series[Price] | Expression | float | int | Decimal | None,
-    ctx: SeriesContext,
-    reference_series: Series[Price] | None = None,
-) -> Series[Price]:
-    """Extract a Series from various input types."""
-    if value is None:
-        return _select(ctx)
-    elif isinstance(value, Expression):
-        # Convert SeriesContext to dict for Expression.evaluate()
-        # Use the reference series or close as the base context to ensure consistent evaluation
-        base_series = reference_series if reference_series is not None else _select(ctx)
-        context_dict: dict[str, Series[Price]] = {}
-        for field_name in ctx.available_series:
-            series = getattr(ctx, field_name)
-            # Ensure all context series have the same length as the base series
-            # by aligning them (this handles different lookback periods)
-            if len(series) != len(base_series):
-                try:
-                    aligned_base, aligned_series = align_series(base_series, series, how="inner")
-                    context_dict[field_name] = aligned_series
-                except ValueError:
-                    # If alignment fails, use the original series
-                    context_dict[field_name] = series
-            else:
-                context_dict[field_name] = series
-        result = value.evaluate(context_dict)
-        if not isinstance(result, Series):
-            raise TypeError(f"Expression evaluated to {type(result)}, expected Series")
-        return result
-    elif isinstance(value, TAIndicatorNode):
-        # Handle IndicatorNode (internal node from laakhay-ta)
-        # Convert SeriesContext to dict for IndicatorNode.evaluate()
-        # Use the reference series or close as the base context to ensure consistent evaluation
-        base_series = reference_series if reference_series is not None else _select(ctx)
-        context_dict: dict[str, Series[Price]] = {}
-        for field_name in ctx.available_series:
-            series = getattr(ctx, field_name)
-            # Ensure all context series have the same length as the base series
-            # by aligning them (this handles different lookback periods)
-            if len(series) != len(base_series):
-                try:
-                    aligned_base, aligned_series = align_series(base_series, series, how="inner")
-                    context_dict[field_name] = aligned_series
-                except ValueError:
-                    # If alignment fails, use the original series
-                    context_dict[field_name] = series
-            else:
-                context_dict[field_name] = series
-        result = value.evaluate(context_dict)
-        if not isinstance(result, Series):
-            raise TypeError(f"CallNode evaluated to {type(result)}, expected Series")
-        return result
-    elif isinstance(value, Series):
-        return value
-    elif isinstance(value, int | float | Decimal):
-        if reference_series is not None:
-            ref = reference_series
-        else:
-            ref = _select(ctx)
-        return Series[Price](
-            timestamps=ref.timestamps,
-            values=tuple(Decimal(str(value)) for _ in ref.timestamps),
-            symbol=ref.symbol,
-            timeframe=ref.timeframe,
-        )
-    else:
-        raise TypeError(f"Unsupported type for series extraction: {type(value)}")
-
-
-def _extract_channel_tuple(
-    value: Series[Price] | Expression | float | int | Decimal | tuple[Any, ...] | None,
-    ctx: SeriesContext,
-) -> tuple[Series[Price], Series[Price]] | None:
-    """Extract (upper, lower) from a tuple-returning indicator (e.g. bbands)."""
-    if isinstance(value, tuple):
-        if len(value) < 3:
-            return None
-        upper = value[0]
-        lower = value[2]
-        if isinstance(upper, Series) and isinstance(lower, Series):
-            return cast(Series[Price], upper), cast(Series[Price], lower)
-        return None
-
-    if not isinstance(value, Expression | TAIndicatorNode):
-        return None
-
-    base_series = _select(ctx)
-    context_dict: dict[str, Series[Price]] = {}
-    for field_name in ctx.available_series:
-        series = getattr(ctx, field_name)
-        if len(series) != len(base_series):
-            try:
-                _, aligned_series = align_series(base_series, series, how="inner")
-                context_dict[field_name] = aligned_series
-            except ValueError:
-                context_dict[field_name] = series
-        else:
-            context_dict[field_name] = series
-
-    result = value.evaluate(context_dict)
-    if not isinstance(result, tuple) or len(result) < 3:
-        return None
-    upper = result[0]
-    lower = result[2]
-    if not isinstance(upper, Series) or not isinstance(lower, Series):
-        return None
-    return cast(Series[Price], upper), cast(Series[Price], lower)
 
 
 def _align_price_upper_lower(
@@ -147,9 +35,9 @@ def _align_price_upper_lower(
 )
 def in_channel(
     ctx: SeriesContext,
-    price: Series[Price] | Expression | None = None,
-    upper: Series[Price] | Expression | float | int | Decimal | None = None,
-    lower: Series[Price] | Expression | float | int | Decimal | None = None,
+    price: Series[Price] | Any | None = None,
+    upper: Series[Price] | Any | float | int | Decimal | None = None,
+    lower: Series[Price] | Any | float | int | Decimal | None = None,
 ) -> Series[bool]:
     """
     Detect when price is between upper and lower bounds.
@@ -172,15 +60,15 @@ def in_channel(
         # Price in range
         in_channel(close, 51000, 49000)
     """
-    channel_bounds = _extract_channel_tuple(price, ctx) if upper is None and lower is None else None
+    channel_bounds = resolve_channel_tuple(price, ctx) if upper is None and lower is None else None
 
     if channel_bounds is not None:
         upper_series, lower_series = channel_bounds
-        price_series = _extract_series(None, ctx, reference_series=upper_series)
+        price_series = resolve_series_input(None, ctx, reference_series=upper_series)
     else:
-        price_series = _extract_series(price, ctx)
-        upper_series = _extract_series(upper, ctx, reference_series=price_series)
-        lower_series = _extract_series(lower, ctx, reference_series=price_series)
+        price_series = resolve_series_input(price, ctx)
+        upper_series = resolve_series_input(upper, ctx, reference_series=price_series)
+        lower_series = resolve_series_input(lower, ctx, reference_series=price_series)
 
     if len(price_series) == 0:
         return Series[bool](timestamps=(), values=(), symbol=price_series.symbol, timeframe=price_series.timeframe)
@@ -207,9 +95,9 @@ def in_channel(
 @register("out", description="Detect when price is outside channel (above upper or below lower)")
 def out(
     ctx: SeriesContext,
-    price: Series[Price] | Expression | None = None,
-    upper: Series[Price] | Expression | float | int | Decimal | None = None,
-    lower: Series[Price] | Expression | float | int | Decimal | None = None,
+    price: Series[Price] | Any | None = None,
+    upper: Series[Price] | Any | float | int | Decimal | None = None,
+    lower: Series[Price] | Any | float | int | Decimal | None = None,
 ) -> Series[bool]:
     """
     Detect when price is outside the channel (above upper or below lower).
@@ -229,15 +117,15 @@ def out(
         # Price outside Bollinger Bands
         out(close, bb(20, 2).upper, bb(20, 2).lower)
     """
-    channel_bounds = _extract_channel_tuple(price, ctx) if upper is None and lower is None else None
+    channel_bounds = resolve_channel_tuple(price, ctx) if upper is None and lower is None else None
 
     if channel_bounds is not None:
         upper_series, lower_series = channel_bounds
-        price_series = _extract_series(None, ctx, reference_series=upper_series)
+        price_series = resolve_series_input(None, ctx, reference_series=upper_series)
     else:
-        price_series = _extract_series(price, ctx)
-        upper_series = _extract_series(upper, ctx, reference_series=price_series)
-        lower_series = _extract_series(lower, ctx, reference_series=price_series)
+        price_series = resolve_series_input(price, ctx)
+        upper_series = resolve_series_input(upper, ctx, reference_series=price_series)
+        lower_series = resolve_series_input(lower, ctx, reference_series=price_series)
 
     if len(price_series) == 0:
         return Series[bool](timestamps=(), values=(), symbol=price_series.symbol, timeframe=price_series.timeframe)
@@ -264,9 +152,9 @@ def out(
 @register("enter", description="Detect when price enters channel (was outside, now inside)")
 def enter(
     ctx: SeriesContext,
-    price: Series[Price] | Expression | None = None,
-    upper: Series[Price] | Expression | float | int | Decimal | None = None,
-    lower: Series[Price] | Expression | float | int | Decimal | None = None,
+    price: Series[Price] | Any | None = None,
+    upper: Series[Price] | Any | float | int | Decimal | None = None,
+    lower: Series[Price] | Any | float | int | Decimal | None = None,
 ) -> Series[bool]:
     """
     Detect when price enters the channel (was outside, now inside).
@@ -286,15 +174,15 @@ def enter(
         # Price enters Bollinger Bands
         enter(close, bb(20, 2).upper, bb(20, 2).lower)
     """
-    channel_bounds = _extract_channel_tuple(price, ctx) if upper is None and lower is None else None
+    channel_bounds = resolve_channel_tuple(price, ctx) if upper is None and lower is None else None
 
     if channel_bounds is not None:
         upper_series, lower_series = channel_bounds
-        price_series = _extract_series(None, ctx, reference_series=upper_series)
+        price_series = resolve_series_input(None, ctx, reference_series=upper_series)
     else:
-        price_series = _extract_series(price, ctx)
-        upper_series = _extract_series(upper, ctx, reference_series=price_series)
-        lower_series = _extract_series(lower, ctx, reference_series=price_series)
+        price_series = resolve_series_input(price, ctx)
+        upper_series = resolve_series_input(upper, ctx, reference_series=price_series)
+        lower_series = resolve_series_input(lower, ctx, reference_series=price_series)
 
     if len(price_series) == 0:
         return Series[bool](timestamps=(), values=(), symbol=price_series.symbol, timeframe=price_series.timeframe)
@@ -354,9 +242,9 @@ def enter(
 @register("exit", description="Detect when price exits channel (was inside, now outside)")
 def exit(
     ctx: SeriesContext,
-    price: Series[Price] | Expression | None = None,
-    upper: Series[Price] | Expression | float | int | Decimal | None = None,
-    lower: Series[Price] | Expression | float | int | Decimal | None = None,
+    price: Series[Price] | Any | None = None,
+    upper: Series[Price] | Any | float | int | Decimal | None = None,
+    lower: Series[Price] | Any | float | int | Decimal | None = None,
 ) -> Series[bool]:
     """
     Detect when price exits the channel (was inside, now outside).
@@ -376,15 +264,15 @@ def exit(
         # Price exits Bollinger Bands
         exit(close, bb(20, 2).upper, bb(20, 2).lower)
     """
-    channel_bounds = _extract_channel_tuple(price, ctx) if upper is None and lower is None else None
+    channel_bounds = resolve_channel_tuple(price, ctx) if upper is None and lower is None else None
 
     if channel_bounds is not None:
         upper_series, lower_series = channel_bounds
-        price_series = _extract_series(None, ctx, reference_series=upper_series)
+        price_series = resolve_series_input(None, ctx, reference_series=upper_series)
     else:
-        price_series = _extract_series(price, ctx)
-        upper_series = _extract_series(upper, ctx, reference_series=price_series)
-        lower_series = _extract_series(lower, ctx, reference_series=price_series)
+        price_series = resolve_series_input(price, ctx)
+        upper_series = resolve_series_input(upper, ctx, reference_series=price_series)
+        lower_series = resolve_series_input(lower, ctx, reference_series=price_series)
 
     if len(price_series) == 0:
         return Series[bool](timestamps=(), values=(), symbol=price_series.symbol, timeframe=price_series.timeframe)

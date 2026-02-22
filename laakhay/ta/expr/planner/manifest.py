@@ -6,7 +6,7 @@ import keyword
 from typing import Any
 
 from ...registry.registry import get_global_registry
-from ..semantics.source_schema import SOURCE_DESCRIPTIONS, SOURCE_FIELDS
+from ..semantics.source_schema import SOURCE_DEFS
 
 
 def generate_capability_manifest() -> dict[str, Any]:
@@ -138,11 +138,11 @@ def generate_capability_manifest() -> dict[str, Any]:
 
 def _canonical_sources() -> dict[str, dict[str, Any]]:
     return {
-        source_name: {
-            "fields": sorted(fields),
-            "description": SOURCE_DESCRIPTIONS.get(source_name, f"{source_name} data"),
+        src.name: {
+            "fields": sorted(src.field_names),
+            "description": src.description,
         }
-        for source_name, fields in SOURCE_FIELDS.items()
+        for src in SOURCE_DEFS.values()
     }
 
 

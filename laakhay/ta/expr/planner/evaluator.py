@@ -291,7 +291,8 @@ class Evaluator:
             for key, val in zip(sorted(n.kwargs.keys()), kwarg_outputs, strict=True):
                 eval_kwargs[key] = val
 
-            if n.input_expr is not None and len(eval_args) > 0:
+            has_input_expr = len(n.args) > 0 and not isinstance(n.args[0], LiteralNode)
+            if has_input_expr and len(eval_args) > 0:
                 input_series_result = eval_args[0]
                 remaining_args = eval_args[1:]
 

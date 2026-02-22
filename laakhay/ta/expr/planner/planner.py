@@ -95,20 +95,17 @@ def _topological_order(graph: Graph) -> tuple[int, ...]:
 
 def _collect_requirements(graph: Graph) -> SignalRequirements:
     registry = get_global_registry()
-    fields: Dict[Tuple[str, str | None], int] = {}
     time_based_queries: List[str] = []
 
-    # Track lookback requirements per data requirement key (source, field, symbol, exchange, timeframe)
+    # Canonical: track lookback per (source, field, symbol, exchange, timeframe)
     data_lookbacks: Dict[Tuple[str, str | None, str | None, str | None, str | None], int] = {}
 
     # Track required lookback per node ID. Root requires 1.
     node_lookbacks: Dict[int, int] = {graph.root_id: 1}
 
-    def merge_field(name: str, timeframe: str | None, lookback: int) -> None:
-        key = (name, timeframe)
-        prev = fields.get(key, 0)
-        if lookback > prev:
-            fields[key] = lookback
+    def _merge_ohlcv_field(field: str, timeframe: str | None, lookback: int) -> None:
+        """Merge an OHLCV field requirement (source=ohlcv, symbol/exchange unspecified)."""
+        merge_data_requirement("ohlcv", field, None, None, timeframe, lookback)
 
     def merge_data_requirement(
         source: str,
@@ -154,7 +151,7 @@ def _collect_requirements(graph: Graph) -> SignalRequirements:
                 else:
                     params[k] = v
 
-            has_input_series = expr_node.input_expr is not None
+            has_input_series = len(expr_node.args) > 0 and not isinstance(expr_node.args[0], LiteralNode)
             arg_offset = 1 if has_input_series else 0
             param_start = 0
             if (
@@ -204,8 +201,6 @@ def _collect_requirements(graph: Graph) -> SignalRequirements:
                     None,
                     current_lookback,
                 )
-                # Also merge into legacy fields for backward compatibility
-                merge_field(field, None, current_lookback)
 
             if metadata and metadata.lookback_params:
                 collected: List[int] = []
@@ -221,9 +216,9 @@ def _collect_requirements(graph: Graph) -> SignalRequirements:
             total_required = current_lookback + indicator_lookback - 1
 
             if not has_input_series:
-                # Require standard fields if no inputs provided
+                # Require standard OHLCV fields if no inputs provided
                 for field_name in required_fields:
-                    merge_field(field_name, None, max(total_required, 1))
+                    _merge_ohlcv_field(field_name, None, max(total_required, 1))
 
             # Propagate requirement to all children (input_series and param-based inputs)
             for child_id in node.children:
@@ -231,7 +226,7 @@ def _collect_requirements(graph: Graph) -> SignalRequirements:
 
         elif isinstance(expr_node, LiteralNode):
             if isinstance(expr_node.value, Series):
-                merge_field("close", expr_node.value.timeframe, current_lookback)
+                _merge_ohlcv_field("close", expr_node.value.timeframe, current_lookback)
 
         elif isinstance(expr_node, BinaryOpNode):
             # Propagate requirement to both operands
@@ -244,21 +239,7 @@ def _collect_requirements(graph: Graph) -> SignalRequirements:
                 node_lookbacks[child_id] = max(node_lookbacks.get(child_id, 0), current_lookback)
 
         elif isinstance(expr_node, SourceRefNode):
-            # Handle SourceExpression - map to DataRequirement
-            # For OHLCV sources, also create FieldRequirement for backward compatibility
-            if expr_node.source == "ohlcv" and expr_node.symbol is None and expr_node.exchange is None:
-                # Map OHLCV fields to legacy FieldRequirement
-                field_name = expr_node.field
-                if field_name in ("price", "close"):
-                    field_name = "close"
-                elif field_name in ("open", "high", "low", "volume"):
-                    pass  # Use as-is
-                else:
-                    # For derived fields, default to close
-                    field_name = "close"
-                merge_field(field_name, expr_node.timeframe, current_lookback)
-
-            # Track data requirement
+            # Track canonical data requirement
             merge_data_requirement(
                 expr_node.source,
                 expr_node.field,
@@ -287,17 +268,6 @@ def _collect_requirements(graph: Graph) -> SignalRequirements:
 
             # Keep track of aggregation params for this node (though we don't return them per node here)
             # SignalRequirements currently doesn't store per-node aggregation params.
-
-    # Map legacy field requirements to canonical DataRequirements
-    for (name, timeframe), lookback in fields.items():
-        merge_data_requirement(
-            "ohlcv",
-            name,
-            None,  # symbol
-            None,  # exchange
-            timeframe,
-            lookback,
-        )
 
     # Convert data_lookbacks to DataRequirement objects
     data_requirements = [

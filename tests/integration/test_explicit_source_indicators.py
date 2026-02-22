@@ -5,7 +5,16 @@ and sma(trades.volume, period=20).
 """
 
 from laakhay.ta.expr.dsl import compile_expression, parse_expression_text
+from laakhay.ta.expr.ir.nodes import LiteralNode
 from laakhay.ta.expr.planner import plan_expression
+
+
+def _input_expr(node):
+    """First positional arg when it's an expression (not a literal)."""
+    if not node.args:
+        return None
+    first = node.args[0]
+    return None if isinstance(first, LiteralNode) else first
 
 
 class TestExplicitSourceIndicators:
@@ -17,11 +26,11 @@ class TestExplicitSourceIndicators:
         expr_text = "sma(BTC.price, period=20)"
         expr = parse_expression_text(expr_text)
 
-        # Verify input_expr is set
-        assert hasattr(expr, "input_expr")
-        assert expr.input_expr is not None
+        # Verify explicit input expression is set (args[0] is source ref, not literal)
+        assert _input_expr(expr) is not None
         assert expr.name == "sma"
-        assert expr.params["period"] == 20
+        period_node = expr.kwargs.get("period")
+        assert period_node is not None and period_node.value == 20
 
         # Compile and run
         compiled = compile_expression(expr)
@@ -36,8 +45,7 @@ class TestExplicitSourceIndicators:
         expr_text = "sma(BTC.trades.volume, period=10)"
         expr = parse_expression_text(expr_text)
 
-        # Verify input_expr is set
-        assert expr.input_expr is not None
+        assert _input_expr(expr) is not None
 
         # Compile and run
         compiled = compile_expression(expr)
@@ -52,7 +60,7 @@ class TestExplicitSourceIndicators:
         expr_text = "rsi(BTC.price, period=14)"
         expr = parse_expression_text(expr_text)
 
-        assert expr.input_expr is not None
+        assert _input_expr(expr) is not None
 
         # Compile and run
         compiled = compile_expression(expr)
@@ -81,7 +89,7 @@ class TestExplicitSourceIndicators:
         expr_text = "sma(BTC.price + BTC.trades.volume / 1000, period=10)"
         expr = parse_expression_text(expr_text)
 
-        assert expr.input_expr is not None
+        assert _input_expr(expr) is not None
 
         # Compile and run
         compiled = compile_expression(expr)
@@ -96,7 +104,7 @@ class TestExplicitSourceIndicators:
         expr_text = "sma(BTC.orderbook.imbalance, period=5)"
         expr = parse_expression_text(expr_text)
 
-        assert expr.input_expr is not None
+        assert _input_expr(expr) is not None
 
         # Compile and run
         compiled = compile_expression(expr)
@@ -111,7 +119,7 @@ class TestExplicitSourceIndicators:
         expr_text = "sma(BTC.liquidation.volume, period=5)"
         expr = parse_expression_text(expr_text)
 
-        assert expr.input_expr is not None
+        assert _input_expr(expr) is not None
 
         # Compile and run
         compiled = compile_expression(expr)
@@ -126,8 +134,8 @@ class TestExplicitSourceIndicators:
         expr_text = "sma(20)"
         expr = parse_expression_text(expr_text)
 
-        # input_expr should be None for backwards compatibility
-        assert expr.input_expr is None
+        # No explicit input: args[0] is literal (period), not expression
+        assert _input_expr(expr) is None
 
         # Compile and run
         compiled = compile_expression(expr)

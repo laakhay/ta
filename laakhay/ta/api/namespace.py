@@ -9,6 +9,7 @@ from ..core import Dataset, Series
 from ..core.types import Price
 from ..expr.algebra import Expression, as_expression
 from ..expr.ir.nodes import LiteralNode
+from ..expr.semantics.source_schema import liquidation, ohlcv, orderbook, trades
 from ..primitives.select import _select_field
 from ..registry import register
 from ..registry.models import SeriesContext
@@ -102,11 +103,16 @@ def literal(value: float | int | Decimal | Series[Any]) -> Expression:
 
 
 def source(field: str) -> Expression:
-    """Create an expression that selects a field from the dataset context.
+    """Create an expression that selects a field from the dataset context (default: OHLCV).
+
+    For explicit source selection, use ohlcv, trades, orderbook, or liquidation instead:
 
     Example
     -------
-    >>> close = ta.source("close")
+    >>> close = ta.source("close")           # OHLCV close (default)
+    >>> close = ohlcv("close")               # explicit OHLCV
+    >>> vol = trades("volume")               # trades volume
+    >>> imb = orderbook("imbalance")         # orderbook imbalance
     >>> signal = (ta.sma(close, 20) > 10) & (ta.rsi(close, 14) > 50)
     """
     handle = indicator("select", field=field)
@@ -223,6 +229,11 @@ class TANamespace:
         self.literal = literal
         self.ref = ref
         self.resample = resample
+        # Explicit data sources
+        self.ohlcv = ohlcv
+        self.trades = trades
+        self.orderbook = orderbook
+        self.liquidation = liquidation
 
     def __call__(self, series: Series[Price], **additional_series: Series[Any]) -> TASeries:
         return TASeries(series, **additional_series)
@@ -360,6 +371,10 @@ __all__ = [
     "literal",
     "ref",
     "resample",
+    "ohlcv",
+    "trades",
+    "orderbook",
+    "liquidation",
     "TANamespace",
     "TASeries",
     "ta",

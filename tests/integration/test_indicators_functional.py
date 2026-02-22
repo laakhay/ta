@@ -106,11 +106,11 @@ class TestIndicatorsFunctional:
         sma_2 = indicator("sma", period=2)
 
         # Test that indicator handle can be used as expression
-        from laakhay.ta.expr.algebra import BinaryOp, Literal, OperatorType
+        from laakhay.ta.expr.algebra.operators import _to_node
+        from laakhay.ta.expr.ir.nodes import BinaryOpNode, LiteralNode
 
         # Create expression: sma + 10
-        literal_10 = Literal(10)
-        add_expr = BinaryOp(OperatorType.ADD, sma_2, literal_10)
+        add_expr = BinaryOpNode("add", _to_node(sma_2), LiteralNode(10))
 
         # Evaluate with engine
         engine = Engine()
