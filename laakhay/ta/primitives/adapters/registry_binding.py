@@ -1,35 +1,50 @@
-"""Registry-to-kernel binding helpers for incremental execution."""
+"""Registry-to-kernel binding helpers for incremental execution.
+
+Dispatch is driven by IndicatorSpec.runtime_binding.kernel_id.
+"""
 
 from __future__ import annotations
 
 from decimal import Decimal
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from ..kernels.atr import ATRKernel
 from ..kernels.ema import EMAKernel
 from ..kernels.rolling import RollingMeanKernel, RollingStdKernel, RollingSumKernel
 from ..kernels.rsi import RSIKernel
 
+if TYPE_CHECKING:
+    from ...registry.models import IndicatorHandle
 
-def resolve_kernel_for_indicator(name: str) -> Any | None:
-    if name in ("rolling_sum", "sum"):
-        return RollingSumKernel()
-    if name in ("rolling_mean", "mean", "average", "avg", "sma"):
-        return RollingMeanKernel()
-    if name in ("rolling_std", "std", "stddev"):
-        return RollingStdKernel()
-    if name in ("rolling_ema", "ema"):
-        return EMAKernel()
-    if name == "rsi":
-        return RSIKernel()
-    if name == "atr":
-        return ATRKernel()
-    return None
+# kernel_id (from RuntimeBindingSpec) -> Kernel instance
+# Aliases share the same kernel; map all registered kernel_ids.
+_KERNEL_ID_TO_KERNEL: dict[str, Any] = {
+    "rolling_sum": RollingSumKernel(),
+    "sum": RollingSumKernel(),
+    "rolling_mean": RollingMeanKernel(),
+    "mean": RollingMeanKernel(),
+    "average": RollingMeanKernel(),
+    "avg": RollingMeanKernel(),
+    "sma": RollingMeanKernel(),
+    "rolling_std": RollingStdKernel(),
+    "std": RollingStdKernel(),
+    "stddev": RollingStdKernel(),
+    "rolling_ema": EMAKernel(),
+    "ema": EMAKernel(),
+    "rsi": RSIKernel(),
+    "atr": ATRKernel(),
+}
 
 
-def coerce_incremental_input(name: str, input_val: Any, tick: dict[str, Any], algorithm_state: Any) -> Any:
-    """Apply indicator-specific input adaptation outside backend loop."""
-    if name != "atr":
+def resolve_kernel_for_indicator(handle: IndicatorHandle) -> Any | None:
+    """Resolve kernel from IndicatorSpec.runtime_binding.kernel_id."""
+    kernel_id = handle.indicator_spec.runtime_binding.kernel_id
+    return _KERNEL_ID_TO_KERNEL.get(kernel_id)
+
+
+def coerce_incremental_input(kernel_id: str, input_val: Any, tick: dict[str, Any], algorithm_state: Any) -> Any:
+    """Apply kernel-specific input adaptation (e.g. ATR needs true range)."""
+    if kernel_id != "atr":
         return input_val
 
     tr = Decimal("0")

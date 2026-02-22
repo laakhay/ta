@@ -279,9 +279,10 @@ class Evaluator:
 
             registry = get_global_registry()
 
-            if n.name not in registry._indicators:
+            handle = registry.get(n.name)
+            if not handle:
                 raise ValueError(f"Indicator '{n.name}' not found in registry")
-            indicator_func = registry._indicators[n.name]
+            indicator_func = handle.func
 
             # Map evaluated children back to args and kwargs
             eval_args = children_outputs[: len(n.args)]
