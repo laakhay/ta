@@ -3,79 +3,19 @@
 from __future__ import annotations
 
 from decimal import Decimal
+from typing import Any
 
 from ...core import Series
-from ...core.series import align_series
 from ...core.types import Price
-from ...expr.algebra.operators import Expression
-from ...expr.ir.nodes import CallNode as TAIndicatorNode
-from ...primitives.select import _select
+from ...indicators._input_resolver import resolve_series_input
 from ...registry.models import SeriesContext
 from ...registry.registry import register
-
-
-def _extract_series(
-    value: Series[Price] | Expression | None,
-    ctx: SeriesContext,
-) -> Series[Price]:
-    """Extract a Series from various input types."""
-    if value is None:
-        return _select(ctx)
-    elif isinstance(value, Expression):
-        # Convert SeriesContext to dict for Expression.evaluate()
-        # Use close as the base context to ensure consistent evaluation
-        base_series = _select(ctx)
-        context_dict: dict[str, Series[Price]] = {}
-        for field_name in ctx.available_series:
-            series = getattr(ctx, field_name)
-            # Ensure all context series have the same length as the base series
-            # by aligning them (this handles different lookback periods)
-            if len(series) != len(base_series):
-                try:
-                    aligned_base, aligned_series = align_series(base_series, series, how="inner")
-                    context_dict[field_name] = aligned_series
-                except ValueError:
-                    # If alignment fails, use the original series
-                    context_dict[field_name] = series
-            else:
-                context_dict[field_name] = series
-        result = value.evaluate(context_dict)
-        if not isinstance(result, Series):
-            raise TypeError(f"Expression evaluated to {type(result)}, expected Series")
-        return result
-    elif isinstance(value, TAIndicatorNode):
-        # Handle IndicatorNode (internal node from laakhay-ta)
-        # Convert SeriesContext to dict for IndicatorNode.evaluate()
-        # Use close as the base context to ensure consistent evaluation
-        base_series = _select(ctx)
-        context_dict: dict[str, Series[Price]] = {}
-        for field_name in ctx.available_series:
-            series = getattr(ctx, field_name)
-            # Ensure all context series have the same length as the base series
-            # by aligning them (this handles different lookback periods)
-            if len(series) != len(base_series):
-                try:
-                    aligned_base, aligned_series = align_series(base_series, series, how="inner")
-                    context_dict[field_name] = aligned_series
-                except ValueError:
-                    # If alignment fails, use the original series
-                    context_dict[field_name] = series
-            else:
-                context_dict[field_name] = series
-        result = value.evaluate(context_dict)
-        if not isinstance(result, Series):
-            raise TypeError(f"CallNode evaluated to {type(result)}, expected Series")
-        return result
-    elif isinstance(value, Series):
-        return value
-    else:
-        raise TypeError(f"Unsupported type for series extraction: {type(value)}")
 
 
 @register("rising", description="Detect when series is moving up (current > previous)")
 def rising(
     ctx: SeriesContext,
-    a: Series[Price] | Expression | None = None,
+    a: Series[Price] | Any | None = None,
 ) -> Series[bool]:
     """
     Detect when series a is rising (current > previous).
@@ -96,7 +36,7 @@ def rising(
         # RSI is rising
         rising(rsi(14))
     """
-    a_series = _extract_series(a, ctx)
+    a_series = resolve_series_input(a, ctx)
 
     if len(a_series) == 0:
         return Series[bool](timestamps=(), values=(), symbol=a_series.symbol, timeframe=a_series.timeframe)
@@ -131,7 +71,7 @@ def rising(
 @register("falling", description="Detect when series is moving down (current < previous)")
 def falling(
     ctx: SeriesContext,
-    a: Series[Price] | Expression | None = None,
+    a: Series[Price] | Any | None = None,
 ) -> Series[bool]:
     """
     Detect when series a is falling (current < previous).
@@ -152,7 +92,7 @@ def falling(
         # Volume is falling
         falling(volume)
     """
-    a_series = _extract_series(a, ctx)
+    a_series = resolve_series_input(a, ctx)
 
     if len(a_series) == 0:
         return Series[bool](timestamps=(), values=(), symbol=a_series.symbol, timeframe=a_series.timeframe)
@@ -184,7 +124,7 @@ def falling(
 @register("rising_pct", description="Detect when series has risen by at least pct percent")
 def rising_pct(
     ctx: SeriesContext,
-    a: Series[Price] | Expression | None = None,
+    a: Series[Price] | Any | None = None,
     pct: float | int | Decimal = 0,
 ) -> Series[bool]:
     """
@@ -207,7 +147,7 @@ def rising_pct(
         # Volume rose by 10%
         rising_pct(volume, 10)
     """
-    a_series = _extract_series(a, ctx)
+    a_series = resolve_series_input(a, ctx)
 
     if len(a_series) == 0:
         return Series[bool](timestamps=(), values=(), symbol=a_series.symbol, timeframe=a_series.timeframe)
@@ -243,7 +183,7 @@ def rising_pct(
 @register("falling_pct", description="Detect when series has fallen by at least pct percent")
 def falling_pct(
     ctx: SeriesContext,
-    a: Series[Price] | Expression | None = None,
+    a: Series[Price] | Any | None = None,
     pct: float | int | Decimal = 0,
 ) -> Series[bool]:
     """
@@ -263,7 +203,7 @@ def falling_pct(
         # Price fell by 5%
         falling_pct(close, 5)
     """
-    a_series = _extract_series(a, ctx)
+    a_series = resolve_series_input(a, ctx)
 
     if len(a_series) == 0:
         return Series[bool](timestamps=(), values=(), symbol=a_series.symbol, timeframe=a_series.timeframe)
