@@ -235,38 +235,31 @@ def __getattr__(name: str) -> Any:
         return Engine
     elif name in (
         "Expression",
-        "BinaryOp",
         "BinaryOpNode",
         "ExpressionNode",
-        "Literal",
         "LiteralNode",
-        "UnaryOp",
         "UnaryOpNode",
         "as_expression",
     ):
         from ..expr.algebra import (
-            BinaryOp,  # noqa: F401
             BinaryOpNode,
             Expression,
-            Literal,  # noqa: F401
             LiteralNode,
-            OperatorType,  # noqa: F401
-            UnaryOp,  # noqa: F401
             UnaryOpNode,
             as_expression,
         )
 
         if name == "Expression":
             return Expression
-        elif name in ("BinaryOp", "BinaryOpNode"):
+        elif name == "BinaryOpNode":
             return BinaryOpNode
         elif name == "ExpressionNode":
             from ..expr.ir.nodes import ExprNode
 
             return ExprNode
-        elif name in ("Literal", "LiteralNode"):
+        elif name == "LiteralNode":
             return LiteralNode
-        elif name in ("UnaryOp", "UnaryOpNode"):
+        elif name == "UnaryOpNode":
             return UnaryOpNode
         elif name == "as_expression":
             return as_expression
@@ -299,11 +292,8 @@ __all__ = [
     "list_indicators",
     "list_all_names",
     "Expression",
-    "BinaryOp",
     "BinaryOpNode",
-    "UnaryOp",
     "UnaryOpNode",
-    "Literal",
     "LiteralNode",
     "as_expression",
     "Engine",  # Imported lazily

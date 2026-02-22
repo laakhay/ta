@@ -8,7 +8,8 @@ import pytest
 from laakhay.ta import Bar, Engine, dataset
 from laakhay.ta.core import Series
 from laakhay.ta.core.types import Price
-from laakhay.ta.expr.algebra import BinaryOp, Literal, OperatorType
+from laakhay.ta.expr.algebra.operators import _to_node
+from laakhay.ta.expr.ir.nodes import BinaryOpNode, LiteralNode
 
 
 class TestEngineFunctional:
@@ -19,7 +20,7 @@ class TestEngineFunctional:
         engine = Engine()
 
         # Create a literal expression
-        literal_expr = Literal(42)
+        literal_expr = LiteralNode(42)
 
         # Create empty dataset
         empty_dataset = dataset()
@@ -36,9 +37,9 @@ class TestEngineFunctional:
         engine = Engine()
 
         # Create binary expression: 10 + 20
-        left = Literal(10)
-        right = Literal(20)
-        add_expr = BinaryOp(OperatorType.ADD, left, right)
+        left = LiteralNode(10)
+        right = LiteralNode(20)
+        add_expr = BinaryOpNode("add", left, right)
 
         # Create empty dataset
         empty_dataset = dataset()
@@ -86,8 +87,7 @@ class TestEngineFunctional:
         close_series = ds["close"]
 
         # Create expression: close + 10
-        literal_10 = Literal(10)
-        add_expr = BinaryOp(OperatorType.ADD, Literal(close_series), literal_10)
+        add_expr = BinaryOpNode("add", _to_node(close_series), LiteralNode(10))
 
         # Evaluate with engine
         engine = Engine()
@@ -105,8 +105,8 @@ class TestEngineFunctional:
         engine = Engine()
 
         # Create expression: (10 + 20) * 2
-        inner_add = BinaryOp(OperatorType.ADD, Literal(10), Literal(20))
-        multiply = BinaryOp(OperatorType.MUL, inner_add, Literal(2))
+        inner_add = BinaryOpNode("add", LiteralNode(10), LiteralNode(20))
+        multiply = BinaryOpNode("mul", inner_add, LiteralNode(2))
 
         empty_dataset = dataset()
         result = engine.evaluate(multiply, empty_dataset)
@@ -121,7 +121,7 @@ class TestEngineFunctional:
         engine = Engine()
 
         # Create invalid expression: 10 / 0
-        div_expr = BinaryOp(OperatorType.DIV, Literal(10), Literal(0))
+        div_expr = BinaryOpNode("div", LiteralNode(10), LiteralNode(0))
 
         empty_dataset = dataset()
 
