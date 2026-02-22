@@ -44,7 +44,6 @@ def _extract_series(result):
     return result
 
 
-@pytest.mark.drift_guard
 @pytest.mark.parametrize(
     "expr_text",
     [
@@ -66,7 +65,6 @@ def test_expression_run_vs_evaluate_plan_parity(sample_dataset, expr_text):
     assert_series_parity(r1, r2)
 
 
-@pytest.mark.drift_guard
 @pytest.mark.parametrize(
     "expr_text",
     [
@@ -88,7 +86,6 @@ def test_batch_vs_incremental_backend_parity(sample_dataset, expr_text):
         assert_series_parity(batch_res, incr_res)
 
 
-@pytest.mark.drift_guard
 def test_evaluator_direct_vs_run_parity(sample_dataset):
     """Direct Evaluator.evaluate(Dataset) and Expression.run(Dataset) must agree."""
     expr = compile_expression("close + 10")

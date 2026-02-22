@@ -27,7 +27,6 @@ def sample_dataset(sample_ohlcv_data) -> Dataset:
     return dataset
 
 
-@pytest.mark.drift_guard
 @pytest.mark.parametrize(
     "expr_text",
     [
