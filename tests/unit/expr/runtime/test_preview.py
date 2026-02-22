@@ -79,6 +79,21 @@ class TestPreviewBasic:
         assert len(result.indicators) == 3  # sma, sma, rsi
         assert result.trim >= 50  # Largest lookback
 
+    def test_preview_numeric_literal_type_collision_regression(self):
+        """
+        Ensure 50 (int period) and 50.0 (float threshold) are treated distinctly.
+        """
+        bars = create_sample_bars(220)
+        result = preview(
+            "rsi(14) < 50 and sma(close, 50) < sma(close, 100)",
+            bars=bars,
+            symbol="BTCUSDT",
+            timeframe="1h",
+        )
+
+        assert isinstance(result, PreviewResult)
+        assert len(result.series) > 0
+
     def test_preview_missing_symbol_timeframe(self):
         """Test preview raises error when bars provided without symbol/timeframe."""
         bars = create_sample_bars(50)

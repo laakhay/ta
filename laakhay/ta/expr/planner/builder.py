@@ -58,11 +58,13 @@ def build_graph(root: CanonicalExpression) -> Graph:
             children = ()
         elif isinstance(node, LiteralNode):
             if isinstance(node.value, list):
-                literal_repr = tuple(node.value)
+                literal_repr = ("list", tuple(node.value))
             elif isinstance(node.value, dict):
-                literal_repr = tuple(node.value.items())
+                literal_repr = ("dict", tuple(node.value.items()))
             else:
-                literal_repr = node.value
+                # Preserve type in literal signature so values like 50 (int)
+                # and 50.0 (float) do not collapse to one shared node.
+                literal_repr = (type(node.value).__name__, node.value)
             signature = ("LiteralNode", literal_repr)
             children = ()
         elif isinstance(node, CallNode):
