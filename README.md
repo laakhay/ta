@@ -76,7 +76,7 @@ result = signal.run(market)
 # Inspect requirements
 print(signal.describe())
 requirements = signal.requirements()
-print(requirements.fields)  # Required data fields
+print(requirements.data_requirements)  # Required data sources and fields
 ```
 
 ## Indicator Expression Inputs
@@ -215,11 +215,12 @@ from laakhay.ta.expr.dsl import compile_expression
 expr = compile_expression("sma(BTC.trades.volume, period=20) > 1000000")
 plan = plan_expression(expr._node)
 
-# Access requirements
-print(plan.requirements.data_requirements)  # Data sources needed
-print(plan.requirements.required_sources)    # ['trades']
-print(plan.requirements.required_exchanges)  # ['binance'] if specified
-print(plan.requirements.fields)              # Field requirements
+# Access requirements (or use analyze() for derived views)
+print(plan.requirements.data_requirements)  # Data sources and fields needed
+from laakhay.ta.expr.runtime import analyze
+result = analyze("sma(BTC.trades.volume, period=20) > 1000000", exchange="binance")
+print(result.required_sources)    # ['trades']
+print(result.required_exchanges)  # ['binance'] if specified
 
 # Serialize for backend
 plan_dict = plan.to_dict()
