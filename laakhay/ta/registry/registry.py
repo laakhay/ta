@@ -103,6 +103,63 @@ _METADATA_HINTS: dict[str, IndicatorMetadata] = {
     "fib_anchor_low": IndicatorMetadata(required_fields=("high", "low"), lookback_params=("left", "right", "leg")),
     "fib_level_down": IndicatorMetadata(required_fields=("high", "low"), lookback_params=("left", "right", "leg")),
     "fib_level_up": IndicatorMetadata(required_fields=("high", "low"), lookback_params=("left", "right", "leg")),
+    # Channel / event indicators (price, upper, lower accept series or scalars)
+    "in_channel": IndicatorMetadata(
+        required_fields=("close",),
+        input_field="close",
+        input_series_param="price",
+    ),
+    "out": IndicatorMetadata(
+        required_fields=("close",),
+        input_field="close",
+        input_series_param="price",
+    ),
+    "enter": IndicatorMetadata(
+        required_fields=("close",),
+        input_field="close",
+        input_series_param="price",
+    ),
+    "exit": IndicatorMetadata(
+        required_fields=("close",),
+        input_field="close",
+        input_series_param="price",
+    ),
+    # Crossing / trend patterns (a, b accept series or scalars)
+    "crossup": IndicatorMetadata(
+        required_fields=("close",),
+        input_field="close",
+        input_series_param="a",
+    ),
+    "crossdown": IndicatorMetadata(
+        required_fields=("close",),
+        input_field="close",
+        input_series_param="a",
+    ),
+    "cross": IndicatorMetadata(
+        required_fields=("close",),
+        input_field="close",
+        input_series_param="a",
+    ),
+    "rising": IndicatorMetadata(
+        required_fields=("close",),
+        input_field="close",
+        input_series_param="a",
+    ),
+    "falling": IndicatorMetadata(
+        required_fields=("close",),
+        input_field="close",
+        input_series_param="a",
+    ),
+    "rising_pct": IndicatorMetadata(
+        required_fields=("close",),
+        input_field="close",
+        input_series_param="a",
+    ),
+    "falling_pct": IndicatorMetadata(
+        required_fields=("close",),
+        input_field="close",
+        input_series_param="a",
+    ),
 }
 
 
