@@ -234,15 +234,55 @@ class RollingMedianKernel(Kernel[RollingMedianState]):
         return RollingMedianState(window=tuple(new_win)), med
 
 
+@dataclass(frozen=True)
+class WMAState:
+    window: tuple[Decimal, ...]
+
+
+class WMAKernel(Kernel[WMAState]):
+    def initialize(self, history: list[Decimal], period: int, **kwargs: Any) -> WMAState:
+        win = tuple(history[-(period - 1) :] if period > 1 else history)
+        return WMAState(window=win)
+
+    def step(
+        self,
+        state: WMAState,
+        x_t: Decimal,
+        period: int,
+        **kwargs: Any,
+    ) -> tuple[WMAState, Decimal]:
+        new_win = list(state.window)
+        new_win.append(x_t)
+        if len(new_win) > period:
+            new_win.pop(0)
+
+        # WMA = sum(price_i * weight_i) / sum(weights)
+        # weights = 1, 2, ..., period
+        # sum(weights) = period * (period + 1) / 2
+
+        wma = Decimal(0)
+        if len(new_win) == period:
+            weight_sum = period * (period + 1) // 2
+            total = Decimal(0)
+            for i, val in enumerate(new_win):
+                total += val * (i + 1)
+            wma = total / Decimal(weight_sum)
+
+        return WMAState(window=tuple(new_win)), wma
+
+
 __all__ = [
     "RollingArgmaxKernel",
     "RollingArgminKernel",
     "RollingMaxKernel",
     "RollingMeanKernel",
     "RollingMedianKernel",
+    "RollingMedianState",
     "RollingMinKernel",
     "RollingState",
     "RollingStdKernel",
     "RollingStdState",
     "RollingSumKernel",
+    "WMAKernel",
+    "WMAState",
 ]
