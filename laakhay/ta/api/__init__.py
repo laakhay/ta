@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from collections.abc import Iterable
 from typing import Any
 
 # Trigger indicator registrations
@@ -94,7 +93,6 @@ from .trend import (
     swing_low_at,
     wma,
 )
-from .utils import _call_indicator
 from .volatility import (
     atr,
     bbands,
