@@ -39,7 +39,7 @@ def _zip_binary_series(a: Series[Price], b: Series[Price]) -> Series[Any]:
         raise ValueError("mismatched metadata (symbol/timeframe)")
     if len(a) != len(b) or a.timestamps != b.timestamps:
         raise ValueError("timestamp alignment mismatch")
-    vals = tuple((_dec(x), _dec(y)) for x, y in zip(a.values, b.values, strict=False))
+    vals = tuple((_dec(x), _dec(y)) for x, y in zip(a.values, b.values, strict=True))
     return Series[Any](timestamps=a.timestamps, values=vals, symbol=a.symbol, timeframe=a.timeframe)
 
 
@@ -48,7 +48,7 @@ def _zip_hlc_series(high: Series[Price], low: Series[Price], close: Series[Price
         raise ValueError("mismatched metadata (symbol/timeframe)")
     if not (high.timestamps == low.timestamps == close.timestamps):
         raise ValueError("timestamp alignment mismatch")
-    vals = tuple((_dec(h), _dec(l), _dec(c)) for h, l, c in zip(high.values, low.values, close.values, strict=False))
+    vals = tuple((_dec(h), _dec(l), _dec(c)) for h, l, c in zip(high.values, low.values, close.values, strict=True))
     return Series[Any](timestamps=high.timestamps, values=vals, symbol=high.symbol, timeframe=high.timeframe)
 
 
@@ -481,7 +481,7 @@ def sync_timeframe(ctx: SeriesContext, reference: Series[Price], *, fill: str = 
     ref_ts = list(reference.timestamps)
     if not ref_ts:
         return _empty_like(src)
-    src_map = {ts: _dec(v) for ts, v in zip(src.timestamps, src.values, strict=False)}
+    src_map = {ts: _dec(v) for ts, v in zip(src.timestamps, src.values, strict=True)}
     ts_list = list(src.timestamps)
     val_list = [src_map[ts] for ts in ts_list]
     out_vals: list[Decimal] = []

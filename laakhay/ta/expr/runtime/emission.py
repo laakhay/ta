@@ -378,7 +378,7 @@ def _serialize_expression_node(node: ExprNode | None) -> dict[str, Any] | None:
 
 def _series_to_points(series: Series[Any]) -> list[dict[str, Any]]:
     points: list[dict[str, Any]] = []
-    for timestamp, value in zip(series.timestamps, series.values, strict=False):
+    for timestamp, value in zip(series.timestamps, series.values, strict=True):
         ts_value = timestamp.isoformat() if hasattr(timestamp, "isoformat") else str(timestamp)
         points.append({"timestamp": ts_value, "value": _json_value(value)})
     return points
