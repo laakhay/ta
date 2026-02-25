@@ -12,6 +12,7 @@ from ..kernels.atr import ATRKernel
 from ..kernels.ema import EMAKernel
 from ..kernels.rolling import RollingMeanKernel, RollingStdKernel, RollingSumKernel
 from ..kernels.rsi import RSIKernel
+from ..kernels.stochastic import StochasticKernel
 
 if TYPE_CHECKING:
     from ...registry.models import IndicatorHandle
@@ -33,6 +34,7 @@ _KERNEL_ID_TO_KERNEL: dict[str, Any] = {
     "ema": EMAKernel(),
     "rsi": RSIKernel(),
     "atr": ATRKernel(),
+    "stochastic": StochasticKernel(),
 }
 
 
@@ -44,16 +46,21 @@ def resolve_kernel_for_indicator(handle: IndicatorHandle) -> Any | None:
 
 def coerce_incremental_input(kernel_id: str, input_val: Any, tick: dict[str, Any], algorithm_state: Any) -> Any:
     """Apply kernel-specific input adaptation (e.g. ATR needs true range)."""
-    if kernel_id != "atr":
-        return input_val
+    if kernel_id == "atr":
+        tr = Decimal("0")
+        if "high" in tick and "low" in tick:
+            high = Decimal(str(tick["high"]))
+            low = Decimal(str(tick["low"]))
+            tr = high - low
+            prev_close = getattr(algorithm_state, "prev_close", None)
+            if prev_close is not None:
+                tr = max(tr, abs(high - prev_close), abs(low - prev_close))
+            algorithm_state.prev_close = Decimal(str(tick["close"])) if "close" in tick else None
+        return tr
 
-    tr = Decimal("0")
-    if "high" in tick and "low" in tick:
-        high = Decimal(str(tick["high"]))
-        low = Decimal(str(tick["low"]))
-        tr = high - low
-        prev_close = getattr(algorithm_state, "prev_close", None)
-        if prev_close is not None:
-            tr = max(tr, abs(high - prev_close), abs(low - prev_close))
-        algorithm_state.prev_close = Decimal(str(tick["close"])) if "close" in tick else None
-    return tr
+    if kernel_id == "stochastic":
+        if "high" in tick and "low" in tick and "close" in tick:
+            return (Decimal(str(tick["high"])), Decimal(str(tick["low"])), Decimal(str(tick["close"])))
+        return (Decimal(0), Decimal(0), Decimal(0))
+
+    return input_val

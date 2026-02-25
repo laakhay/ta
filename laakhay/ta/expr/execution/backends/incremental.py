@@ -81,7 +81,7 @@ class IncrementalBackend(ExecutionBackend):
         self.initialize(plan, ds, symbol, timeframe, **options)
 
         out_values = []
-        out_timestamps = []
+        out_mask = []
         for i in range(n_points):
             # Construct synthetic tick
             tick = {}
@@ -105,23 +105,18 @@ class IncrementalBackend(ExecutionBackend):
 
             val = self.step(plan, tick, symbol, timeframe, **options)
 
-            # If val is None, it means the graph is still warming up (e.g. SMA needs 14 periods)
-            if val is not None:
-                out_values.append(val)
-                out_timestamps.append(timestamps[i])
+            out_values.append(val)
+            out_mask.append(val is not None)
 
         ref_symbol = symbol or all_series[0].symbol
         ref_tf = timeframe or all_series[0].timeframe
 
-        from laakhay.ta.core.types import Price
-
-        final_vals = tuple(Price(v) for v in out_values)
-
         res = Series[Any](
-            timestamps=tuple(out_timestamps),
-            values=final_vals,
+            timestamps=timestamps,
+            values=tuple(out_values),
             symbol=ref_symbol,
             timeframe=ref_tf,
+            availability_mask=tuple(out_mask),
         )
 
         if symbol is not None and timeframe is not None:
