@@ -239,6 +239,16 @@ class TANamespace:
         self.literal = literal
         self.ref = ref
         self.resample = resample
+
+        # Categorized indicator groups
+        from . import momentum, primitives, trend, volatility, volume
+
+        self.trend = trend
+        self.momentum = momentum
+        self.volatility = volatility
+        self.volume = volume
+        self.primitives = primitives
+
         # Explicit data sources
         self.ohlcv = ohlcv
         self.trades = trades
@@ -257,13 +267,20 @@ class TANamespace:
         # Ensure indicators are loaded
         _ensure_indicators_loaded()
 
+        # Check if we have a manual wrapper in the api module first
+        import laakhay.ta.api as api
+
+        if hasattr(api, name):
+            return getattr(api, name)
+
         registry = get_global_registry()
         handle = registry.get(name) if hasattr(registry, "get") else None
 
         if handle is not None:
+            from .utils import _call_indicator
 
-            def factory(**params: Any) -> IndicatorHandle:
-                return IndicatorHandle(name, **params)
+            def factory(*args: Any, **kwargs: Any) -> Any:
+                return _call_indicator(name, args, kwargs)
 
             return factory
 
