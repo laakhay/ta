@@ -3,6 +3,8 @@ from __future__ import annotations
 from collections.abc import Iterable
 from typing import Any
 
+# Trigger indicator registrations
+from .. import indicators  # noqa: F401,E402
 from ..core import Bar, Price, Qty, Rate, Series, Timestamp
 from ..data.csv import from_csv, to_csv
 from ..data.dataset import dataset, dataset_from_bars, trim_dataset
@@ -28,6 +30,20 @@ from ..registry import (
     register,
 )
 from .handle import IndicatorHandle
+from .momentum import (
+    adx,
+    ao,
+    cci,
+    cmo,
+    coppock,
+    macd,
+    mfi,
+    roc,
+    rsi,
+    stochastic,
+    vortex,
+    williams_r,
+)
 from .namespace import (
     TANamespace,
     TASeries,
@@ -42,200 +58,55 @@ from .namespace import (
     ta,
     trades,
 )
-
-# Primitive convenience wrappers -----------------------------------------------------------
-
-
-def _call_indicator(
-    name: str,
-    args: Iterable[Any],
-    kwargs: dict[str, Any],
-    param_order: tuple[str, ...] = (),
-) -> Any:
-    """Shared helper that supports both functional and handle-style calls.
-
-    Examples
-    --------
-    >>> ta.sma(20)                  # returns handle
-    >>> ta.sma(series, period=20)   # evaluates on series
-    >>> ta.sma(series, 20)          # positional period
-    >>> ta.sma(dataset, period=20)  # evaluates on dataset
-    """
-
-    args = list(args)
-    series_or_dataset: Any | None = None
-    if args and isinstance(args[0], Series):
-        series_or_dataset = args.pop(0)
-    elif args and hasattr(args[0], "to_context"):
-        # Dataset-like object (duck typing to avoid circular import)
-        series_or_dataset = args.pop(0)
-
-    if len(args) > len(param_order):
-        raise TypeError(f"Too many positional arguments for indicator '{name}'. Expected at most {len(param_order)}")
-
-    params: dict[str, Any] = {}
-    for name_key, value in zip(param_order, args, strict=False):
-        if value is not None:
-            params[name_key] = value
-    params.update(kwargs)
-
-    handle = indicator(name, **params)
-    if series_or_dataset is not None:
-        return handle(series_or_dataset)
-    return handle
-
-
-# Primitive convenience wrappers -----------------------------------------------------------
-
-
-def rolling_mean(*args: Any, **kwargs: Any):
-    return _call_indicator("rolling_mean", args, kwargs, param_order=("period",))
-
-
-def rolling_sum(*args: Any, **kwargs: Any):
-    return _call_indicator("rolling_sum", args, kwargs, param_order=("period",))
-
-
-def rolling_max(*args: Any, **kwargs: Any):
-    return _call_indicator("max", args, kwargs, param_order=("period",))
-
-
-def rolling_min(*args: Any, **kwargs: Any):
-    return _call_indicator("min", args, kwargs, param_order=("period",))
-
-
-def rolling_std(*args: Any, **kwargs: Any):
-    return _call_indicator("rolling_std", args, kwargs, param_order=("period",))
-
-
-def diff(*args: Any, **kwargs: Any):
-    return _call_indicator("diff", args, kwargs)
-
-
-def shift(*args: Any, **kwargs: Any):
-    return _call_indicator("shift", args, kwargs, param_order=("periods",))
-
-
-def cumulative_sum(*args: Any, **kwargs: Any):
-    return _call_indicator("cumulative_sum", args, kwargs)
-
-
-def positive_values(*args: Any, **kwargs: Any):
-    return _call_indicator("positive_values", args, kwargs)
-
-
-def negative_values(*args: Any, **kwargs: Any):
-    return _call_indicator("negative_values", args, kwargs)
-
-
-def rolling_ema(*args: Any, **kwargs: Any):
-    return _call_indicator("rolling_ema", args, kwargs, param_order=("period",))
-
-
-def true_range(*args: Any, **kwargs: Any):
-    return _call_indicator("true_range", args, kwargs)
-
-
-def typical_price(*args: Any, **kwargs: Any):
-    return _call_indicator("typical_price", args, kwargs)
-
-
-def sign(*args: Any, **kwargs: Any):
-    return _call_indicator("sign", args, kwargs)
-
-
-def downsample(*args: Any, **kwargs: Any):
-    return _call_indicator("downsample", args, kwargs, param_order=("factor",))
-
-
-def upsample(*args: Any, **kwargs: Any):
-    return _call_indicator("upsample", args, kwargs, param_order=("factor",))
-
-
-def sync_timeframe(*args: Any, **kwargs: Any):
-    return _call_indicator("sync_timeframe", args, kwargs)
-
-
-# High-level indicator shortcuts -----------------------------------------------------------
-
-
-def sma(*args: Any, **kwargs: Any):
-    return _call_indicator("sma", args, kwargs, param_order=("period",))
-
-
-def ema(*args: Any, **kwargs: Any):
-    return _call_indicator("ema", args, kwargs, param_order=("period",))
-
-
-def macd(*args: Any, **kwargs: Any):
-    return _call_indicator(
-        "macd",
-        args,
-        kwargs,
-        param_order=("fast_period", "slow_period", "signal_period"),
-    )
-
-
-def bbands(*args: Any, **kwargs: Any):
-    return _call_indicator("bbands", args, kwargs, param_order=("period", "std_dev"))
-
-
-def rsi(*args: Any, **kwargs: Any):
-    return _call_indicator("rsi", args, kwargs, param_order=("period",))
-
-
-def stochastic(*args: Any, **kwargs: Any):
-    return _call_indicator("stochastic", args, kwargs, param_order=("k_period", "d_period"))
-
-
-def atr(*args: Any, **kwargs: Any):
-    return _call_indicator("atr", args, kwargs, param_order=("period",))
-
-
-def obv(*args: Any, **kwargs: Any):
-    return _call_indicator("obv", args, kwargs)
-
-
-def vwap(*args: Any, **kwargs: Any):
-    return _call_indicator("vwap", args, kwargs)
-
-
-def swing_high_at(*args: Any, **kwargs: Any):
-    return _call_indicator("swing_high_at", args, kwargs, param_order=("index", "left", "right"))
-
-
-def swing_low_at(*args: Any, **kwargs: Any):
-    return _call_indicator("swing_low_at", args, kwargs, param_order=("index", "left", "right"))
-
-
-def fib_level_down(*args: Any, **kwargs: Any):
-    return _call_indicator(
-        "fib_level_down",
-        args,
-        kwargs,
-        param_order=("level", "left", "right", "leg"),
-    )
-
-
-def fib_level_up(*args: Any, **kwargs: Any):
-    return _call_indicator(
-        "fib_level_up",
-        args,
-        kwargs,
-        param_order=("level", "left", "right", "leg"),
-    )
-
-
-def fib_anchor_high(*args: Any, **kwargs: Any):
-    return _call_indicator("fib_anchor_high", args, kwargs, param_order=("left", "right", "leg"))
-
-
-def fib_anchor_low(*args: Any, **kwargs: Any):
-    return _call_indicator("fib_anchor_low", args, kwargs, param_order=("left", "right", "leg"))
-
-
-# Trigger indicator registrations
-from .. import indicators  # noqa: F401,E402
+from .primitives import (
+    cumulative_sum,
+    diff,
+    downsample,
+    negative_values,
+    positive_values,
+    rolling_ema,
+    rolling_max,
+    rolling_mean,
+    rolling_min,
+    rolling_std,
+    rolling_sum,
+    shift,
+    sign,
+    sync_timeframe,
+    true_range,
+    typical_price,
+    upsample,
+)
+from .trend import (
+    elder_ray,
+    ema,
+    fib_anchor_high,
+    fib_anchor_low,
+    fib_level_down,
+    fib_level_up,
+    fisher,
+    hma,
+    ichimoku,
+    psar,
+    sma,
+    supertrend,
+    swing_high_at,
+    swing_low_at,
+    wma,
+)
+from .utils import _call_indicator
+from .volatility import (
+    atr,
+    bbands,
+    donchian,
+    keltner,
+)
+from .volume import (
+    cmf,
+    klinger,
+    obv,
+    vwap,
+)
 
 
 def __getattr__(name: str) -> Any:
@@ -300,6 +171,7 @@ __all__ = [
     "IndicatorHandle",
     "TASeries",
     "TANamespace",
+    # Primitives
     "rolling_mean",
     "rolling_sum",
     "rolling_max",
@@ -317,19 +189,43 @@ __all__ = [
     "downsample",
     "upsample",
     "sync_timeframe",
+    # Trend
     "sma",
     "ema",
-    "macd",
-    "bbands",
-    "rsi",
-    "stochastic",
-    "atr",
-    "obv",
-    "vwap",
+    "ichimoku",
+    "supertrend",
+    "psar",
+    "hma",
+    "wma",
+    "elder_ray",
+    "fisher",
     "swing_high_at",
     "swing_low_at",
     "fib_level_down",
     "fib_level_up",
     "fib_anchor_high",
     "fib_anchor_low",
+    # Momentum
+    "macd",
+    "rsi",
+    "stochastic",
+    "adx",
+    "ao",
+    "cci",
+    "cmo",
+    "coppock",
+    "mfi",
+    "roc",
+    "vortex",
+    "williams_r",
+    # Volatility
+    "bbands",
+    "atr",
+    "donchian",
+    "keltner",
+    # Volume
+    "obv",
+    "vwap",
+    "cmf",
+    "klinger",
 ]
