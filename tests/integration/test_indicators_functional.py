@@ -66,11 +66,12 @@ class TestIndicatorsFunctional:
 
         # Verify result
         assert isinstance(result, Series)
-        assert len(result.values) == 2  # SMA(2) on 3 bars = 2 results
-        # First SMA: (102 + 106) / 2 = 104
-        assert result.values[0] == Price(Decimal("104"))
+        assert len(result.values) == 3  # Full length 3
+        # First SMA is at index 1: (102 + 106) / 2 = 104
+        assert result.availability_mask[0] is False
+        assert result.values[1] == Price(Decimal("104"))
         # Second SMA: (106 + 110) / 2 = 108
-        assert result.values[1] == Price(Decimal("108"))
+        assert result.values[2] == Price(Decimal("108"))
 
     def test_indicator_with_engine(self):
         """Test indicator execution through Engine."""
@@ -118,9 +119,9 @@ class TestIndicatorsFunctional:
 
         # Verify result
         assert isinstance(result, Series)
-        assert len(result.values) == 1  # SMA(2) on 2 bars = 1 result
-        # SMA: (102 + 106) / 2 = 104, + 10 = 114
-        assert result.values[0] == Price(Decimal("114"))
+        assert len(result.values) == 2  # SMA(2) on 2 bars = full length 2
+        # SMA: (102 + 106) / 2 = 104, + 10 = 114 at index 1
+        assert result.values[1] == Price(Decimal("114"))
 
     def test_multiple_indicators(self):
         """Test multiple indicators on same dataset."""
@@ -172,13 +173,13 @@ class TestIndicatorsFunctional:
         # Verify results
         assert isinstance(result_2, Series)
         assert isinstance(result_3, Series)
-        assert len(result_2.values) == 2  # SMA(2) on 3 bars = 2 results
-        assert len(result_3.values) == 1  # SMA(3) on 3 bars = 1 result
+        assert len(result_2.values) == 3  # Full length 3
+        assert len(result_3.values) == 3  # Full length 3
 
-        # SMA(2) first result: (102 + 106) / 2 = 104
-        assert result_2.values[0] == Price(Decimal("104"))
-        # SMA(3) result: (102 + 106 + 110) / 3 = 106
-        assert result_3.values[0] == Price(Decimal("106"))
+        # SMA(2) first result at index 1: (102 + 106) / 2 = 104
+        assert result_2.values[1] == Price(Decimal("104"))
+        # SMA(3) result at index 2: (102 + 106 + 110) / 3 = 106
+        assert result_3.values[2] == Price(Decimal("106"))
 
     def test_indicator_error_handling(self):
         """Test indicator error handling."""

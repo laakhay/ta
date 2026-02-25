@@ -69,16 +69,19 @@ class TestEndToEnd:
         sma_2_result = sma_2(ds)
         sma_3_result = sma_3(ds)
 
-        # Verify SMA(2) results: 2 values from 4 bars
-        assert len(sma_2_result.values) == 3
-        assert sma_2_result.values[0] == Price(Decimal("104"))  # (102+106)/2
-        assert sma_2_result.values[1] == Price(Decimal("108"))  # (106+110)/2
-        assert sma_2_result.values[2] == Price(Decimal("112"))  # (110+114)/2
+        # Verify SMA(2) results: full length 4
+        assert len(sma_2_result.values) == 4
+        # First value is padded/unavailable
+        assert sma_2_result.availability_mask[0] is False
+        assert sma_2_result.values[1] == Price(Decimal("104"))  # (102+106)/2
+        assert sma_2_result.values[2] == Price(Decimal("108"))  # (106+110)/2
+        assert sma_2_result.values[3] == Price(Decimal("112"))  # (110+114)/2
 
-        # Verify SMA(3) results: 2 values from 4 bars
-        assert len(sma_3_result.values) == 2
-        assert sma_3_result.values[0] == Price(Decimal("106"))  # (102+106+110)/3
-        assert sma_3_result.values[1] == Price(Decimal("110"))  # (106+110+114)/3
+        # Verify SMA(3) results: full length 4
+        assert len(sma_3_result.values) == 4
+        assert sma_3_result.availability_mask[1] is False
+        assert sma_3_result.values[2] == Price(Decimal("106"))  # (102+106+110)/3
+        assert sma_3_result.values[3] == Price(Decimal("110"))  # (106+110+114)/3
 
         # 5. Test expression composition with Engine
         engine = Engine()
@@ -91,14 +94,17 @@ class TestEndToEnd:
 
         # Verify result
         assert isinstance(result, Series)
-        assert len(result.values) == 3  # Same as SMA(2)
+        assert len(result.values) == 4  # Full length 4
 
-        # First value: 104 + 10 = 114
-        assert result.values[0] == Price(Decimal("114"))
-        # Second value: 108 + 10 = 118
-        assert result.values[1] == Price(Decimal("118"))
-        # Third value: 112 + 10 = 122
-        assert result.values[2] == Price(Decimal("122"))
+        # First value (index 0) is warmup for SMA(2), so result is padded/None
+        assert result.availability_mask[0] is False
+
+        # Second value (index 1): 104 + 10 = 114
+        assert result.values[1] == Price(Decimal("114"))
+        # Third value (index 2): 108 + 10 = 118
+        assert result.values[2] == Price(Decimal("118"))
+        # Fourth value (index 3): 112 + 10 = 122
+        assert result.values[3] == Price(Decimal("122"))
 
     def test_dataset_field_access(self):
         """Test accessing individual fields from dataset."""
@@ -190,15 +196,17 @@ class TestEndToEnd:
 
         # Verify result
         assert isinstance(result, Series)
-        # Should have 2 results (same as SMA(2))
-        assert len(result.values) == 2
+        # Should have 3 results (Full length)
+        assert len(result.values) == 3
         # Result should be boolean (True/False)
         assert all(val in (Price(Decimal("1")), Price(Decimal("0"))) for val in result.values)
 
-        # First value: 104 > 105 = False (0)
+        # First value is False (unavailable or 0)
         assert result.values[0] == Price(Decimal("0"))
-        # Second value: 108 > 105 = True (1)
-        assert result.values[1] == Price(Decimal("1"))
+        # SMA(2) at index 1 is 104 -> 104 > 105 = False (0)
+        assert result.values[1] == Price(Decimal("0"))
+        # SMA(2) at index 2 is 108 -> 108 > 105 = True (1)
+        assert result.values[2] == Price(Decimal("1"))
 
     def test_error_handling_workflow(self):
         """Test error handling in complete workflow."""
@@ -226,7 +234,8 @@ class TestEndToEnd:
         ohlcv = OHLCV.from_bars(single_bar, symbol="BTCUSDT", timeframe="1h")
         ds = dataset(ohlcv)
 
-        # SMA(2) on 1 bar should return empty series
+        # SMA(2) on 1 bar should return full length series (1) with false mask
         result = sma_2(ds)
         assert isinstance(result, Series)
-        assert len(result.values) == 0
+        assert len(result.values) == 1
+        assert not result.availability_mask[0]
