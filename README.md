@@ -6,10 +6,21 @@ A stateless technical analysis toolkit built on immutable data structures, expli
 
 - **Immutable & Stateless**: All data structures (`Bar`, `OHLCV`, `Series`, `Dataset`) are immutable with timezone-aware timestamps and Decimal precision
 - **Registry-Driven**: Indicators expose schemas, enforce parameters, and can be extended at runtime
+- **Strictly Categorized API**: Indicators are organized into logical modules (`ta.trend`, `ta.momentum`, etc.) for better discoverability and namespace hygiene
 - **Algebraic Composition**: Indicators, literals, and sources compose into expression DAGs with dependency inspection
 - **Multi-Source Support**: Access data from OHLCV, trades, orderbook, and liquidation sources
 - **Explicit Input Sources**: Indicators can operate on arbitrary series specified in expressions
 - **Requirement Planning**: Expression planner computes data requirements, lookbacks, and serializes them for backend services
+
+## API Categories
+
+The `ta` namespace is strictly organized into functional categories:
+
+- **`ta.trend`**: SMA, EMA, WMA, HMA, Ichimoku, Supertrend, PSAR, Elder Ray Index, etc.
+- **`ta.momentum`**: RSI, MACD, Stochastic, ADX, AO, CCI, CMO, MFI, ROC, Vortex, Williams %R
+- **`ta.volatility`**: Bollinger Bands, ATR, Donchian Channels, Keltner Channels
+- **`ta.volume`**: OBV, VWAP, Chaikin Money Flow (CMF), Klinger Oscillator
+- **`ta.primitives`**: Rolling operations (mean, std, max, min), diff, shift, typical price, etc.
 
 ## Installation
 
@@ -50,20 +61,29 @@ ohlcv = OHLCV(
 
 market = dataset(ohlcv)
 
-# Create indicator handles
-sma_fast = ta.indicator("sma", period=2)
-sma_slow = ta.indicator("sma", period=3)
+# Categorical Access (Direct Evaluation)
+# Indicators are grouped by: trend, momentum, volatility, volume, primitives
+fast_series = ta.trend.sma(market, period=2)
+slow_series = ta.trend.sma(market, period=3)
 
-# Evaluate on dataset
-fast_series = sma_fast(market)
-slow_series = sma_slow(market)
-
-# Align and compute
-fast, slow = align_series(fast_series, slow_series, how="inner", fill="none", 
-                          symbol="BTCUSDT", timeframe="1h")
+# Alignment and computation
+from laakhay.ta.core import align_series
+fast, slow = align_series(fast_series, slow_series, how="inner", symbol="BTCUSDT", timeframe="1h")
 spread = fast - slow
 
 print(spread.values)  # Decimal results
+```
+
+### Reusable Indicator Handles
+
+```python
+# Create handles for later use (useful for templates or datasets)
+# Order: FAST=2, SLOW=3
+sma_fast = ta.trend.sma(2)
+sma_slow = ta.trend.sma(3)
+
+# Evaluate handles on any dataset or series
+fast_series = sma_fast(market)
 ```
 
 ### Expression Composition
@@ -110,9 +130,6 @@ result = expr.run(dataset)
 ### Programmatic API
 
 ```python
-from laakhay.ta.core import Series
-from decimal import Decimal
-
 # Create a custom series
 custom_series = Series(
     timestamps=(datetime(2024, 1, 1, tzinfo=UTC),),
@@ -121,17 +138,17 @@ custom_series = Series(
     timeframe="1h"
 )
 
-# Use as input_series parameter
-sma_handle = ta.sma(input_series=custom_series, period=20)
-result = sma_handle.run(market)
+# Use as input_series parameter (Strict Categorized API)
+sma_handle = ta.trend.sma(input_series=custom_series, period=20)
+result = sma_handle(market)
 ```
 
-### Backward Compatibility
+### DSL String Support
 
-Traditional syntax continues to work:
+In expression strings, indicators resolve via the global registry and do not require the categorical prefix:
 
 ```python
-# These all work as before
+# These all work in the DSL
 expr = compile_expression("sma(20)")  # Uses default 'close' field
 expr = compile_expression("sma(period=20)")  # Keyword arguments
 expr = compile_expression("rsi(14)")  # RSI with default close
