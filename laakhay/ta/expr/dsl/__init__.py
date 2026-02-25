@@ -7,7 +7,6 @@ from typing import Any
 # Ensure indicators are loaded before creating parser
 from ... import indicators  # noqa: F401
 from ..algebra import Expression
-from ..compile import compile_to_ir
 from ..ir.nodes import CallNode, CanonicalExpression
 from ..ir.serialize import ir_from_dict, ir_to_dict
 from .analyzer import IndicatorAnalyzer
@@ -30,6 +29,8 @@ _analyzer = IndicatorAnalyzer()
 
 def _ensure_expression(expression: CanonicalExpression | str | dict[str, Any]) -> CanonicalExpression:
     if isinstance(expression, str):
+        from ..compile import compile_to_ir
+
         return compile_to_ir(expression)
     if isinstance(expression, dict):
         return ir_from_dict(expression)
@@ -37,6 +38,8 @@ def _ensure_expression(expression: CanonicalExpression | str | dict[str, Any]) -
 
 
 def parse_expression_text(expression_text: str) -> CanonicalExpression:
+    from ..compile import compile_to_ir
+
     return compile_to_ir(expression_text)
 
 

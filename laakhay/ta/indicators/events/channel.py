@@ -98,8 +98,14 @@ def in_channel(
     price_aligned, upper_aligned, lower_aligned = aligned
 
     # Check: price >= lower AND price <= upper
+    def _in_chan(p, l, u):
+        try:
+            return bool(p >= l) and bool(p <= u)
+        except Exception:
+            return False
+
     result_values = tuple(
-        (price_aligned.values[i] >= lower_aligned.values[i]) and (price_aligned.values[i] <= upper_aligned.values[i])
+        _in_chan(price_aligned.values[i], lower_aligned.values[i], upper_aligned.values[i])
         for i in range(len(price_aligned))
     )
 
@@ -170,8 +176,14 @@ def out(
     price_aligned, upper_aligned, lower_aligned = aligned
 
     # Check: price > upper OR price < lower
+    def _out_chan(p, u, l):
+        try:
+            return bool(p > u) or bool(p < l)
+        except Exception:
+            return False
+
     result_values = tuple(
-        (price_aligned.values[i] > upper_aligned.values[i]) or (price_aligned.values[i] < lower_aligned.values[i])
+        _out_chan(price_aligned.values[i], upper_aligned.values[i], lower_aligned.values[i])
         for i in range(len(price_aligned))
     )
 
@@ -270,9 +282,20 @@ def enter(
         lower_prev = lower_aligned.values[i - 1]
 
         # Current: inside channel
-        currently_in = (price_curr >= lower_curr) and (price_curr <= upper_curr)
-        # Previous: outside channel
-        previously_out = (price_prev > upper_prev) or (price_prev < lower_prev)
+        def _is_in(p, l, u):
+            try:
+                return bool(p >= l) and bool(p <= u)
+            except Exception:
+                return False
+
+        def _is_out(p, u, l):
+            try:
+                return bool(p > u) or bool(p < l)
+            except Exception:
+                return False
+
+        currently_in = _is_in(price_curr, lower_curr, upper_curr)
+        previously_out = _is_out(price_prev, upper_prev, lower_prev)
 
         # Entry: currently in AND previously out
         entered = currently_in and previously_out
