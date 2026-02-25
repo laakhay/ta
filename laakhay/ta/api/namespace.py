@@ -239,6 +239,16 @@ class TANamespace:
         self.literal = literal
         self.ref = ref
         self.resample = resample
+
+        # Categorized indicator groups
+        from . import momentum, primitives, trend, volatility, volume
+
+        self.trend = trend
+        self.momentum = momentum
+        self.volatility = volatility
+        self.volume = volume
+        self.primitives = primitives
+
         # Explicit data sources
         self.ohlcv = ohlcv
         self.trades = trades
@@ -257,29 +267,15 @@ class TANamespace:
         # Ensure indicators are loaded
         _ensure_indicators_loaded()
 
+        # Provide better error message for top-level indicator access
         registry = get_global_registry()
-        handle = registry.get(name) if hasattr(registry, "get") else None
+        if hasattr(registry, "get") and registry.get(name) is not None:
+            raise AttributeError(
+                f"Indicator '{name}' is no longer available at the top-level 'ta.{name}'. "
+                f"Please use the categorical namespace (e.g., 'ta.trend.{name}', 'ta.momentum.{name}', etc.)."
+            )
 
-        if handle is not None:
-
-            def factory(**params: Any) -> IndicatorHandle:
-                return IndicatorHandle(name, **params)
-
-            return factory
-
-        # Provide better error message with available indicators
-        available = sorted(registry.list_all_names()) if hasattr(registry, "list_all_names") else []
-        msg = f"Indicator '{name}' not found"
-        if available:
-            # Find similar names
-            similar = [n for n in available if name.lower() in n.lower() or n.lower() in name.lower()][:3]
-            if similar:
-                msg += f". Did you mean: {', '.join(similar)}?"
-            else:
-                msg += f". Available indicators: {', '.join(available[:10])}"
-                if len(available) > 10:
-                    msg += f", ... ({len(available) - 10} more)"
-        raise AttributeError(msg)
+        raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 
 class TASeries:

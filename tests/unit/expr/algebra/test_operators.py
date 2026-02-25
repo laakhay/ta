@@ -224,7 +224,7 @@ class TestExpressionIntegration:
         data = Dataset()
         data.add_series("BTCUSDT", "1h", OHLCV.from_bars(bars, symbol="BTCUSDT", timeframe="1h"))
 
-        expr = (ta.sma(period=5) > ta.sma(period=8)) & (ta.rsi(period=6) < 70)
+        expr = (ta.trend.sma(period=5) > ta.trend.sma(period=8)) & (ta.momentum.rsi(period=6) < 70)
         result = expr.run(data)
 
         assert isinstance(result, dict)
