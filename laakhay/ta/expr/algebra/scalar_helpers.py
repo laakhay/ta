@@ -16,6 +16,7 @@ def _make_scalar_series(value: Any) -> Series[Any]:
         values=(value,),
         symbol=SCALAR_SYMBOL,
         timeframe="1s",
+        availability_mask=(True,),
     )
 
 
@@ -30,4 +31,5 @@ def _broadcast_scalar_series(scalar_series: Series[Any], target_series: Series[A
         values=tuple(value for _ in range(len(target_series))),
         symbol=target_series.symbol,
         timeframe=target_series.timeframe,
+        availability_mask=tuple(True for _ in range(len(target_series))),
     )
