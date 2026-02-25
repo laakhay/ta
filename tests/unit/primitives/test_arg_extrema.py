@@ -29,11 +29,14 @@ def test_rolling_argmax_offsets_basic():
 
     assert result.symbol == close_series.symbol
     assert result.timeframe == close_series.timeframe
-    assert tuple(result.values) == (
+    assert len(result.values) == 5
+    assert tuple(result.values[2:]) == (
         Decimal(1),
         Decimal(0),
         Decimal(1),
     )
+    assert not any(result.availability_mask[:2])
+    assert all(result.availability_mask[2:])
 
 
 def test_rolling_argmin_offsets_basic():
@@ -42,7 +45,8 @@ def test_rolling_argmin_offsets_basic():
 
     result = rolling_argmin(ctx, period=3)
 
-    assert tuple(result.values) == (
+    assert len(result.values) == 5
+    assert tuple(result.values[2:]) == (
         Decimal(1),
         Decimal(0),
         Decimal(1),
@@ -56,7 +60,8 @@ def test_rolling_argmax_uses_field_parameter():
 
     result = rolling_argmax(ctx, period=2, field="high")
 
-    assert tuple(result.values) == (
+    assert len(result.values) == 4
+    assert tuple(result.values[1:]) == (
         Decimal(0),
         Decimal(1),
         Decimal(0),
