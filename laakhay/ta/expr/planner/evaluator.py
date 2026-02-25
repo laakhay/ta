@@ -209,13 +209,21 @@ class Evaluator:
 
                 values = tuple(
                     _truthy(lv) and _truthy(rv) if op == "and" else _truthy(lv) or _truthy(rv)
-                    for lv, rv in zip(left_aligned.values, right_aligned.values, strict=False)
+                    for lv, rv in zip(left_aligned.values, right_aligned.values, strict=True)
                 )
+                mask = None
+                if left_aligned.availability_mask and right_aligned.availability_mask:
+                    mask = tuple(
+                        m1 and m2
+                        for m1, m2 in zip(left_aligned.availability_mask, right_aligned.availability_mask, strict=True)
+                    )
+
                 return Series[bool](
                     timestamps=left_aligned.timestamps,
                     values=values,
                     symbol=left_aligned.symbol,
                     timeframe=left_aligned.timeframe,
+                    availability_mask=mask,
                 )
             raise NotImplementedError(f"operator {op} not supported")
 
@@ -309,12 +317,23 @@ class Evaluator:
             raise NotImplementedError(f"Unsupported node type: {type(n)}")
 
     def _comparison_series(self, left: Series[Any], right: Series[Any], compare) -> Series[bool]:
-        result_values = tuple(bool(compare(lv, rv)) for lv, rv in zip(left.values, right.values, strict=False))
+        def safe_compare(lv, rv):
+            try:
+                return bool(compare(lv, rv))
+            except Exception:
+                return False
+
+        result_values = tuple(safe_compare(lv, rv) for lv, rv in zip(left.values, right.values, strict=False))
+        mask = None
+        if left.availability_mask and right.availability_mask:
+            mask = tuple(m1 and m2 for m1, m2 in zip(left.availability_mask, right.availability_mask, strict=True))
+
         return Series[bool](
             timestamps=left.timestamps,
             values=result_values,
             symbol=left.symbol,
             timeframe=left.timeframe,
+            availability_mask=mask,
         )
 
     def _evaluate_source_expression(self, expr: SourceRefNode, context: dict[str, Any]) -> Series[Any]:

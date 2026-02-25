@@ -35,9 +35,8 @@ def test_compile_expression_runs_against_dataset():
     result = expr.run(dataset())
     assert isinstance(result, dict)
     series = result[("BTCUSDT", "1h", "default")]
-    # SMA(5) produces 46 values, SMA(8) produces 43 values from 50 bars
-    # After alignment (intersection), we get 43 values
-    assert len(series) == 43
+    # Now 100% full length
+    assert len(series) == 50
 
 
 def test_parse_invalid_expression():

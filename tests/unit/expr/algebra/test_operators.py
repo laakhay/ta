@@ -231,9 +231,11 @@ class TestExpressionIntegration:
         series = result.get(("BTCUSDT", "1h", "default"))
         assert series is not None
         assert isinstance(series, Series)
-        # SMA(5) produces 56 values, SMA(8) produces 53 values, RSI(6) produces 55 values
-        # After alignment (intersection), we get 53 values (the minimum)
-        assert len(series) == 53
+        # Now 100% full length 60
+        assert len(series) == 60
+        # Alignment reflects common mask: SMA(5)=56 valid, SMA(8)=53 valid, RSI(6)=55 valid.
+        # Intersection of masks should be 53 valid.
+        assert series.availability_mask.count(True) == 53
         assert all(isinstance(value, bool) for value in series.values)
 
 

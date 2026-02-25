@@ -61,7 +61,7 @@ def run_kernel(
     from ..core.types import Price
 
     n = len(src.values)
-    if n == 0 or n < min_periods:
+    if n == 0:
         return Series[Price](timestamps=(), values=(), symbol=src.symbol, timeframe=src.timeframe)
 
     if coerce_input is None:
@@ -72,18 +72,22 @@ def run_kernel(
         coerce_input = _default_coerce_input
 
     xs = [coerce_input(v) for v in src.values]
-    out: list[Decimal] = []
+    out: list[Any] = [Decimal("NaN")] * n
 
-    warmup_len = min_periods - 1
-    state = kernel.initialize(xs[:warmup_len], **params)
+    warmup_len = max(0, min_periods - 1)
+    mask = [False] * n
+    if n >= min_periods:
+        state = kernel.initialize(xs[:warmup_len], **params)
 
-    for i in range(warmup_len, n):
-        state, val = kernel.step(state, xs[i], **params)
-        out.append(val)
+        for i in range(warmup_len, n):
+            state, val = kernel.step(state, xs[i], **params)
+            out[i] = val
+            mask[i] = True
 
     return Series[Price](
-        timestamps=tuple(src.timestamps[warmup_len:]),
-        values=tuple(Price(v) for v in out),
+        timestamps=src.timestamps,
+        values=tuple(Price(v) if v is not None else Price("NaN") for v in out),
         symbol=src.symbol,
         timeframe=src.timeframe,
+        availability_mask=tuple(mask),
     )

@@ -51,7 +51,7 @@ def ew_unary(src: Series[Price], op: DecimalOp1) -> Series[Price]:
 
 def ew_binary(a: Series[Price], b: Series[Price], op: DecimalOp2) -> Series[Price]:
     _align2(a, b)
-    vals = (op(_dec(x), _dec(y)) for x, y in zip(a.values, b.values, strict=False))
+    vals = (op(_dec(x), _dec(y)) for x, y in zip(a.values, b.values, strict=True))
     return _build_like(a, a.timestamps, vals)
 
 

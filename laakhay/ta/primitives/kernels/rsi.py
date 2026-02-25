@@ -17,6 +17,7 @@ class RSIState:
     prev_close: Decimal | None
     avg_gain: Decimal | None
     avg_loss: Decimal | None
+    count: int = 0
 
 
 class RSIKernel(Kernel[RSIState]):
@@ -29,7 +30,13 @@ class RSIKernel(Kernel[RSIState]):
             return RSIState(period=period, prev_close=None, avg_gain=None, avg_loss=None)
 
         if len(history) < 2:
-            return RSIState(period=period, prev_close=history[-1], avg_gain=None, avg_loss=None)
+            return RSIState(
+                period=period,
+                prev_close=history[-1] if history else None,
+                avg_gain=None,
+                avg_loss=None,
+                count=len(history),
+            )
 
         gains = []
         losses = []
@@ -52,24 +59,27 @@ class RSIKernel(Kernel[RSIState]):
             curr_gain = (curr_gain * Decimal(period - 1) + gains[i]) / Decimal(period)
             curr_loss = (curr_loss * Decimal(period - 1) + losses[i]) / Decimal(period)
 
-        return RSIState(period=period, prev_close=history[-1], avg_gain=curr_gain, avg_loss=curr_loss)
+        return RSIState(
+            period=period, prev_close=history[-1], avg_gain=curr_gain, avg_loss=curr_loss, count=len(history)
+        )
 
     def step(self, state: RSIState, x_t: Decimal, **params: Any) -> tuple[RSIState, Decimal]:
+        count = state.count + 1
         if state.prev_close is None:
-            state.prev_close = x_t
-            return state, Decimal("NaN")
+            return RSIState(period=state.period, prev_close=x_t, avg_gain=None, avg_loss=None, count=count), Decimal(
+                "NaN"
+            )
 
         diff = x_t - state.prev_close
         gain = diff if diff > 0 else Decimal(0)
         loss = -diff if diff < 0 else Decimal(0)
 
         if state.avg_gain is None or state.avg_loss is None:
-            new_state = RSIState(period=state.period, prev_close=x_t, avg_gain=gain, avg_loss=loss)
+            new_state = RSIState(period=state.period, prev_close=x_t, avg_gain=gain, avg_loss=loss, count=count)
             return new_state, Decimal("NaN")
 
         new_avg_gain = (state.avg_gain * Decimal(state.period - 1) + gain) / Decimal(state.period)
         new_avg_loss = (state.avg_loss * Decimal(state.period - 1) + loss) / Decimal(state.period)
-        new_state = RSIState(period=state.period, prev_close=x_t, avg_gain=new_avg_gain, avg_loss=new_avg_loss)
 
         if new_avg_loss == Decimal(0):
             rsi = Decimal(100) if new_avg_gain > 0 else Decimal(50)
@@ -78,4 +88,12 @@ class RSIKernel(Kernel[RSIState]):
             rsi = Decimal(100) - (Decimal(100) / (Decimal(1) + rs))
 
         rsi = max(Decimal(0), min(Decimal(100), rsi))
+        new_state = RSIState(
+            period=state.period, prev_close=x_t, avg_gain=new_avg_gain, avg_loss=new_avg_loss, count=count
+        )
+
+        # Batch parity: min_periods = period + 1
+        if count < state.period + 1:
+            return new_state, Decimal("NaN")
+
         return new_state, rsi

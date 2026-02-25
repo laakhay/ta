@@ -66,7 +66,8 @@ class TestIndicatorHandle:
         assert isinstance(result, Series)
         assert result.symbol == "BTCUSDT"
         assert result.timeframe == "1h"
-        assert len(result) == 3  # SMA with period=3 on 5 data points
+        assert len(result) == 5  # Full length 5
+        assert result.availability_mask.count(True) == 3  # 5 - 3 + 1
 
     def test_indicator_handle_call_with_dataset(self):
         """Test calling indicator handle with a dataset."""

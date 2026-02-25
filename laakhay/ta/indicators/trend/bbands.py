@@ -61,7 +61,14 @@ def bbands(
         raise ValueError("Bollinger Bands period and std_dev must be positive")
 
     close = ctx.close
-    if close is None or len(close) < period:
+    if close is None:
+        return (
+            close.__class__(timestamps=(), values=(), symbol=None, timeframe=None),
+            close.__class__(timestamps=(), values=(), symbol=None, timeframe=None),
+            close.__class__(timestamps=(), values=(), symbol=None, timeframe=None),
+        )
+
+    if len(close) == 0:
         empty = close.__class__(timestamps=(), values=(), symbol=close.symbol, timeframe=close.timeframe)
         return empty, empty, empty
 

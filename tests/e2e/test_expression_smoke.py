@@ -57,10 +57,10 @@ def test_end_to_end_alias_execution():
 
     series = results[key]
 
-    # Check length
-    # The pipeline returns series aligned to valid data.
-    # rolling_mean(10) requires 10 bars. 50 - 10 + 1 = 41 bars.
-    assert len(series) == 41
+    # The pipeline returns series aligned to valid data. Now 100% full length.
+    assert len(series) == 50
+    # Availability mask reflects warmup: 50 - 10 + 1 = 41 expected valid
+    assert series.availability_mask.count(True) == 41
 
     # Check values
     # rolling_mean of volume with period 10
@@ -92,8 +92,9 @@ def test_end_to_end_median_implicit_close():
     results = pipeline.run(ds)
 
     series = results[("BTC/USDT", "1h", "default")]
-    # rolling_median(20) requires 20 bars. 50 - 20 + 1 = 31 bars.
-    assert len(series) == 31
+    # rolling_median(20) requires 20 bars. Now 100% full length.
+    assert len(series) == 50
+    assert series.availability_mask.count(True) == 31
 
     # rolling_median implementation uses sorted(w)[len(w) // 2]
     # For even n=20, index 10 is used (upper median).

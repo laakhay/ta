@@ -1,6 +1,6 @@
 from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
-from typing import Any
+from typing import Any, Union
 
 import pytest
 
@@ -89,7 +89,7 @@ def sample_iso_string() -> str:
 
 
 @pytest.fixture
-def sample_prices() -> dict[str, int | float | str | Decimal]:
+def sample_prices() -> dict[str, Union[int, float, str, Decimal]]:
     """Sample price values for testing."""
     return {
         "int": 100,
@@ -102,7 +102,7 @@ def sample_prices() -> dict[str, int | float | str | Decimal]:
 
 
 @pytest.fixture
-def sample_quantities() -> dict[str, int | float | str | Decimal]:
+def sample_quantities() -> dict[str, Union[int, float, str, Decimal]]:
     """Sample quantity values for testing."""
     return {
         "int": 1000,
@@ -115,7 +115,7 @@ def sample_quantities() -> dict[str, int | float | str | Decimal]:
 
 
 @pytest.fixture
-def sample_rates() -> dict[str, int | float | str | Decimal]:
+def sample_rates() -> dict[str, Union[int, float, str, Decimal]]:
     """Sample rate values for testing."""
     return {
         "int": 5,

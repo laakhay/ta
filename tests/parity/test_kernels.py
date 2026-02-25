@@ -19,22 +19,22 @@ def test_rolling_sum_kernel(mock_series: Series[Price]):
     kernel = RollingSumKernel()
     res = run_kernel(mock_series, kernel, min_periods=3, period=3)
 
-    assert len(res) == 18  # 20 - 3 + 1
-    # First valid sum over (1,2,3) = 6
-    assert res.values[0] == Price("6")
-    # Second valid sum over (2,3,4) = 9
-    assert res.values[1] == Price("9")
+    assert len(res) == 20  # Full length
+    # First valid sum over (1,2,3) = 6 at index 2
+    assert res.values[2] == Price("6")
+    # Second valid sum over (2,3,4) = 9 at index 3
+    assert res.values[3] == Price("9")
 
 
 def test_rolling_mean_kernel(mock_series: Series[Price]):
     kernel = RollingMeanKernel()
     res = run_kernel(mock_series, kernel, min_periods=3, period=3)
 
-    assert len(res) == 18
-    # Mean of (1,2,3) = 2
-    assert res.values[0] == Price("2")
-    # Mean of (2,3,4) = 3
-    assert res.values[1] == Price("3")
+    assert len(res) == 20  # Full length
+    # Mean of (1,2,3) = 2 at index 2
+    assert res.values[2] == Price("2")
+    # Mean of (2,3,4) = 3 at index 3
+    assert res.values[3] == Price("3")
 
 
 def test_rolling_std_kernel():
@@ -47,13 +47,13 @@ def test_rolling_std_kernel():
     kernel = RollingStdKernel()
     res = run_kernel(s, kernel, min_periods=4, period=4)
 
-    assert len(res) == 1
+    assert len(res) == 4
     # mean of [2, 4, 4, 6] = 4
     # var = ((2-4)^2 + (4-4)^2 + (4-4)^2 + (6-4)^2) / 4
     # var = (4 + 0 + 0 + 4) / 4 = 2
     # std = sqrt(2) ~= 1.4142...
 
-    std_val = float(str(res.values[0]))
+    std_val = float(str(res.values[3]))  # 4th value is first valid for min_periods=4
     assert abs(std_val - 1.4142135623730951) < 1e-6
 
 

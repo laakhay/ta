@@ -169,7 +169,7 @@ class Stream:
             ready = bool(availability[-1]) if availability else current_len > 0
 
             prev_len = last_lengths.get(key, 0)
-            if not ready and current_len > prev_len:
+            if availability is None and not ready and current_len > prev_len:
                 ready = True
 
             prev_mask = last_masks.get(key)

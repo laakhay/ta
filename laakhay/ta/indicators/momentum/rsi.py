@@ -76,13 +76,13 @@ def rsi(ctx: SeriesContext, period: int = 14) -> Series[Price]:
     if period <= 0:
         raise ValueError("RSI period must be positive")
     close_series = ctx.close
-    if not close_series or len(close_series) <= 1:
+    if close_series is None or len(close_series) == 0:
         # Return empty series with correct meta
         return close_series.__class__(
             timestamps=(),
             values=(),
-            symbol=close_series.symbol,
-            timeframe=close_series.timeframe,
+            symbol=close_series.symbol if close_series is not None else None,
+            timeframe=close_series.timeframe if close_series is not None else None,
         )
 
     return run_kernel(close_series, RSIKernel(), min_periods=period + 1, period=period)

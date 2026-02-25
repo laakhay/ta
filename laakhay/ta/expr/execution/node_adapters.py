@@ -55,11 +55,21 @@ def eval_binary_step(node: BinaryOpNode, children_vals: list[Any]) -> Any:
     if op == "div":
         return left / right if right != 0 else Decimal(0)
     if op == "eq":
-        return Decimal(1) if left == right else Decimal(0)
+        return left == right
+    if op == "ne":
+        return left != right
     if op == "gt":
-        return Decimal(1) if left > right else Decimal(0)
+        return left > right
     if op == "lt":
-        return Decimal(1) if left < right else Decimal(0)
+        return left < right
+    if op == "ge":
+        return left >= right
+    if op == "le":
+        return left <= right
+    if op == "and":
+        return _truthy(left) and _truthy(right)
+    if op == "or":
+        return _truthy(left) or _truthy(right)
     return None
 
 
@@ -149,19 +159,49 @@ def eval_call_step(node: CallNode, children_vals: list[Any], tick: dict[str, Any
         raise ValueError(f"Indicator '{node.name}' not found in registry")
     kwargs = _resolve_call_kwargs(node, children_vals, handle)
 
-    input_val = children_vals[0] if children_vals else None
-    if input_val is None:
-        return None
+    if node.name == "select":
+        field = kwargs.get("field")
+        if field is None:
+            return None
+        # Try raw field, ohlcv.field, or any source.field
+        if field in tick:
+            val = tick[field]
+        elif f"ohlcv.{field}" in tick:
+            val = tick[f"ohlcv.{field}"]
+        else:
+            # Search for any key ending in .field
+            val = None
+            for k in tick:
+                if k.endswith(f".{field}"):
+                    val = tick[k]
+                    break
+        return Decimal(str(val)) if val is not None else None
+
+    # Use children_vals[0] as input_val only if we expect an input
+    has_input = bool(getattr(handle.indicator_spec, "semantics", None) and handle.indicator_spec.semantics.input_field)
+
+    input_val = None
+    if has_input:
+        if not children_vals:
+            return None
+        input_val = children_vals[0]
+        if input_val is None:
+            return None
 
     if state.algorithm_state is None:
         kernel = resolve_kernel_for_indicator(handle)
         if kernel is None:
             return None
+        # Use history=[] for now in incremental.
+        # initialize needs the params (kwargs).
+        # Stochastic needs params to initialize history buffers.
         state.algorithm_state = kernel.initialize([], **kwargs)
         state._kernel_instance = kernel
 
     kernel_id = handle.indicator_spec.runtime_binding.kernel_id
+    # Coerce input (might return tuple for stochastic, or Price for others)
     input_val = coerce_incremental_input(kernel_id, input_val, tick, state.algorithm_state)
+
     kernel = state._kernel_instance
     new_alg_state, out_val = kernel.step(state.algorithm_state, input_val, **kwargs)
     state.algorithm_state = new_alg_state
@@ -175,14 +215,24 @@ def _resolve_call_kwargs(node: CallNode, children_vals: list[Any], handle: Any) 
     kwargs: dict[str, Any] = {}
     sig = inspect.signature(handle.func)
     param_names = [p.name for p in sig.parameters.values() if p.name != "ctx"]
-    arg_vals = children_vals[1 : 1 + len(node.args)] if len(children_vals) > 1 else []
+
+    # Position args in DSL include the 'input' series (first child).
+    # But indicator functions usually take it via ctx or separate arg.
+    # If the indicator has semantic input, the first positional arg is that input.
+    has_input = bool(getattr(handle.indicator_spec, "semantics", None) and handle.indicator_spec.semantics.input_field)
+
+    arg_offset = 1 if has_input else 0
+    arg_vals = children_vals[arg_offset : len(node.args)]
+
     for i, val in enumerate(arg_vals):
         if i < len(param_names):
             kwargs[param_names[i]] = val
 
-    kwarg_vals = children_vals[1 + len(node.args) :]
-    for key, val in zip(sorted(node.kwargs.keys()), kwarg_vals, strict=False):
-        kwargs[key] = val
+    # Keyword arguments are evaluated as children and appended after positional args
+    kwarg_offset = len(node.args)
+    for i, key in enumerate(sorted(node.kwargs.keys())):
+        if kwarg_offset + i < len(children_vals):
+            kwargs[key] = children_vals[kwarg_offset + i]
 
     for p in sig.parameters.values():
         if p.name != "ctx" and p.name not in kwargs and p.default is not inspect.Parameter.empty:

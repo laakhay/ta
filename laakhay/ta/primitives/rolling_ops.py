@@ -25,20 +25,34 @@ from .kernels.rolling import (
     RollingMinKernel,
     RollingStdKernel,
     RollingSumKernel,
+    WMAKernel,
 )
 from .select import _select, _select_field
 
 
-def _with_window_mask(res: Series[Price], period: int) -> Series[Price]:
+def _with_window_mask(res: Series[Price], period: int, src: Series | None = None) -> Series[Price]:
     if len(res) == 0:
         return res
-    mask = tuple((i >= period - 1) for i in range(len(res)))
+
+    # Calculate window mask based on period
+    window_mask = [False] * len(res)
+    for i in range(len(res)):
+        if i >= period - 1:
+            window_mask[i] = True
+
+            # If source has a mask, the result is only available if ALL values in the window were available
+            if src and src.availability_mask:
+                for j in range(i - period + 1, i + 1):
+                    if not src.availability_mask[j]:
+                        window_mask[i] = False
+                        break
+
     return CoreSeries[Price](
         timestamps=res.timestamps,
         values=res.values,
         symbol=res.symbol,
         timeframe=res.timeframe,
-        availability_mask=mask,
+        availability_mask=tuple(window_mask),
     )
 
 
@@ -64,43 +78,50 @@ def _rolling_spec(name: str, aliases: tuple[str, ...], description: str) -> Indi
 @register(spec=_rolling_spec("rolling_sum", ("sum",), "Rolling sum over a window"))
 def rolling_sum(ctx: SeriesContext, period: int = 20, field: str | None = None) -> Series[Price]:
     src = _select_field(ctx, field) if field else _select(ctx)
-    return _with_window_mask(run_kernel(src, RollingSumKernel(), min_periods=period, period=period), period)
+    res = run_kernel(src, RollingSumKernel(), min_periods=period, period=period)
+    return _with_window_mask(res, period, src=src)
 
 
 @register(spec=_rolling_spec("rolling_mean", ("mean", "average", "avg"), "Rolling mean over a window"))
 def rolling_mean(ctx: SeriesContext, period: int = 20, field: str | None = None) -> Series[Price]:
     src = _select_field(ctx, field) if field else _select(ctx)
-    return _with_window_mask(run_kernel(src, RollingMeanKernel(), min_periods=period, period=period), period)
+    res = run_kernel(src, RollingMeanKernel(), min_periods=period, period=period)
+    return _with_window_mask(res, period, src=src)
 
 
 @register(spec=_rolling_spec("rolling_std", ("std", "stddev"), "Rolling standard deviation over a window"))
 def rolling_std(ctx: SeriesContext, period: int = 20, field: str | None = None) -> Series[Price]:
     src = _select_field(ctx, field) if field else _select(ctx)
-    return _with_window_mask(run_kernel(src, RollingStdKernel(), min_periods=period, period=period), period)
+    res = run_kernel(src, RollingStdKernel(), min_periods=period, period=period)
+    return _with_window_mask(res, period, src=src)
 
 
 @register(spec=_rolling_spec("max", (), "Maximum value in a rolling window"))
 def rolling_max(ctx: SeriesContext, period: int = 20, field: str | None = None) -> Series[Price]:
     source = _select_field(ctx, field) if field else _select(ctx)
-    return _with_window_mask(run_kernel(source, RollingMaxKernel(), min_periods=period, period=period), period)
+    res = run_kernel(source, RollingMaxKernel(), min_periods=period, period=period)
+    return _with_window_mask(res, period, src=source)
 
 
 @register(spec=_rolling_spec("min", (), "Minimum value in a rolling window"))
 def rolling_min(ctx: SeriesContext, period: int = 20, field: str | None = None) -> Series[Price]:
     source = _select_field(ctx, field) if field else _select(ctx)
-    return _with_window_mask(run_kernel(source, RollingMinKernel(), min_periods=period, period=period), period)
+    res = run_kernel(source, RollingMinKernel(), min_periods=period, period=period)
+    return _with_window_mask(res, period, src=source)
 
 
 @register(spec=_rolling_spec("rolling_argmax", ("argmax",), "Offset of maximum value inside a rolling window"))
 def rolling_argmax(ctx: SeriesContext, period: int = 20, field: str | None = None) -> Series[Price]:
     source = _select_field(ctx, field) if field else _select(ctx)
-    return _with_window_mask(run_kernel(source, RollingArgmaxKernel(), min_periods=period, period=period), period)
+    res = run_kernel(source, RollingArgmaxKernel(), min_periods=period, period=period)
+    return _with_window_mask(res, period, src=source)
 
 
 @register(spec=_rolling_spec("rolling_argmin", ("argmin",), "Offset of minimum value inside a rolling window"))
 def rolling_argmin(ctx: SeriesContext, period: int = 20, field: str | None = None) -> Series[Price]:
     source = _select_field(ctx, field) if field else _select(ctx)
-    return _with_window_mask(run_kernel(source, RollingArgminKernel(), min_periods=period, period=period), period)
+    res = run_kernel(source, RollingArgminKernel(), min_periods=period, period=period)
+    return _with_window_mask(res, period, src=source)
 
 
 @register(spec=_rolling_spec("rolling_median", ("median", "med"), "Median over window (O(n*w))"))
@@ -115,12 +136,20 @@ def rolling_ema(ctx: SeriesContext, period: int = 20, field: str | None = None) 
         raise ValueError("Period must be positive")
     src = _select_field(ctx, field) if field else _select(ctx)
     res = run_kernel(src, EMAKernel(), min_periods=1, period=period)
+
+    # EMA is technically available from index 0, but we should respect source mask
+    final_mask = res.availability_mask
+    if src.availability_mask:
+        from ..core.series import _and_masks
+
+        final_mask = _and_masks(res.availability_mask or (True,) * len(res), src.availability_mask)
+
     return CoreSeries[Price](
         timestamps=res.timestamps,
         values=res.values,
         symbol=res.symbol,
         timeframe=res.timeframe,
-        availability_mask=tuple(True for _ in res.values),
+        availability_mask=final_mask,
     )
 
 
@@ -148,13 +177,29 @@ def rolling_rma(ctx: SeriesContext, period: int = 14, field: str | None = None) 
         raise ValueError("Period must be positive")
     src = _select_field(ctx, field) if field else _select(ctx)
     res = run_kernel(src, RMAKernel(), min_periods=1, period=period)
+
+    final_mask = res.availability_mask
+    if src.availability_mask:
+        from ..core.series import _and_masks
+
+        final_mask = _and_masks(res.availability_mask or (True,) * len(res), src.availability_mask)
+
     return CoreSeries[Price](
         timestamps=res.timestamps,
         values=res.values,
         symbol=res.symbol,
         timeframe=res.timeframe,
-        availability_mask=tuple(True for _ in res.values),
+        availability_mask=final_mask,
     )
+
+
+@register(spec=_rolling_spec("rolling_wma", ("wma",), "Weighted Moving Average over a window"))
+def rolling_wma(ctx: SeriesContext, period: int = 14, field: str | None = None) -> Series[Price]:
+    if period <= 0:
+        raise ValueError("Period must be positive")
+    src = _select_field(ctx, field) if field else _select(ctx)
+    res = run_kernel(src, WMAKernel(), min_periods=period, period=period)
+    return _with_window_mask(res, period, src=src)
 
 
 __all__ = [
@@ -168,4 +213,5 @@ __all__ = [
     "rolling_rma",
     "rolling_std",
     "rolling_sum",
+    "rolling_wma",
 ]
