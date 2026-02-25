@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+from decimal import Decimal
+from typing import Any
+
 from ...core import Series
-from ...core.types import Price, Qty
-from ...primitives.elementwise_ops import cumulative_sum, sign
+from ...core.types import Qty
 from ...registry.models import SeriesContext
 from ...registry.registry import register
 from ...registry.schemas import (
@@ -53,25 +55,25 @@ def obv(ctx: SeriesContext) -> Series[Qty]:
             timeframe=close.timeframe,
         )
 
-    # Calculate price change signs and align volume
-    price_signs = sign(ctx)
-    aligned_volume = Series[Price](
-        timestamps=ctx.volume.timestamps[1:],
-        values=ctx.volume.values[1:],
-        symbol=ctx.volume.symbol,
-        timeframe=ctx.volume.timeframe,
+    from ...primitives.kernel import run_kernel
+    from ...primitives.kernels.obv import OBVKernel
+
+    # Zip close and volume for kernel
+    close_vals = [Decimal(str(v)) for v in close.values]
+    vol_vals = [Decimal(str(v)) for v in volume.values]
+    cv_series = Series[Any](
+        timestamps=close.timestamps,
+        values=tuple(zip(close_vals, vol_vals, strict=True)),
+        symbol=close.symbol,
+        timeframe=close.timeframe,
     )
 
-    # Calculate directed volume: volume * sign(price_change)
-    directed_volume = aligned_volume * price_signs
-
-    # Calculate OBV as cumulative sum + first volume
-    obv_series = cumulative_sum(SeriesContext(close=directed_volume))
-    first_volume = Qty(str(ctx.volume.values[0]))
+    res = run_kernel(cv_series, OBVKernel(), min_periods=1, coerce_input=lambda x: x)
 
     return Series[Qty](
-        timestamps=(ctx.volume.timestamps[0],) + obv_series.timestamps,
-        values=(first_volume,) + tuple(Qty(str(val + first_volume)) for val in obv_series.values),
-        symbol=obv_series.symbol,
-        timeframe=obv_series.timeframe,
+        timestamps=res.timestamps,
+        values=tuple(Qty(str(v)) for v in res.values),
+        symbol=res.symbol,
+        timeframe=res.timeframe,
+        availability_mask=tuple(True for _ in res.values),
     )
