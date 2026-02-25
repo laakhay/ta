@@ -48,14 +48,17 @@ def test_categorical_access(sample_series):
     assert isinstance(res, Series)
 
 
-def test_top_level_backwards_compatibility(sample_series):
-    # Verify sma is still available at top level ta
-    assert hasattr(ta, "sma")
-    res = ta.sma(sample_series, period=20)
-    assert isinstance(res, Series)
+def test_strict_categorical_access(sample_series):
+    # Verify sma is NO LONGER available at top level ta
+    with pytest.raises(AttributeError, match="no longer available at the top-level"):
+        ta.sma(sample_series, period=20)
 
-    # Verify new indicators are also at top level
-    assert hasattr(ta, "adx")
-    assert hasattr(ta, "supertrend")
-    assert hasattr(ta, "keltner")
-    assert hasattr(ta, "cmf")
+    # Verify others also gone
+    with pytest.raises(AttributeError):
+        ta.adx(sample_series)
+    with pytest.raises(AttributeError):
+        ta.supertrend(sample_series)
+    with pytest.raises(AttributeError):
+        ta.bbands(sample_series)
+    with pytest.raises(AttributeError):
+        ta.obv(sample_series)

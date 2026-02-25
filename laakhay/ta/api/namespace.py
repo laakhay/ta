@@ -267,36 +267,15 @@ class TANamespace:
         # Ensure indicators are loaded
         _ensure_indicators_loaded()
 
-        # Check if we have a manual wrapper in the api module first
-        import laakhay.ta.api as api
-
-        if hasattr(api, name):
-            return getattr(api, name)
-
+        # Provide better error message for top-level indicator access
         registry = get_global_registry()
-        handle = registry.get(name) if hasattr(registry, "get") else None
+        if hasattr(registry, "get") and registry.get(name) is not None:
+            raise AttributeError(
+                f"Indicator '{name}' is no longer available at the top-level 'ta.{name}'. "
+                f"Please use the categorical namespace (e.g., 'ta.trend.{name}', 'ta.momentum.{name}', etc.)."
+            )
 
-        if handle is not None:
-            from .utils import _call_indicator
-
-            def factory(*args: Any, **kwargs: Any) -> Any:
-                return _call_indicator(name, args, kwargs)
-
-            return factory
-
-        # Provide better error message with available indicators
-        available = sorted(registry.list_all_names()) if hasattr(registry, "list_all_names") else []
-        msg = f"Indicator '{name}' not found"
-        if available:
-            # Find similar names
-            similar = [n for n in available if name.lower() in n.lower() or n.lower() in name.lower()][:3]
-            if similar:
-                msg += f". Did you mean: {', '.join(similar)}?"
-            else:
-                msg += f". Available indicators: {', '.join(available[:10])}"
-                if len(available) > 10:
-                    msg += f", ... ({len(available) - 10} more)"
-        raise AttributeError(msg)
+        raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 
 class TASeries:
