@@ -163,6 +163,28 @@ fn adx(
 }
 
 #[pyfunction]
+fn swing_points_raw(
+    high: Vec<f64>,
+    low: Vec<f64>,
+    left: usize,
+    right: usize,
+    allow_equal_extremes: bool,
+) -> PyResult<(Vec<bool>, Vec<bool>)> {
+    Ok(ta_engine::trend::swing_points_raw(
+        &high,
+        &low,
+        left,
+        right,
+        allow_equal_extremes,
+    ))
+}
+
+#[pyfunction]
+fn cci(high: Vec<f64>, low: Vec<f64>, close: Vec<f64>, period: usize) -> PyResult<Vec<f64>> {
+    Ok(ta_engine::momentum::cci(&high, &low, &close, period))
+}
+
+#[pyfunction]
 fn vwap(high: Vec<f64>, low: Vec<f64>, close: Vec<f64>, volume: Vec<f64>) -> PyResult<Vec<f64>> {
     Ok(ta_engine::volume::vwap(&high, &low, &close, &volume))
 }
@@ -377,6 +399,8 @@ fn ta_py(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(macd, m)?)?;
     m.add_function(wrap_pyfunction!(bbands, m)?)?;
     m.add_function(wrap_pyfunction!(adx, m)?)?;
+    m.add_function(wrap_pyfunction!(swing_points_raw, m)?)?;
+    m.add_function(wrap_pyfunction!(cci, m)?)?;
     m.add_function(wrap_pyfunction!(vwap, m)?)?;
     m.add_function(wrap_pyfunction!(obv, m)?)?;
     m.add_function(wrap_pyfunction!(klinger_vf, m)?)?;
