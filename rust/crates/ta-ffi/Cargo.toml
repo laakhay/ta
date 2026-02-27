@@ -1,0 +1,16 @@
+[package]
+name = "ta-ffi"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+description = "C ABI wrapper for ta-engine"
+repository = "https://github.com/laakhay/ta"
+readme = "README.md"
+keywords = ["ffi", "c-abi", "ta", "indicators"]
+categories = ["api-bindings"]
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+ta-engine = { path = "../ta-engine" }

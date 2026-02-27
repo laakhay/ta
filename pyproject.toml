@@ -1,14 +1,11 @@
 [build-system]
-requires = [
-    "hatchling>=1.18.0",
-    "hatch-vcs>=0.3.0",
-]
-build-backend = "hatchling.build"
+requires = ["maturin>=1.7,<2.0"]
+build-backend = "maturin"
 
 [project]
 name = "laakhay-ta"
-dynamic = ["version"]
-description = "Stateless Technical Analysis Library built with ♥︎ by Laakhay"
+version = "0.1.0b0"
+description = "Rust-first Technical Analysis Library by Laakhay"
 readme = "README.md"
 requires-python = ">=3.12"
 license = { text = "MIT" }
@@ -18,7 +15,7 @@ dependencies = []
 [project.urls]
 Homepage = "https://laakhay.com"
 Repository = "https://github.com/laakhay/ta"
-Issues    = "https://github.com/laakhay/ta/issues"
+Issues = "https://github.com/laakhay/ta/issues"
 
 [project.optional-dependencies]
 dev = [
@@ -29,36 +26,13 @@ dev = [
     "build>=1.0.0",
     "twine>=5.0.0",
     "pyright>=1.1.406",
+    "maturin>=1.7,<2.0",
 ]
 
-[tool.hatch.build.targets.wheel]
-packages = ["laakhay"]
-
-[tool.hatch.build.targets.sdist]
-include = [
-    "/laakhay",
-    "/README.md",
-    "/LICENSE",
-    "/pyproject.toml",
-]
-exclude = [
-    "/tests",
-    "/.pytest_cache",
-    "/__pycache__",
-    "*.pyc",
-    "*.pyo",
-    "*.pyd",
-    "/.venv",
-    "/venv",
-    "/build",
-    "/dist",
-    "*.egg-info",
-]
-
-[tool.hatch.version]
-source = "vcs"
-version-scheme = "guess-next-dev"
-local-scheme = "node-and-date"
+[tool.maturin]
+manifest-path = "rust/crates/ta-py/Cargo.toml"
+module-name = "ta_py"
+bindings = "pyo3"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
