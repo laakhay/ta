@@ -1,5 +1,6 @@
-"""Kernel adapter helpers for runtime bindings."""
+"""Deprecated adapter package.
 
-from .registry_binding import coerce_incremental_input, resolve_kernel_for_indicator
+Incremental runtime routing is now Rust-owned via `ta-engine`.
+"""
 
-__all__ = ["resolve_kernel_for_indicator", "coerce_incremental_input"]
+__all__: list[str] = []

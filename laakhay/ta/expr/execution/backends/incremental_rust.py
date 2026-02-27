@@ -31,11 +31,11 @@ class IncrementalRustBackend(ExecutionBackend):
         timeframe: str | None = None,
         **options: Any,
     ) -> Series[Any] | dict[tuple[str, str, str], Series[Any]]:
-        # Temporary staged behavior: reuse Python incremental backend for full graph
-        # until Rust call + non-call node parity is complete.
-        from .incremental import IncrementalBackend
+        # Full one-shot evaluate still routes through batch execution while
+        # incremental lifecycle operations are handled by Rust.
+        from .batch import BatchBackend
 
-        return IncrementalBackend().evaluate(plan, dataset, symbol, timeframe, **options)
+        return BatchBackend().evaluate(plan, dataset, symbol, timeframe, **options)
 
     def initialize(
         self,
