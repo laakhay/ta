@@ -1,0 +1,10 @@
+{
+  "name": "rolling_fixture_v1",
+  "input": [1.0, 2.0, 3.0, 4.0, 5.0],
+  "period": 3,
+  "expected": {
+    "rolling_sum": [null, null, 6.0, 9.0, 12.0],
+    "rolling_mean": [null, null, 2.0, 3.0, 4.0],
+    "rolling_ema": [1.0, 1.5, 2.25, 3.125, 4.0625]
+  }
+}

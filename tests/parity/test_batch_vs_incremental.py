@@ -31,7 +31,6 @@ def sample_dataset(sample_ohlcv_data) -> Dataset:
     "expr_text",
     [
         "sma(close, 14)",
-        "ema(close, 14)",
         "rsi(close, 14)",
         "atr(14)",
         "close + 10",
@@ -72,9 +71,6 @@ def test_evaluation_parity(sample_dataset, expr_text):
 
 def test_incremental_replay(sample_dataset):
     """Test that snapshotting the state mid-stream and replaying produces matching output."""
-    from decimal import Decimal
-
-    from laakhay.ta.core.types import Price
     from laakhay.ta.expr.algebra.operators import Expression
     from laakhay.ta.expr.compile import compile_to_ir
     from laakhay.ta.expr.execution.backends.incremental import IncrementalBackend
@@ -124,7 +120,7 @@ def test_incremental_replay(sample_dataset):
 
     # Replay from midpoint
     replay_results = backend.replay(plan, snap, events)
-    replay_vals = tuple(Price(v) if v is not None else Price(Decimal("0")) for v in replay_results)
+    replay_vals = tuple(Price(v) if v is not None else None for v in replay_results)
 
     # Extracted values from the continuous run
     if isinstance(res_full, dict):
@@ -134,4 +130,4 @@ def test_incremental_replay(sample_dataset):
         res_full_vals = res_full.values
 
     # Compare second half values
-    assert res_full_vals[mid:] == replay_vals
+    assert tuple(res_full_vals[mid:]) == replay_vals

@@ -28,3 +28,5 @@ jobs:
       - name: Build package
         run: make build
 
+      - name: Build Rust workspace
+        run: make rust-check

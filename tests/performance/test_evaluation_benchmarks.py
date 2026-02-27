@@ -21,6 +21,7 @@ from laakhay.ta.core.types import Price
 from laakhay.ta.expr.dsl import compile_expression
 from laakhay.ta.expr.planner import plan_expression
 from laakhay.ta.expr.planner.evaluator import Evaluator
+from laakhay.ta.runtime.backend import RuntimeBackend, get_runtime_backend
 
 # Try to import pytest-benchmark, fall back to None if not available
 try:
@@ -146,3 +147,6 @@ class TestEvaluationBenchmarks:
 
         result = benchmark(plan)
         assert result is not None
+
+    def test_backend_policy_is_rust(self):
+        assert get_runtime_backend() == RuntimeBackend.RUST

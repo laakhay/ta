@@ -31,6 +31,9 @@ jobs:
       
       - name: Run tests with coverage
         run: make test-cov-xml
+
+      - name: Run differential parity suite
+        run: uv run --python 3.12 --with pytest python -m pytest tests/parity/test_python_vs_rust_differential.py -q
       
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4
@@ -39,4 +42,3 @@ jobs:
           flags: ta-library
           name: ta-library-coverage
           fail_ci_if_error: false
-
