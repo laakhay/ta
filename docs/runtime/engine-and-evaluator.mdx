@@ -30,6 +30,17 @@ This is the default robust path for strategy execution.
 
 It is suitable for service-layer execution where dataset composition and source resolution are explicit concerns.
 
+## Incremental Backend
+
+Incremental execution now runs through the Rust backend lifecycle:
+
+1. `initialize(plan, history)`
+2. `step(plan, tick)` following `(state, update) -> (new_state, output)`
+3. `snapshot(plan)`
+4. `replay(plan, snapshot, events)`
+
+Python no longer owns incremental node-step adapter logic.
+
 ## Alignment Behavior
 
 For binary numeric/comparison operations:

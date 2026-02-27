@@ -1,0 +1,36 @@
+# Rust Incremental Parity
+
+## Objective
+
+Lock deterministic correctness for Rust-backed incremental runtime behavior.
+
+## Required Test Suites
+
+1. `tests/parity/test_batch_vs_incremental.py`
+2. `tests/parity/test_incremental_python_vs_rust.py`
+3. `tests/parity/test_rust_incremental_bindings_smoke.py`
+4. `tests/unit/expr/execution/test_drift_guard.py`
+5. `tests/unit/expr/execution/test_backend_resolution.py`
+
+## Determinism Contract
+
+For the same plan + event stream:
+
+- `step` outputs must be identical run-to-run.
+- `snapshot` + `replay` continuation must match forward stepping.
+- Warmup missing values (`None`/`NaN`) are treated as equivalent in parity assertions.
+
+## Local Command
+
+```bash
+uv run --python 3.12 --with pytest python -m pytest \
+  tests/parity/test_batch_vs_incremental.py \
+  tests/parity/test_incremental_python_vs_rust.py \
+  tests/parity/test_rust_incremental_bindings_smoke.py \
+  tests/unit/expr/execution/test_drift_guard.py \
+  tests/unit/expr/execution/test_backend_resolution.py -q
+```
+
+## CI Policy
+
+Any failure in the suites above blocks merge for runtime-related PRs.

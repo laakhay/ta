@@ -27,6 +27,13 @@ make rust-check    # cargo check
 make rust-test     # cargo test
 ```
 
+### Incremental Runtime Policy (Current)
+
+- Incremental execution is Rust-backed only.
+- Canonical runtime contract is `(state, update) -> (new_state, output)`.
+- Python layer is orchestration + DSL/planner ergonomics, not incremental math runtime.
+- Snapshot/replay semantics are deterministic and CI-gated.
+
 ## Core Principles
 
 - **Immutable & Stateless**: All data structures (`Bar`, `OHLCV`, `Series`, `Dataset`) are immutable with timezone-aware timestamps and Decimal precision
