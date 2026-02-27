@@ -19,9 +19,9 @@ def resolve_execution_mode(mode: str | None = None) -> ExecutionMode:
 def resolve_backend(mode: str | None = None):
     selected = resolve_execution_mode(mode)
     if selected == "incremental":
-        from .backends.incremental import IncrementalBackend
+        from .backends.incremental_rust import IncrementalRustBackend
 
-        return IncrementalBackend()
+        return IncrementalRustBackend()
 
     from .backends.batch import BatchBackend
 

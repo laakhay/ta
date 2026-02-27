@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 import math
-from decimal import Decimal
+
+import ta_py
 
 from ..core import Series
 from ..core.series import Series as CoreSeries
@@ -23,8 +24,6 @@ from .kernels.rolling import (
     RollingMedianKernel,
 )
 from .select import _select, _select_field
-
-import ta_py
 
 
 def _series_to_f64(src: Series[Price]) -> list[float]:

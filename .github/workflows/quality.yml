@@ -72,3 +72,25 @@ jobs:
 
       - name: Rust clippy
         run: make rust-lint
+
+  runtime-guards:
+    name: Runtime Guardrails
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          version: "latest"
+
+      - name: Set up Python
+        run: uv python install 3.12
+
+      - name: Install dependencies
+        run: make install-dev
+
+      - name: Enforce backend resolver and drift guards
+        run: uv run --python 3.12 --with pytest python -m pytest tests/unit/expr/execution/test_backend_resolution.py tests/unit/expr/execution/test_drift_guard.py -q

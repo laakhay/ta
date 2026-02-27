@@ -1,6 +1,6 @@
 import pytest
-
 import ta_py
+
 from laakhay.ta.core.series import Series
 from laakhay.ta.core.types import Price
 

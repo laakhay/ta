@@ -20,3 +20,9 @@
 2. Cache plans and alignment policy decisions.
 3. Pre-trim datasets using lookback requirements.
 4. Use profiling around evaluator node-order execution when scaling to many symbols.
+
+## Incremental Runtime Notes
+
+- Incremental stepping and replay are Rust-backed.
+- Keep Python-to-Rust crossings coarse-grained (`initialize/step/snapshot/replay`), not per-node.
+- Treat replay determinism checks as required quality gates, not optional benchmarks.

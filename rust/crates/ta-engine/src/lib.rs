@@ -1,6 +1,7 @@
 //! Core runtime primitives for the Rust-first TA engine.
 
 pub mod contracts;
+pub mod incremental;
 pub mod momentum;
 pub mod moving_averages;
 pub mod rolling;

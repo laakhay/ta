@@ -1,9 +1,9 @@
-from __future__ import annotations
-
 """Stochastic kernel for incremental execution paths.
 
 Batch stochastic execution is Rust-backed in the indicator path.
 """
+
+from __future__ import annotations
 
 from dataclasses import dataclass
 from decimal import Decimal
