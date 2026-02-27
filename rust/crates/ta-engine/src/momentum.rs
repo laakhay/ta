@@ -66,6 +66,7 @@ pub fn stochastic_kd(
     close: &[f64],
     k_period: usize,
     d_period: usize,
+    smooth_period: usize,
 ) -> (Vec<f64>, Vec<f64>) {
     let n = close.len();
     let mut k = vec![f64::NAN; n];
@@ -90,12 +91,20 @@ pub fn stochastic_kd(
             }
         }
         let denom = hh - ll;
-        k[i] = if denom == 0.0 {
+        let k_val = if denom == 0.0 {
             50.0
         } else {
             100.0 * (close[i] - ll) / denom
         };
+        k[i] = k_val;
     }
+
+    // Apply smoothing to %K if smooth_period > 1
+    let k_smoothed = if smooth_period > 1 {
+        crate::rolling::rolling_mean(&k, smooth_period)
+    } else {
+        k
+    };
 
     for i in 0..n {
         if i + 1 < d_period {
@@ -104,7 +113,7 @@ pub fn stochastic_kd(
         let start = i + 1 - d_period;
         let mut sum = 0.0;
         let mut valid = true;
-        for value in &k[start..=i] {
+        for value in &k_smoothed[start..=i] {
             if value.is_nan() {
                 valid = false;
                 break;
@@ -116,5 +125,5 @@ pub fn stochastic_kd(
         }
     }
 
-    (k, d)
+    (k_smoothed, d)
 }
