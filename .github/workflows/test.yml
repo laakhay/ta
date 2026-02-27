@@ -34,6 +34,12 @@ jobs:
 
       - name: Run differential parity suite
         run: uv run --python 3.12 --with pytest python -m pytest tests/parity/test_python_vs_rust_differential.py -q
+
+      - name: Run incremental parity matrix
+        run: uv run --python 3.12 --with pytest python -m pytest tests/parity/test_incremental_python_vs_rust.py tests/parity/test_batch_vs_incremental.py -q
+
+      - name: Run incremental replay determinism
+        run: uv run --python 3.12 --with pytest python -m pytest tests/parity/test_rust_incremental_bindings_smoke.py -q
       
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4
