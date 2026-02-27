@@ -43,9 +43,7 @@ def sample_dataset(sample_ohlcv_data) -> Dataset:
 )
 def test_evaluation_parity(sample_dataset, expr_text):
     """
-    Test that backends produce the exact same results for standard operations.
-    Currently comparing BatchBackend vs BatchBackend to establish the pattern,
-    once IncrementalBackend is ready it will be added here.
+    Test that batch and Python incremental backends produce matching outputs.
     """
     from laakhay.ta.expr.algebra.operators import Expression
     from laakhay.ta.expr.compile import compile_to_ir
@@ -120,7 +118,7 @@ def test_incremental_replay(sample_dataset):
 
     # Replay from midpoint
     replay_results = backend.replay(plan, snap, events)
-    replay_vals = tuple(Price(v) if v is not None else None for v in replay_results)
+    replay_vals = tuple(replay_results)
 
     # Extracted values from the continuous run
     if isinstance(res_full, dict):
