@@ -54,15 +54,13 @@ def atr(ctx: SeriesContext, period: int = 14) -> Series[Price]:
     if len(series_lengths) > 1 and len(set(series_lengths)) > 1:
         raise ValueError("All series must have the same length")
 
-    # Calculate True Range using primitive
-    tr_series = true_range(ctx)
+    import ta_py
+    from .._utils import results_to_series
 
-    out = ta_py.atr_from_tr([float(v) for v in tr_series.values], period)
-    mask = tuple(not math.isnan(v) for v in out)
-    return CoreSeries[Price](
-        timestamps=tr_series.timestamps,
-        values=tuple(Price("NaN") if math.isnan(v) else Price(str(v)) for v in out),
-        symbol=tr_series.symbol,
-        timeframe=tr_series.timeframe,
-        availability_mask=mask,
+    out = ta_py.atr(
+        [float(v) for v in ctx.high.values],
+        [float(v) for v in ctx.low.values],
+        [float(v) for v in ctx.close.values],
+        period,
     )
+    return results_to_series(out, ctx.close, value_class=Price)

@@ -44,15 +44,13 @@ def vwap(ctx: SeriesContext) -> Series[Price]:
     if len(set(series_lengths)) > 1:
         raise ValueError("All series must have the same length")
 
-    # Handle zero volume case
-    if all(vol == 0 for vol in ctx.volume.values):
-        return typical_price(ctx)
+    import ta_py
+    from .._utils import results_to_series
 
-    # Calculate VWAP: cumulative(typical*volume) / cumulative(volume)
-    typical = typical_price(ctx)
-    pv_series = typical * ctx.volume
-
-    cumulative_pv = cumulative_sum(SeriesContext(close=pv_series))
-    cumulative_vol = cumulative_sum(SeriesContext(close=ctx.volume))
-
-    return cumulative_pv / cumulative_vol
+    out = ta_py.vwap(
+        [float(v) for v in ctx.high.values],
+        [float(v) for v in ctx.low.values],
+        [float(v) for v in ctx.close.values],
+        [float(v) for v in ctx.volume.values],
+    )
+    return results_to_series(out, ctx.close, value_class=Price)

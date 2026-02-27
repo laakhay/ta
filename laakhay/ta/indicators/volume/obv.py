@@ -48,11 +48,7 @@ def obv(ctx: SeriesContext) -> Series[Qty]:
         raise ValueError("Close and volume series must have the same length")
     if len(close) == 0:
         return close.__class__(timestamps=(), values=(), symbol=close.symbol, timeframe=close.timeframe)
+    from .._utils import results_to_series
+
     out = ta_py.obv([float(v) for v in close.values], [float(v) for v in volume.values])
-    return CoreSeries[Qty](
-        timestamps=close.timestamps,
-        values=tuple(Qty("NaN") if math.isnan(v) else Qty(str(v)) for v in out),
-        symbol=close.symbol,
-        timeframe=close.timeframe,
-        availability_mask=tuple(not math.isnan(v) for v in out),
-    )
+    return results_to_series(out, close, value_class=Qty)
