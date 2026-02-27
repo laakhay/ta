@@ -3,7 +3,9 @@
 __all__ = [
     "Engine",
     "DEFAULT_EXECUTION_MODE",
+    "DEFAULT_INCREMENTAL_BACKEND",
     "resolve_execution_mode",
+    "resolve_incremental_backend_mode",
     "resolve_backend",
     "evaluate_plan",
     "Availability",
@@ -24,12 +26,26 @@ def __getattr__(name: str):
         from .engine import Engine
 
         return Engine
-    if name in {"DEFAULT_EXECUTION_MODE", "resolve_execution_mode", "resolve_backend"}:
-        from .backend import DEFAULT_EXECUTION_MODE, resolve_backend, resolve_execution_mode
+    if name in {
+        "DEFAULT_EXECUTION_MODE",
+        "DEFAULT_INCREMENTAL_BACKEND",
+        "resolve_execution_mode",
+        "resolve_incremental_backend_mode",
+        "resolve_backend",
+    }:
+        from .backend import (
+            DEFAULT_EXECUTION_MODE,
+            DEFAULT_INCREMENTAL_BACKEND,
+            resolve_backend,
+            resolve_execution_mode,
+            resolve_incremental_backend_mode,
+        )
 
         exports = {
             "DEFAULT_EXECUTION_MODE": DEFAULT_EXECUTION_MODE,
+            "DEFAULT_INCREMENTAL_BACKEND": DEFAULT_INCREMENTAL_BACKEND,
             "resolve_execution_mode": resolve_execution_mode,
+            "resolve_incremental_backend_mode": resolve_incremental_backend_mode,
             "resolve_backend": resolve_backend,
         }
         return exports[name]
