@@ -53,53 +53,18 @@ def adx(ctx: SeriesContext, period: int = 14) -> tuple[Series[Price], Series[Pri
         empty = c.__class__(timestamps=(), values=(), symbol=c.symbol, timeframe=c.timeframe)
         return empty, empty, empty
 
-    hlc_series = _zip_hlc_series(h, l, c)
+    import ta_py
+    from .._utils import results_to_series
 
-    # We run the kernel manually to capture multi-series output efficiently
-    kernel = ADXKernel()
-    n = len(hlc_series.values)
-
-    # Standard Wilder's approach starts producing values after 'period' bars
-    # However, to match our RMA implementation which starts immediately:
-    min_periods = 1
-
-    xs = [tuple(Decimal(str(v)) for v in val) for val in hlc_series.values]
-
-    out_adx = []
-    out_pdi = []
-    out_mdi = []
-
-    warmup_len = min_periods - 1
-    state = kernel.initialize(xs[:warmup_len], period=period)
-
-    for i in range(warmup_len, n):
-        state, (adx_val, pdi_val, mdi_val) = kernel.step(state, xs[i], period=period)
-        out_adx.append(adx_val)
-        out_pdi.append(pdi_val)
-        out_mdi.append(mdi_val)
-
-    stamps = hlc_series.timestamps[warmup_len:]
-
-    return (
-        CoreSeries[Price](
-            timestamps=stamps,
-            values=tuple(Price(v) for v in out_adx),
-            symbol=c.symbol,
-            timeframe=c.timeframe,
-            availability_mask=tuple(True for _ in out_adx),
-        ),
-        CoreSeries[Price](
-            timestamps=stamps,
-            values=tuple(Price(v) for v in out_pdi),
-            symbol=c.symbol,
-            timeframe=c.timeframe,
-            availability_mask=tuple(True for _ in out_pdi),
-        ),
-        CoreSeries[Price](
-            timestamps=stamps,
-            values=tuple(Price(v) for v in out_mdi),
-            symbol=c.symbol,
-            timeframe=c.timeframe,
-            availability_mask=tuple(True for _ in out_mdi),
-        ),
+    adx_val, pdi_val, mdi_val = ta_py.adx(
+        [float(v) for v in ctx.high.values],
+        [float(v) for v in ctx.low.values],
+        [float(v) for v in ctx.close.values],
+        period,
     )
+
+    adx_series = results_to_series(adx_val, ctx.close, value_class=Price)
+    plus_di = results_to_series(pdi_val, ctx.close, value_class=Price)
+    minus_di = results_to_series(mdi_val, ctx.close, value_class=Price)
+
+    return adx_series, plus_di, minus_di
