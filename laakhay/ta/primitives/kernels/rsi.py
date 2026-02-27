@@ -1,4 +1,7 @@
-"""RSI Kernel implementation."""
+"""RSI kernel for incremental execution paths.
+
+Batch RSI execution is Rust-backed in the indicator path.
+"""
 
 from __future__ import annotations
 

@@ -54,3 +54,21 @@ jobs:
       - name: Run ruff format check
         run: make format-check
 
+  rust-quality:
+    name: Rust Format + Clippy
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Rust format check
+        run: make rust-fmt
+
+      - name: Rust clippy
+        run: make rust-lint

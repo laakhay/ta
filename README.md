@@ -1,6 +1,31 @@
 # Laakhay TA
 
+> Beta Notice (Rust-First Replatform): `laakhay-ta` is currently in an aggressive beta phase. We will prioritize runtime architecture quality and velocity over backward compatibility. Breaking API and behavior changes are expected until the Rust-first runtime settles.
+
 A stateless technical analysis toolkit built on immutable data structures, explicit indicator metadata, and algebraic composition. Provides a domain-specific language (DSL) for expressing trading strategies with support for multi-source data (OHLCV, trades, orderbook, liquidations), filtering, aggregation, time-shifted queries, and **explicit indicator input sources**.
+
+## Rust-First Direction
+
+The project is being actively replatformed to a Rust-first runtime:
+
+- Rust owns runtime-heavy indicator/kernel execution.
+- Python remains the primary ergonomics layer (DSL, composition, planner integration, developer UX).
+- Packaging direction is PyO3 + maturin.
+- Rust crates are intended to be consumed directly by other Rust modules.
+- A stable FFI boundary is planned to support future TypeScript/Node packaging.
+- Runtime backend policy is Rust-first and Rust-only during beta convergence.
+
+Migration plan:
+- `docs/plans/rust-core-modularization-commit-plan.md`
+- `docs/plans/rust-core-architecture-rfc.md`
+
+### Beta Build Workflow (Rust-first)
+
+```bash
+make install-dev   # sync python deps + build/install Rust extension
+make rust-check    # cargo check
+make rust-test     # cargo test
+```
 
 ## Core Principles
 

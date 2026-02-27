@@ -1,0 +1,13 @@
+[package]
+name = "ta-engine"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+description = "Core Rust runtime engine for laakhay-ta"
+repository = "https://github.com/laakhay/ta"
+readme = "README.md"
+keywords = ["trading", "ta", "indicators", "quant"]
+categories = ["science", "algorithms"]
+
+[dependencies]
+thiserror = { workspace = true }

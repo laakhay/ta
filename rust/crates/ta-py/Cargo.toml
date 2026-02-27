@@ -1,0 +1,14 @@
+[package]
+name = "ta-py"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+description = "Python bindings for ta-engine"
+
+[lib]
+name = "ta_py"
+crate-type = ["cdylib"]
+
+[dependencies]
+ta-engine = { path = "../ta-engine" }
+pyo3 = { version = "0.24", features = ["extension-module"] }

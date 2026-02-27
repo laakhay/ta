@@ -284,6 +284,7 @@ class Evaluator:
 
         elif isinstance(n, CallNode):
             from ...registry.registry import get_global_registry
+            from ...runtime.dispatch import dispatch_indicator_call
 
             registry = get_global_registry()
 
@@ -301,17 +302,13 @@ class Evaluator:
                 eval_kwargs[key] = val
 
             has_input_expr = len(n.args) > 0 and not isinstance(n.args[0], LiteralNode)
-            if has_input_expr and len(eval_args) > 0:
-                input_series_result = eval_args[0]
-                remaining_args = eval_args[1:]
-
-                if isinstance(input_series_result, Series):
-                    return indicator_func(SeriesContext(close=input_series_result), *remaining_args, **eval_kwargs)
-
-                base_ctx = SeriesContext(**context)
-                return indicator_func(base_ctx, input_series_result, *remaining_args, **eval_kwargs)
-
-            return indicator_func(SeriesContext(**context), *eval_args, **eval_kwargs)
+            return dispatch_indicator_call(
+                indicator_func=indicator_func,
+                eval_args=eval_args,
+                eval_kwargs=eval_kwargs,
+                context=context,
+                has_input_expr=has_input_expr,
+            )
 
         else:
             raise NotImplementedError(f"Unsupported node type: {type(n)}")

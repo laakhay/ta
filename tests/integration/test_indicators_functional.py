@@ -192,3 +192,123 @@ class TestIndicatorsFunctional:
         # Test that indicator raises appropriate error for empty dataset
         with pytest.raises(ValueError, match="SeriesContext has no series to operate on"):
             sma_2(ds)
+
+    def test_rust_backed_momentum_volatility_indicators(self):
+        bars = [
+            Bar(
+                ts=datetime(2024, 1, 1, tzinfo=UTC),
+                open=Price("100"),
+                high=Price("105"),
+                low=Price("95"),
+                close=Price("102"),
+                volume=Price("1000"),
+                is_closed=True,
+            ),
+            Bar(
+                ts=datetime(2024, 1, 2, tzinfo=UTC),
+                open=Price("102"),
+                high=Price("108"),
+                low=Price("98"),
+                close=Price("106"),
+                volume=Price("1200"),
+                is_closed=True,
+            ),
+            Bar(
+                ts=datetime(2024, 1, 3, tzinfo=UTC),
+                open=Price("106"),
+                high=Price("112"),
+                low=Price("104"),
+                close=Price("110"),
+                volume=Price("1300"),
+                is_closed=True,
+            ),
+            Bar(
+                ts=datetime(2024, 1, 4, tzinfo=UTC),
+                open=Price("110"),
+                high=Price("113"),
+                low=Price("107"),
+                close=Price("111"),
+                volume=Price("1100"),
+                is_closed=True,
+            ),
+            Bar(
+                ts=datetime(2024, 1, 5, tzinfo=UTC),
+                open=Price("111"),
+                high=Price("114"),
+                low=Price("109"),
+                close=Price("112"),
+                volume=Price("1000"),
+                is_closed=True,
+            ),
+        ]
+
+        ds = dataset(OHLCV.from_bars(bars, symbol="BTCUSDT", timeframe="1h"))
+
+        rsi_handle = indicator("rsi", period=3)
+        atr_handle = indicator("atr", period=3)
+        stoch_handle = indicator("stochastic", k_period=3, d_period=2)
+
+        rsi_res = rsi_handle(ds)
+        atr_res = atr_handle(ds)
+        stoch_k, stoch_d = stoch_handle(ds)
+
+        assert len(rsi_res.values) == len(bars)
+        assert len(atr_res.values) == len(bars)
+        assert len(stoch_k.values) == len(bars)
+        assert len(stoch_d.values) == len(bars)
+
+        assert any(rsi_res.availability_mask)
+        assert any(atr_res.availability_mask)
+        assert any(stoch_k.availability_mask)
+        assert any(stoch_d.availability_mask)
+
+    def test_rust_backed_volume_indicators(self):
+        bars = [
+            Bar(
+                ts=datetime(2024, 1, 1, tzinfo=UTC),
+                open=Price("100"),
+                high=Price("105"),
+                low=Price("95"),
+                close=Price("102"),
+                volume=Price("1000"),
+                is_closed=True,
+            ),
+            Bar(
+                ts=datetime(2024, 1, 2, tzinfo=UTC),
+                open=Price("102"),
+                high=Price("108"),
+                low=Price("98"),
+                close=Price("106"),
+                volume=Price("1200"),
+                is_closed=True,
+            ),
+            Bar(
+                ts=datetime(2024, 1, 3, tzinfo=UTC),
+                open=Price("106"),
+                high=Price("112"),
+                low=Price("104"),
+                close=Price("110"),
+                volume=Price("1300"),
+                is_closed=True,
+            ),
+            Bar(
+                ts=datetime(2024, 1, 4, tzinfo=UTC),
+                open=Price("110"),
+                high=Price("113"),
+                low=Price("107"),
+                close=Price("109"),
+                volume=Price("900"),
+                is_closed=True,
+            ),
+        ]
+
+        ds = dataset(OHLCV.from_bars(bars, symbol="BTCUSDT", timeframe="1h"))
+        obv_res = indicator("obv")(ds)
+        cmf_res = indicator("cmf", period=3)(ds)
+        klinger_res, signal_res = indicator("klinger", fast_period=2, slow_period=3, signal_period=2)(ds)
+
+        assert len(obv_res.values) == len(bars)
+        assert len(cmf_res.values) == len(bars)
+        assert len(klinger_res.values) == len(bars)
+        assert len(signal_res.values) == len(bars)
+        assert any(obv_res.availability_mask)

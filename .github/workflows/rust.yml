@@ -1,0 +1,31 @@
+name: Rust Checks
+
+on:
+  push:
+    branches:
+      - main
+      - dev
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  rust-check-test:
+    name: Cargo Check + Test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cargo check
+        run: make rust-check
+
+      - name: Cargo test
+        run: make rust-test
+
+      - name: Maturin build smoke
+        run: uv run --python 3.12 --with maturin maturin build --manifest-path rust/crates/ta-py/Cargo.toml --release

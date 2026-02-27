@@ -10,6 +10,7 @@ from typing import Any
 
 from ...core import Series
 from ...core.dataset import Dataset
+from ...runtime.backend import get_runtime_backend
 from ..execution.runner import evaluate_plan
 from ..ir.nodes import CanonicalExpression, LiteralNode
 
@@ -23,6 +24,7 @@ class Engine:
 
     def __init__(self) -> None:
         self._cache: dict[int, Series[Any]] = {}
+        self.backend = get_runtime_backend()
 
     def evaluate(self, expression: CanonicalExpression, dataset: Any) -> Any:
         """Evaluate an expression node with given dataset mapping.

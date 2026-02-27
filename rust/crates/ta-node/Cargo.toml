@@ -1,0 +1,10 @@
+[package]
+name = "ta-node"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+description = "Node bindings scaffold for ta-engine"
+repository = "https://github.com/laakhay/ta"
+
+[dependencies]
+ta-engine = { path = "../ta-engine" }
