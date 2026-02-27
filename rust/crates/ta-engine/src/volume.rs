@@ -95,3 +95,28 @@ pub fn cmf(high: &[f64], low: &[f64], close: &[f64], volume: &[f64], period: usi
 
     out
 }
+
+pub fn vwap(high: &[f64], low: &[f64], close: &[f64], volume: &[f64]) -> Vec<f64> {
+    let n = close.len();
+    let mut out = vec![f64::NAN; n];
+    if n == 0 || high.len() != n || low.len() != n || volume.len() != n {
+        return out;
+    }
+
+    let mut sum_pv = 0.0;
+    let mut sum_vol = 0.0;
+
+    for i in 0..n {
+        let tp = (high[i] + low[i] + close[i]) / 3.0;
+        sum_pv += tp * volume[i];
+        sum_vol += volume[i];
+
+        if sum_vol > 0.0 {
+            out[i] = sum_pv / sum_vol;
+        } else {
+            out[i] = tp;
+        }
+    }
+
+    out
+}
