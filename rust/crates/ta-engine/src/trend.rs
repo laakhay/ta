@@ -18,8 +18,6 @@ pub fn macd(
     }
 
     // Signal line is EMA of MACD line.
-    // We need to handle the leading NaNs carefully or just use the whole series.
-    // The standard way is to calculate EMA on the available MACD values.
     let signal_line = ema(&macd_line, signal_period);
     let mut histogram = vec![f64::NAN; n];
 
@@ -84,8 +82,6 @@ pub fn adx(
         }
     }
 
-    // ADX is the EMA (or Wilder smoothing) of DX
-    // Note: Wilder smoothing is equivalent to RMA (Relative Moving Average)
     let adx = wilder_smooth_non_negative(&dx, period);
 
     (adx, plus_di, minus_di)
@@ -112,7 +108,6 @@ fn wilder_smooth_non_negative(values: &[f64], period: usize) -> Vec<f64> {
     let n = values.len();
     let mut out = vec![f64::NAN; n];
 
-    // Find first non-NaN
     let first = values.iter().position(|v| !v.is_nan());
     let Some(start) = first else {
         return out;
@@ -130,4 +125,76 @@ fn wilder_smooth_non_negative(values: &[f64], period: usize) -> Vec<f64> {
         out[i] = (prev * (period as f64 - 1.0) + values[i]) / period as f64;
     }
     out
+}
+
+pub fn swing_points_raw(
+    high: &[f64],
+    low: &[f64],
+    left: usize,
+    right: usize,
+    allow_equal_extremes: bool,
+) -> (Vec<bool>, Vec<bool>) {
+    let n = high.len();
+    let mut raw_high = vec![false; n];
+    let mut raw_low = vec![false; n];
+    let mut have_high = false;
+
+    if n <= left + right {
+        return (raw_high, raw_low);
+    }
+
+    for i in left..(n - right) {
+        let current_high = high[i];
+        let current_low = low[i];
+
+        let mut is_high = true;
+        let mut count_high = 0;
+        for j in (i - left)..(i + right + 1) {
+            if high[j] > current_high {
+                is_high = false;
+                break;
+            }
+            if high[j] == current_high {
+                count_high += 1;
+            }
+        }
+        if is_high && (allow_equal_extremes || count_high == 1) {
+            raw_high[i] = true;
+            have_high = true;
+        }
+
+        if have_high {
+            let mut is_low = true;
+            let mut count_low = 0;
+            for j in (i - left)..(i + right + 1) {
+                if low[j] < current_low {
+                    is_low = false;
+                    break;
+                }
+                if low[j] == current_low {
+                    count_low += 1;
+                }
+            }
+            if is_low && (allow_equal_extremes || count_low == 1) {
+                raw_low[i] = true;
+            }
+        }
+    }
+
+    let mut flags_high = vec![false; n];
+    let mut flags_low = vec![false; n];
+
+    for i in 0..n {
+        let confirmed_idx = i + right;
+        if confirmed_idx < n {
+            if raw_high[i] {
+                flags_high[confirmed_idx] = true;
+            }
+            if raw_low[i] {
+                flags_low[confirmed_idx] = true;
+            }
+        }
+    }
+
+    (flags_high, flags_low)
 }

@@ -127,3 +127,41 @@ pub fn stochastic_kd(
 
     (k_smoothed, d)
 }
+
+pub fn cci(high: &[f64], low: &[f64], close: &[f64], period: usize) -> Vec<f64> {
+    let n = close.len();
+    if n == 0 || period == 0 {
+        return vec![f64::NAN; n];
+    }
+
+    let mut tp = vec![0.0; n];
+    for i in 0..n {
+        tp[i] = (high[i] + low[i] + close[i]) / 3.0;
+    }
+
+    let sma = crate::rolling::rolling_mean(&tp, period);
+    let mut out = vec![f64::NAN; n];
+
+    for i in 0..n {
+        if i + 1 < period {
+            continue;
+        }
+
+        let mut mean_deviation = 0.0;
+        let start = i + 1 - period;
+        let current_sma = sma[i];
+
+        for j in start..=i {
+            mean_deviation += (tp[j] - current_sma).abs();
+        }
+        mean_deviation /= period as f64;
+
+        if mean_deviation == 0.0 {
+            out[i] = 0.0;
+        } else {
+            out[i] = (tp[i] - current_sma) / (0.015 * mean_deviation);
+        }
+    }
+
+    out
+}
