@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+import math
+
 from ...core import Series
+from ...core.series import Series as CoreSeries
 from ...core.types import Price
 from ...primitives.elementwise_ops import true_range
 from ...registry.models import SeriesContext
@@ -14,6 +17,7 @@ from ...registry.schemas import (
     RuntimeBindingSpec,
     SemanticsSpec,
 )
+import ta_py
 
 ATR_SPEC = IndicatorSpec(
     name="atr",
@@ -52,8 +56,12 @@ def atr(ctx: SeriesContext, period: int = 14) -> Series[Price]:
     # Calculate True Range using primitive
     tr_series = true_range(ctx)
 
-    from ...primitives.kernel import run_kernel
-    from ...primitives.kernels.atr import ATRKernel
-
-    # Calculate ATR statefully
-    return run_kernel(tr_series, ATRKernel(), min_periods=period, period=period)
+    out = ta_py.atr_from_tr([float(v) for v in tr_series.values], period)
+    mask = tuple(not math.isnan(v) for v in out)
+    return CoreSeries[Price](
+        timestamps=tr_series.timestamps,
+        values=tuple(Price("NaN") if math.isnan(v) else Price(str(v)) for v in out),
+        symbol=tr_series.symbol,
+        timeframe=tr_series.timeframe,
+        availability_mask=mask,
+    )

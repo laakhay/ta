@@ -2,12 +2,11 @@
 
 from __future__ import annotations
 
-from decimal import Decimal
+import math
 
 from ...core import Series
 from ...core.series import Series as CoreSeries
 from ...core.types import Price
-from ...primitives.rolling_ops import rolling_max, rolling_mean, rolling_min
 from ...registry.models import SeriesContext
 from ...registry.registry import register
 from ...registry.schemas import (
@@ -17,6 +16,7 @@ from ...registry.schemas import (
     RuntimeBindingSpec,
     SemanticsSpec,
 )
+import ta_py
 
 STOCHASTIC_SPEC = IndicatorSpec(
     name="stochastic",
@@ -62,41 +62,32 @@ def stochastic(ctx: SeriesContext, k_period: int = 14, d_period: int = 3) -> tup
         empty = CoreSeries[Price](timestamps=(), values=(), symbol=close.symbol, timeframe=close.timeframe)
         return empty, empty
 
-    # Calculate rolling max and min (full length)
-    highest_high = rolling_max(SeriesContext(close=ctx.high), k_period)
-    lowest_low = rolling_min(SeriesContext(close=ctx.low), k_period)
-
-    # %K = ((Close - Lowest Low) / (Highest High - Lowest Low)) * 100
-    k_values = []
-    k_mask = []
-
-    for i in range(n):
-        if not highest_high.availability_mask[i]:
-            k_values.append(Decimal(0))
-            k_mask.append(False)
-            continue
-
-        c_val = Decimal(str(close.values[i]))
-        h_val = Decimal(str(highest_high.values[i]))
-        l_val = Decimal(str(lowest_low.values[i]))
-
-        denom = h_val - l_val
-        if denom == 0:
-            k_values.append(Decimal("50"))
-        else:
-            k_values.append(Decimal("100") * (c_val - l_val) / denom)
-        k_mask.append(True)
-
-    k_series = CoreSeries[Price](
-        timestamps=close.timestamps,
-        values=tuple(Price(v) for v in k_values),
-        symbol=close.symbol,
-        timeframe=close.timeframe,
-        availability_mask=tuple(k_mask),
+    high = ctx.high
+    low = ctx.low
+    k_out, d_out = ta_py.stochastic_kd(
+        [float(v) for v in high.values],
+        [float(v) for v in low.values],
+        [float(v) for v in close.values],
+        k_period,
+        d_period,
     )
 
-    # Calculate %D using rolling_mean on %K
-    d_series = rolling_mean(SeriesContext(close=k_series), d_period)
+    k_mask = tuple(not math.isnan(v) for v in k_out)
+    k_series = CoreSeries[Price](
+        timestamps=close.timestamps,
+        values=tuple(Price("NaN") if math.isnan(v) else Price(str(v)) for v in k_out),
+        symbol=close.symbol,
+        timeframe=close.timeframe,
+        availability_mask=k_mask,
+    )
+    d_mask = tuple(not math.isnan(v) for v in d_out)
+    d_series = CoreSeries[Price](
+        timestamps=close.timestamps,
+        values=tuple(Price("NaN") if math.isnan(v) else Price(str(v)) for v in d_out),
+        symbol=close.symbol,
+        timeframe=close.timeframe,
+        availability_mask=d_mask,
+    )
 
     return k_series, d_series
 

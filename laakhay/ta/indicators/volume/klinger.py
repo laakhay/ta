@@ -2,12 +2,11 @@
 
 from __future__ import annotations
 
-from decimal import Decimal
+import math
 
 from ...core import Series
 from ...core.series import Series as CoreSeries
 from ...core.types import Price
-from ...primitives.kernels.klinger import KlingerVFKernel
 from ...primitives.rolling_ops import rolling_ema
 from ...registry.models import SeriesContext
 from ...registry.registry import register
@@ -17,6 +16,7 @@ from ...registry.schemas import (
     ParamSpec,
     SemanticsSpec,
 )
+import ta_py
 
 KLINGER_SPEC = IndicatorSpec(
     name="klinger",
@@ -56,22 +56,17 @@ def klinger(
         empty = CoreSeries[Price](timestamps=(), values=(), symbol=c.symbol, timeframe=c.timeframe)
         return empty, empty
 
-    # Calculate Volume Force (VF) using kernel
-    hlcv_vals = [
-        (Decimal(str(h.values[i])), Decimal(str(l.values[i])), Decimal(str(c.values[i])), Decimal(str(v.values[i])))
-        for i in range(n)
-    ]
-
-    kernel = KlingerVFKernel()
-    state = kernel.initialize([])
-
-    vf_vals = []
-    for i in range(n):
-        state, vf = kernel.step(state, hlcv_vals[i])
-        vf_vals.append(vf)
-
+    vf_vals = ta_py.klinger_vf(
+        [float(x) for x in h.values],
+        [float(x) for x in l.values],
+        [float(x) for x in c.values],
+        [float(x) for x in v.values],
+    )
     vf_series = CoreSeries[Price](
-        timestamps=c.timestamps, values=tuple(Price(v) for v in vf_vals), symbol=c.symbol, timeframe=c.timeframe
+        timestamps=c.timestamps,
+        values=tuple(Price("NaN") if math.isnan(vf) else Price(str(vf)) for vf in vf_vals),
+        symbol=c.symbol,
+        timeframe=c.timeframe,
     )
 
     # Klinger = EMA(VF, fast) - EMA(VF, slow)

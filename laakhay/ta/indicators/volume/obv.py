@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-from decimal import Decimal
-from typing import Any
+import math
 
 from ...core import Series
+from ...core.series import Series as CoreSeries
 from ...core.types import Qty
 from ...registry.models import SeriesContext
 from ...registry.registry import register
@@ -15,6 +15,7 @@ from ...registry.schemas import (
     RuntimeBindingSpec,
     SemanticsSpec,
 )
+import ta_py
 
 OBV_SPEC = IndicatorSpec(
     name="obv",
@@ -46,34 +47,11 @@ def obv(ctx: SeriesContext) -> Series[Qty]:
         raise ValueError("Close and volume series must have the same length")
     if len(close) == 0:
         return close.__class__(timestamps=(), values=(), symbol=close.symbol, timeframe=close.timeframe)
-    if len(close) == 1:
-        # For a single value, output series should also be length 1 and return input's meta
-        return close.__class__(
-            timestamps=close.timestamps,
-            values=(volume.values[0],),
-            symbol=close.symbol,
-            timeframe=close.timeframe,
-        )
-
-    from ...primitives.kernel import run_kernel
-    from ...primitives.kernels.obv import OBVKernel
-
-    # Zip close and volume for kernel
-    close_vals = [Decimal(str(v)) for v in close.values]
-    vol_vals = [Decimal(str(v)) for v in volume.values]
-    cv_series = Series[Any](
+    out = ta_py.obv([float(v) for v in close.values], [float(v) for v in volume.values])
+    return CoreSeries[Qty](
         timestamps=close.timestamps,
-        values=tuple(zip(close_vals, vol_vals, strict=True)),
+        values=tuple(Qty("NaN") if math.isnan(v) else Qty(str(v)) for v in out),
         symbol=close.symbol,
         timeframe=close.timeframe,
-    )
-
-    res = run_kernel(cv_series, OBVKernel(), min_periods=1, coerce_input=lambda x: x)
-
-    return Series[Qty](
-        timestamps=res.timestamps,
-        values=tuple(Qty(str(v)) for v in res.values),
-        symbol=res.symbol,
-        timeframe=res.timeframe,
-        availability_mask=tuple(True for _ in res.values),
+        availability_mask=tuple(not math.isnan(v) for v in out),
     )

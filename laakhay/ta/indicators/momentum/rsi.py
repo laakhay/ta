@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
+import math
+
 from ...core import Series
+from ...core.series import Series as CoreSeries
 from ...core.types import Price
-from ...primitives.kernel import run_kernel
-from ...primitives.kernels.rsi import RSIKernel
 from ...registry.schemas import (
     IndicatorSpec,
     InputSlotSpec,
@@ -18,6 +19,7 @@ from .. import (
     SeriesContext,
     register,
 )
+import ta_py
 
 RSI_SPEC = IndicatorSpec(
     name="rsi",
@@ -85,4 +87,12 @@ def rsi(ctx: SeriesContext, period: int = 14) -> Series[Price]:
             timeframe=close_series.timeframe if close_series is not None else None,
         )
 
-    return run_kernel(close_series, RSIKernel(), min_periods=period + 1, period=period)
+    out = ta_py.rsi([float(v) for v in close_series.values], period)
+    mask = tuple(not math.isnan(v) for v in out)
+    return CoreSeries[Price](
+        timestamps=close_series.timestamps,
+        values=tuple(Price("NaN") if math.isnan(v) else Price(str(v)) for v in out),
+        symbol=close_series.symbol,
+        timeframe=close_series.timeframe,
+        availability_mask=mask,
+    )

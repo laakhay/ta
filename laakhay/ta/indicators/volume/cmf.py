@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
-from decimal import Decimal
+import math
 
 from ...core import Series
+from ...core.series import Series as CoreSeries
 from ...core.types import Price
-from ...primitives.rolling_ops import rolling_sum
 from ...registry.models import SeriesContext
 from ...registry.registry import register
 from ...registry.schemas import (
@@ -15,6 +15,7 @@ from ...registry.schemas import (
     ParamSpec,
     SemanticsSpec,
 )
+import ta_py
 
 CMF_SPEC = IndicatorSpec(
     name="cmf",
@@ -40,62 +41,18 @@ def cmf(ctx: SeriesContext, period: int = 20) -> Series[Price]:
     if period <= 0:
         raise ValueError("CMF period must be positive")
 
-    h = ctx.high
-    l = ctx.low
-    c = ctx.close
-    v = ctx.volume
-
-    # Money Flow Multiplier
-    # Denominator (h - l)
-    range_hl = h - l
-
-    # Handling divide by zero where h == l
-    # We'll use a series of 0s for the multiplier where range is 0
-    numerator = (c - l) - (h - c)
-
-    # We can use a trick: (numerator / range_hl) and then fill NaNs or just use a loop
-    # Given Series architecture, a loop or a specialized kernel might be safer for edge cases.
-    # However, for simplicity and staying with composition:
-
-    # Let's use a safe division if possible.
-    # Actually, let's just use the algebraic form and hope for the best,
-    # OR implement it carefully.
-
-    # I'll implement Money Flow Volume via a simple list comprehension for robustness against H=L
-    mfv_values = []
-    for i in range(len(c)):
-        hl = Decimal(str(h.values[i])) - Decimal(str(l.values[i]))
-        if hl == 0:
-            mfv_values.append(Decimal(0))
-        else:
-            mfm = (
-                (Decimal(str(c.values[i])) - Decimal(str(l.values[i])))
-                - (Decimal(str(h.values[i])) - Decimal(str(c.values[i])))
-            ) / hl
-            mfv_values.append(mfm * Decimal(str(v.values[i])))
-
-    mfv_series = Series[Price](
-        timestamps=c.timestamps, values=tuple(Price(val) for val in mfv_values), symbol=c.symbol, timeframe=c.timeframe
+    h, l, c, v = ctx.high, ctx.low, ctx.close, ctx.volume
+    out = ta_py.cmf(
+        [float(x) for x in h.values],
+        [float(x) for x in l.values],
+        [float(x) for x in c.values],
+        [float(x) for x in v.values],
+        period,
     )
-
-    mfv_ctx = SeriesContext(close=mfv_series)
-    sum_mfv = rolling_sum(mfv_ctx, period)
-
-    v_ctx = SeriesContext(close=v)
-    sum_v = rolling_sum(v_ctx, period)
-
-    # Safe division for CMF
-    res_values = []
-    for i in range(len(sum_mfv)):
-        sv = Decimal(str(sum_v.values[i]))
-        if sv == 0:
-            res_values.append(Decimal(0))
-        else:
-            res_values.append(Decimal(str(sum_mfv.values[i])) / sv)
-
-    return Series[Price](
-        timestamps=sum_mfv.timestamps,
-        values=tuple(Price(v) for v in res_values),
-        symbol=sum_mfv.symbol,
-        timeframe=sum_mfv.timeframe,
+    return CoreSeries[Price](
+        timestamps=c.timestamps,
+        values=tuple(Price("NaN") if math.isnan(x) else Price(str(x)) for x in out),
+        symbol=c.symbol,
+        timeframe=c.timeframe,
+        availability_mask=tuple(not math.isnan(x) for x in out),
     )

@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import math
+from decimal import Decimal
+
 from ..core import Series
 from ..core.series import Series as CoreSeries
 from ..core.types import Price
@@ -14,20 +17,27 @@ from ..registry.schemas import (
     SemanticsSpec,
 )
 from .kernel import run_kernel
-from .kernels.ema import EMAKernel
-from .kernels.math import RMAKernel
 from .kernels.rolling import (
     RollingArgmaxKernel,
     RollingArgminKernel,
-    RollingMaxKernel,
-    RollingMeanKernel,
     RollingMedianKernel,
-    RollingMinKernel,
-    RollingStdKernel,
-    RollingSumKernel,
-    WMAKernel,
 )
 from .select import _select, _select_field
+
+import ta_py
+
+
+def _series_to_f64(src: Series[Price]) -> list[float]:
+    return [float(v) for v in src.values]
+
+
+def _f64_to_series(src: Series[Price], values: list[float]) -> Series[Price]:
+    return CoreSeries[Price](
+        timestamps=src.timestamps,
+        values=tuple(Price("NaN") if math.isnan(v) else Price(str(v)) for v in values),
+        symbol=src.symbol,
+        timeframe=src.timeframe,
+    )
 
 
 def _with_window_mask(res: Series[Price], period: int, src: Series | None = None) -> Series[Price]:
@@ -78,35 +88,45 @@ def _rolling_spec(name: str, aliases: tuple[str, ...], description: str) -> Indi
 @register(spec=_rolling_spec("rolling_sum", ("sum",), "Rolling sum over a window"))
 def rolling_sum(ctx: SeriesContext, period: int = 20, field: str | None = None) -> Series[Price]:
     src = _select_field(ctx, field) if field else _select(ctx)
-    res = run_kernel(src, RollingSumKernel(), min_periods=period, period=period)
+    if period <= 0:
+        raise ValueError("Period must be positive")
+    res = _f64_to_series(src, ta_py.rolling_sum(_series_to_f64(src), period))
     return _with_window_mask(res, period, src=src)
 
 
 @register(spec=_rolling_spec("rolling_mean", ("mean", "average", "avg"), "Rolling mean over a window"))
 def rolling_mean(ctx: SeriesContext, period: int = 20, field: str | None = None) -> Series[Price]:
     src = _select_field(ctx, field) if field else _select(ctx)
-    res = run_kernel(src, RollingMeanKernel(), min_periods=period, period=period)
+    if period <= 0:
+        raise ValueError("Period must be positive")
+    res = _f64_to_series(src, ta_py.rolling_mean(_series_to_f64(src), period))
     return _with_window_mask(res, period, src=src)
 
 
 @register(spec=_rolling_spec("rolling_std", ("std", "stddev"), "Rolling standard deviation over a window"))
 def rolling_std(ctx: SeriesContext, period: int = 20, field: str | None = None) -> Series[Price]:
     src = _select_field(ctx, field) if field else _select(ctx)
-    res = run_kernel(src, RollingStdKernel(), min_periods=period, period=period)
+    if period <= 0:
+        raise ValueError("Period must be positive")
+    res = _f64_to_series(src, ta_py.rolling_std(_series_to_f64(src), period))
     return _with_window_mask(res, period, src=src)
 
 
 @register(spec=_rolling_spec("max", (), "Maximum value in a rolling window"))
 def rolling_max(ctx: SeriesContext, period: int = 20, field: str | None = None) -> Series[Price]:
     source = _select_field(ctx, field) if field else _select(ctx)
-    res = run_kernel(source, RollingMaxKernel(), min_periods=period, period=period)
+    if period <= 0:
+        raise ValueError("Period must be positive")
+    res = _f64_to_series(source, ta_py.rolling_max(_series_to_f64(source), period))
     return _with_window_mask(res, period, src=source)
 
 
 @register(spec=_rolling_spec("min", (), "Minimum value in a rolling window"))
 def rolling_min(ctx: SeriesContext, period: int = 20, field: str | None = None) -> Series[Price]:
     source = _select_field(ctx, field) if field else _select(ctx)
-    res = run_kernel(source, RollingMinKernel(), min_periods=period, period=period)
+    if period <= 0:
+        raise ValueError("Period must be positive")
+    res = _f64_to_series(source, ta_py.rolling_min(_series_to_f64(source), period))
     return _with_window_mask(res, period, src=source)
 
 
@@ -135,14 +155,14 @@ def rolling_ema(ctx: SeriesContext, period: int = 20, field: str | None = None) 
     if period <= 0:
         raise ValueError("Period must be positive")
     src = _select_field(ctx, field) if field else _select(ctx)
-    res = run_kernel(src, EMAKernel(), min_periods=1, period=period)
+    res = _f64_to_series(src, ta_py.rolling_ema(_series_to_f64(src), period))
 
     # EMA is technically available from index 0, but we should respect source mask
-    final_mask = res.availability_mask
+    final_mask = tuple(True for _ in res.values)
     if src.availability_mask:
         from ..core.series import _and_masks
 
-        final_mask = _and_masks(res.availability_mask or (True,) * len(res), src.availability_mask)
+        final_mask = _and_masks(final_mask, src.availability_mask)
 
     return CoreSeries[Price](
         timestamps=res.timestamps,
@@ -176,13 +196,13 @@ def rolling_rma(ctx: SeriesContext, period: int = 14, field: str | None = None) 
     if period <= 0:
         raise ValueError("Period must be positive")
     src = _select_field(ctx, field) if field else _select(ctx)
-    res = run_kernel(src, RMAKernel(), min_periods=1, period=period)
+    res = _f64_to_series(src, ta_py.rolling_rma(_series_to_f64(src), period))
 
-    final_mask = res.availability_mask
+    final_mask = tuple(True for _ in res.values)
     if src.availability_mask:
         from ..core.series import _and_masks
 
-        final_mask = _and_masks(res.availability_mask or (True,) * len(res), src.availability_mask)
+        final_mask = _and_masks(final_mask, src.availability_mask)
 
     return CoreSeries[Price](
         timestamps=res.timestamps,
@@ -198,7 +218,7 @@ def rolling_wma(ctx: SeriesContext, period: int = 14, field: str | None = None) 
     if period <= 0:
         raise ValueError("Period must be positive")
     src = _select_field(ctx, field) if field else _select(ctx)
-    res = run_kernel(src, WMAKernel(), min_periods=period, period=period)
+    res = _f64_to_series(src, ta_py.rolling_wma(_series_to_f64(src), period))
     return _with_window_mask(res, period, src=src)
 
 

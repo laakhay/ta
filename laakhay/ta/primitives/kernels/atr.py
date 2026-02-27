@@ -1,4 +1,7 @@
-"""ATR Kernel implementation."""
+"""ATR kernel for incremental execution paths.
+
+Batch ATR execution is Rust-backed in the indicator path.
+"""
 
 from __future__ import annotations
 

@@ -14,5 +14,6 @@ See laakhay.ta.api for full API surface.
 
 from .api import *  # noqa: F401,F403
 from .api import __all__ as _api_all
+from .runtime import RuntimeBackend, get_runtime_backend, is_rust_backend
 
-__all__ = list(_api_all)
+__all__ = list(_api_all) + ["RuntimeBackend", "get_runtime_backend", "is_rust_backend"]

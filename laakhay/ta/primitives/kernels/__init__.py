@@ -5,7 +5,6 @@ This package is the single home for kernel state-transition code.
 
 from .adx import ADXKernel, ADXState
 from .atr import ATRKernel, ATRState
-from .ema import EMAKernel, EMAState
 from .klinger import KlingerVFKernel
 from .math import (
     AbsoluteValueKernel,
@@ -30,14 +29,8 @@ from .rolling import (
     RollingArgmaxKernel,
     RollingArgminKernel,
     RollingMaxKernel,
-    RollingMeanKernel,
     RollingMedianKernel,
     RollingMinKernel,
-    RollingState,
-    RollingStdKernel,
-    RollingStdState,
-    RollingSumKernel,
-    WMAState,
 )
 from .rsi import RSIKernel, RSIState
 from .supertrend import SupertrendKernel, SupertrendState
@@ -48,8 +41,6 @@ __all__ = [
     "ADXState",
     "ATRKernel",
     "ATRState",
-    "EMAKernel",
-    "EMAState",
     "AbsoluteValueKernel",
     "CumulativeSumKernel",
     "CumulativeSumState",
@@ -65,13 +56,8 @@ __all__ = [
     "RollingArgmaxKernel",
     "RollingArgminKernel",
     "RollingMaxKernel",
-    "RollingMeanKernel",
     "RollingMedianKernel",
     "RollingMinKernel",
-    "RollingState",
-    "RollingStdKernel",
-    "RollingStdState",
-    "RollingSumKernel",
     "RSIKernel",
     "RSIState",
     "SupertrendKernel",
@@ -80,7 +66,6 @@ __all__ = [
     "TrueRangeKernel",
     "TrueRangeState",
     "TypicalPriceKernel",
-    "WMAState",
     "VortexVMKernel",
     "OBVKernel",
     "OBVState",

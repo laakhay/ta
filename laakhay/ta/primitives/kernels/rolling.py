@@ -9,89 +9,6 @@ from ..kernel import Kernel
 
 
 @dataclass(frozen=True)
-class RollingState:
-    window: tuple[Decimal, ...]
-    sum_x: Decimal
-
-
-class RollingSumKernel(Kernel[RollingState]):
-    def initialize(self, history: list[Decimal], period: int, **kwargs: Any) -> RollingState:
-        win = tuple(history[-period:]) if history else ()
-        return RollingState(window=win, sum_x=sum(win) if win else Decimal(0))
-
-    def step(self, state: RollingState, x_t: Decimal, period: int, **kwargs: Any) -> tuple[RollingState, Decimal]:
-        new_win = list(state.window)
-        new_win.append(x_t)
-        if len(new_win) > period:
-            dropped = new_win.pop(0)
-        else:
-            dropped = Decimal(0)
-
-        new_sum = state.sum_x + x_t - dropped
-        return RollingState(window=tuple(new_win), sum_x=new_sum), new_sum
-
-
-class RollingMeanKernel(Kernel[RollingState]):
-    def initialize(self, history: list[Decimal], period: int, **kwargs: Any) -> RollingState:
-        win = tuple(history[-period:]) if history else ()
-        return RollingState(window=win, sum_x=sum(win) if win else Decimal(0))
-
-    def step(self, state: RollingState, x_t: Decimal, period: int, **kwargs: Any) -> tuple[RollingState, Decimal]:
-        new_win = list(state.window)
-        new_win.append(x_t)
-        if len(new_win) > period:
-            dropped = new_win.pop(0)
-        else:
-            dropped = Decimal(0)
-
-        new_sum = state.sum_x + x_t - dropped
-        mean = new_sum / Decimal(period) if len(new_win) == period else Decimal(0)
-        return RollingState(window=tuple(new_win), sum_x=new_sum), mean
-
-
-@dataclass(frozen=True)
-class RollingStdState:
-    window: tuple[Decimal, ...]
-    sum_x: Decimal
-    sum_x2: Decimal
-
-
-class RollingStdKernel(Kernel[RollingStdState]):
-    def initialize(self, history: list[Decimal], period: int, **kwargs: Any) -> RollingStdState:
-        win = tuple(history[-period:]) if history else ()
-        s1 = sum(win) if win else Decimal(0)
-        s2 = sum(x * x for x in win) if win else Decimal(0)
-        return RollingStdState(window=win, sum_x=s1, sum_x2=s2)
-
-    def step(
-        self,
-        state: RollingStdState,
-        x_t: Decimal,
-        period: int,
-        **kwargs: Any,
-    ) -> tuple[RollingStdState, Decimal]:
-        new_win = list(state.window)
-        new_win.append(x_t)
-        if len(new_win) > period:
-            dropped = new_win.pop(0)
-        else:
-            dropped = Decimal(0)
-
-        new_s1 = state.sum_x + x_t - dropped
-        new_s2 = state.sum_x2 + (x_t * x_t) - (dropped * dropped)
-
-        var = Decimal(0)
-        if len(new_win) >= period:
-            mean = new_s1 / Decimal(period)
-            var = (new_s2 / Decimal(period)) - (mean * mean)
-            if var < 0:
-                var = Decimal(0)
-
-        std = var.sqrt() if var > 0 else Decimal(0)
-        return RollingStdState(window=tuple(new_win), sum_x=new_s1, sum_x2=new_s2), std
-
-
-@dataclass(frozen=True)
 class _MonotonicWindowState:
     window: tuple[tuple[int, Decimal], ...]
     mono: tuple[tuple[int, Decimal], ...]
@@ -234,55 +151,11 @@ class RollingMedianKernel(Kernel[RollingMedianState]):
         return RollingMedianState(window=tuple(new_win)), med
 
 
-@dataclass(frozen=True)
-class WMAState:
-    window: tuple[Decimal, ...]
-
-
-class WMAKernel(Kernel[WMAState]):
-    def initialize(self, history: list[Decimal], period: int, **kwargs: Any) -> WMAState:
-        win = tuple(history[-(period - 1) :] if period > 1 else history)
-        return WMAState(window=win)
-
-    def step(
-        self,
-        state: WMAState,
-        x_t: Decimal,
-        period: int,
-        **kwargs: Any,
-    ) -> tuple[WMAState, Decimal]:
-        new_win = list(state.window)
-        new_win.append(x_t)
-        if len(new_win) > period:
-            new_win.pop(0)
-
-        # WMA = sum(price_i * weight_i) / sum(weights)
-        # weights = 1, 2, ..., period
-        # sum(weights) = period * (period + 1) / 2
-
-        wma = Decimal(0)
-        if len(new_win) == period:
-            weight_sum = period * (period + 1) // 2
-            total = Decimal(0)
-            for i, val in enumerate(new_win):
-                total += val * (i + 1)
-            wma = total / Decimal(weight_sum)
-
-        return WMAState(window=tuple(new_win)), wma
-
-
 __all__ = [
     "RollingArgmaxKernel",
     "RollingArgminKernel",
     "RollingMaxKernel",
-    "RollingMeanKernel",
     "RollingMedianKernel",
     "RollingMedianState",
     "RollingMinKernel",
-    "RollingState",
-    "RollingStdKernel",
-    "RollingStdState",
-    "RollingSumKernel",
-    "WMAKernel",
-    "WMAState",
 ]

@@ -9,8 +9,6 @@ from decimal import Decimal
 from typing import TYPE_CHECKING, Any
 
 from ..kernels.atr import ATRKernel
-from ..kernels.ema import EMAKernel
-from ..kernels.rolling import RollingMeanKernel, RollingStdKernel, RollingSumKernel
 from ..kernels.rsi import RSIKernel
 from ..kernels.stochastic import StochasticKernel
 
@@ -20,21 +18,11 @@ if TYPE_CHECKING:
 # kernel_id (from RuntimeBindingSpec) -> Kernel instance
 # Aliases share the same kernel; map all registered kernel_ids.
 _KERNEL_ID_TO_KERNEL: dict[str, Any] = {
-    "rolling_sum": RollingSumKernel(),
-    "sum": RollingSumKernel(),
-    "rolling_mean": RollingMeanKernel(),
-    "mean": RollingMeanKernel(),
-    "average": RollingMeanKernel(),
-    "avg": RollingMeanKernel(),
-    "sma": RollingMeanKernel(),
-    "rolling_std": RollingStdKernel(),
-    "std": RollingStdKernel(),
-    "stddev": RollingStdKernel(),
-    "rolling_ema": EMAKernel(),
-    "ema": EMAKernel(),
     "rsi": RSIKernel(),
     "atr": ATRKernel(),
     "stochastic": StochasticKernel(),
+    # Volume + moving-average families are Rust-batch-backed and intentionally
+    # not maintained here for incremental kernel routing.
 }
 
 
