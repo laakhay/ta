@@ -11,7 +11,6 @@ from laakhay.ta.core.dataset import Dataset
 from laakhay.ta.expr.dsl import compile_expression
 from laakhay.ta.expr.execution import evaluate_plan
 from laakhay.ta.expr.execution.backends.batch import BatchBackend
-from laakhay.ta.expr.execution.backends.incremental import IncrementalBackend
 from laakhay.ta.expr.execution.backends.incremental_rust import IncrementalRustBackend
 from laakhay.ta.expr.planner.evaluator import Evaluator
 from tests.parity.utils import assert_dict_parity, assert_series_parity
@@ -74,19 +73,16 @@ def test_expression_run_vs_evaluate_plan_parity(sample_dataset, expr_text):
     ],
 )
 def test_batch_vs_incremental_backend_parity(sample_dataset, expr_text):
-    """Batch, Python incremental, and Rust incremental backends must match."""
+    """Batch and Rust incremental backends must match."""
     expr = compile_expression(expr_text)
     plan = expr._ensure_plan()
 
     batch_res = BatchBackend().evaluate(plan, sample_dataset)
-    py_incr_res = IncrementalBackend().evaluate(plan, sample_dataset)
     rust_incr_res = IncrementalRustBackend().evaluate(plan, sample_dataset)
 
     if isinstance(batch_res, dict):
-        assert_dict_parity(batch_res, py_incr_res)
         assert_dict_parity(batch_res, rust_incr_res)
     else:
-        assert_series_parity(batch_res, py_incr_res)
         assert_series_parity(batch_res, rust_incr_res)
 
 

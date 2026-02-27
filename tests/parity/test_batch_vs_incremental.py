@@ -2,6 +2,7 @@ import pytest
 
 from laakhay.ta.core.dataset import Dataset
 from laakhay.ta.expr.execution.backends.batch import BatchBackend
+from laakhay.ta.expr.execution.backends.incremental_rust import IncrementalRustBackend
 
 from .utils import assert_dict_parity, assert_series_parity
 
@@ -55,10 +56,7 @@ def test_evaluation_parity(sample_dataset, expr_text):
     backend1 = BatchBackend()
     res1 = backend1.evaluate(plan, sample_dataset)
 
-    # Backend 2 (IncrementalBackend)
-    from laakhay.ta.expr.execution.backends.incremental import IncrementalBackend
-
-    backend2 = IncrementalBackend()
+    backend2 = IncrementalRustBackend()
     res2 = backend2.evaluate(plan, sample_dataset)
 
     if isinstance(res1, dict):
@@ -71,12 +69,10 @@ def test_incremental_replay(sample_dataset):
     """Test that snapshotting the state mid-stream and replaying produces matching output."""
     from laakhay.ta.expr.algebra.operators import Expression
     from laakhay.ta.expr.compile import compile_to_ir
-    from laakhay.ta.expr.execution.backends.incremental import IncrementalBackend
-
     expr = Expression(compile_to_ir("sma(close, 14)"))
     plan = expr._ensure_plan()
 
-    backend = IncrementalBackend()
+    backend = IncrementalRustBackend()
     res_full = backend.evaluate(plan, sample_dataset)
 
     backend.initialize(plan, sample_dataset)
@@ -127,5 +123,10 @@ def test_incremental_replay(sample_dataset):
     else:
         res_full_vals = res_full.values
 
-    # Compare second half values
-    assert tuple(res_full_vals[mid:]) == replay_vals
+    # Compare second half values with warmup-missing normalization.
+    for lhs, rhs in zip(tuple(res_full_vals[mid:]), replay_vals, strict=True):
+        lhs_missing = lhs is None or (hasattr(lhs, "is_nan") and lhs.is_nan())
+        rhs_missing = rhs is None or (hasattr(rhs, "is_nan") and rhs.is_nan())
+        if lhs_missing and rhs_missing:
+            continue
+        assert lhs == rhs

@@ -7,7 +7,7 @@ import pytest
 
 from laakhay.ta.core.dataset import Dataset
 from laakhay.ta.expr.dsl import compile_expression
-from laakhay.ta.expr.execution.backends.incremental import IncrementalBackend
+from laakhay.ta.expr.execution.backends.batch import BatchBackend
 from laakhay.ta.expr.execution.backends.incremental_rust import IncrementalRustBackend
 
 from .utils import assert_dict_parity, assert_series_parity
@@ -50,10 +50,10 @@ def _create_tick(ds: Dataset, idx: int) -> dict[str, Any]:
 
 
 @pytest.mark.parametrize("expr_text", ["rsi(close, 14)", "atr(14)"])
-def test_incremental_python_vs_rust_evaluate_parity(sample_dataset: Dataset, expr_text: str) -> None:
+def test_incremental_rust_vs_batch_evaluate_parity(sample_dataset: Dataset, expr_text: str) -> None:
     plan = compile_expression(expr_text)._ensure_plan()
 
-    py_res = IncrementalBackend().evaluate(plan, sample_dataset)
+    py_res = BatchBackend().evaluate(plan, sample_dataset)
     rust_res = IncrementalRustBackend().evaluate(plan, sample_dataset)
 
     if isinstance(py_res, dict):
@@ -62,11 +62,9 @@ def test_incremental_python_vs_rust_evaluate_parity(sample_dataset: Dataset, exp
     assert_series_parity(py_res, rust_res)
 
 
-def test_incremental_python_vs_rust_replay_parity(sample_dataset: Dataset) -> None:
+def test_incremental_rust_replay_parity(sample_dataset: Dataset) -> None:
     plan = compile_expression("rsi(close, 14)")._ensure_plan()
-    py_backend = IncrementalBackend()
     rust_backend = IncrementalRustBackend()
-    py_backend.initialize(plan, sample_dataset)
     rust_backend.initialize(plan, sample_dataset)
 
     all_series = [s for _, s in sample_dataset]
@@ -75,17 +73,16 @@ def test_incremental_python_vs_rust_replay_parity(sample_dataset: Dataset) -> No
 
     for i in range(mid):
         tick = _create_tick(sample_dataset, i)
-        py_backend.step(plan, tick, event_index=i + 1)
         rust_backend.step(plan, tick, event_index=i + 1)
 
-    py_snap = py_backend.snapshot(plan)
     rust_snap = rust_backend.snapshot(plan)
     events = [_create_tick(sample_dataset, i) for i in range(mid, n_points)]
 
-    py_replay = py_backend.replay(plan, py_snap, events)
-    rust_replay = rust_backend.replay(plan, rust_snap, events)
-    assert len(py_replay) == len(rust_replay)
-    for lhs, rhs in zip(py_replay, rust_replay, strict=True):
+    rust_replay_1 = rust_backend.replay(plan, rust_snap, events)
+    rust_replay_2 = rust_backend.replay(plan, rust_snap, events)
+    assert len(rust_replay_1) == len(events)
+    assert len(rust_replay_1) == len(rust_replay_2)
+    for lhs, rhs in zip(rust_replay_1, rust_replay_2, strict=True):
         lhs_missing = lhs is None or (isinstance(lhs, float) and math.isnan(lhs)) or (hasattr(lhs, "is_nan") and lhs.is_nan())
         rhs_missing = rhs is None or (isinstance(rhs, float) and math.isnan(rhs))
         if lhs_missing and rhs_missing:

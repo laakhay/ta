@@ -6,9 +6,7 @@ import os
 from typing import Literal
 
 ExecutionMode = Literal["batch", "incremental"]
-IncrementalBackendMode = Literal["rust", "python"]
 DEFAULT_EXECUTION_MODE: ExecutionMode = "batch"
-DEFAULT_INCREMENTAL_BACKEND: IncrementalBackendMode = "rust"
 
 
 def resolve_execution_mode(mode: str | None = None) -> ExecutionMode:
@@ -18,21 +16,9 @@ def resolve_execution_mode(mode: str | None = None) -> ExecutionMode:
     return selected
 
 
-def resolve_incremental_backend_mode(mode: str | None = None) -> IncrementalBackendMode:
-    selected = (mode or os.environ.get("TA_INCREMENTAL_BACKEND", DEFAULT_INCREMENTAL_BACKEND)).strip().lower()
-    if selected not in ("rust", "python"):
-        raise ValueError(f"Unsupported incremental backend '{selected}'. Expected 'rust' or 'python'.")
-    return "rust" if selected == "rust" else "python"
-
-
 def resolve_backend(mode: str | None = None):
     selected = resolve_execution_mode(mode)
     if selected == "incremental":
-        incr_backend = resolve_incremental_backend_mode()
-        if incr_backend == "python":
-            from .backends.incremental import IncrementalBackend
-
-            return IncrementalBackend()
         from .backends.incremental_rust import IncrementalRustBackend
 
         return IncrementalRustBackend()
