@@ -19,6 +19,11 @@ Do not remove Python incremental backend until Rust incremental backend reaches:
 2. batch-vs-incremental parity
 3. snapshot/replay parity
 
+Additional hard gates:
+4. deterministic replay equality on fixed golden fixtures
+5. CI-required differential suite (`python-incremental` vs `rust-incremental`) passes
+6. execution backend can be forced to both implementations during validation window
+
 ## Phase A: Rust incremental contracts
 ### Deliverables
 - `rust/crates/ta-engine/src/incremental/contracts.rs`
@@ -96,6 +101,9 @@ Port Python `node_adapters.py` behavior for:
 2. run CI for two cycles with python fallback still available
 3. remove Python incremental backend and node adapters
 
+Cutover safety note:
+- Do not perform deletions before at least one CI cycle with Rust incremental default and Python fallback still available.
+
 ### Cleanup targets (only after Phase F passes)
 - `laakhay/ta/expr/execution/node_adapters.py`
 - `laakhay/ta/primitives/adapters/registry_binding.py`
@@ -111,3 +119,4 @@ Port Python `node_adapters.py` behavior for:
 ## Acceptance criteria
 - Rust incremental backend passes all existing incremental parity/drift/replay tests.
 - Python incremental code can be deleted without loss of behavior.
+- Rust incremental semantics are explicitly modeled as `(state, update) -> (new_state, output)` at adapter and backend loop layers.

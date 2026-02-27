@@ -34,6 +34,7 @@ Rust owns:
 1. Runtime-heavy indicator kernels.
 2. Canonical numeric/runtime contracts.
 3. FFI-safe compute entrypoints.
+4. Incremental state-transition runtime semantics for streaming/backtest step loops.
 
 Python owns:
 1. Public ergonomics layer.
@@ -68,6 +69,7 @@ Post-beta:
 4. Enforce parity + performance gates in CI.
 5. Publish Rust crates and stabilize FFI ABI early.
 6. Remove duplicated Python runtime internals aggressively.
+7. Port incremental execution backend to Rust using deterministic `(state, update) -> (new_state, output)` semantics before deleting Python incremental internals.
 
 Execution plan reference:
 - `docs/plans/rust-core-modularization-commit-plan.md`
