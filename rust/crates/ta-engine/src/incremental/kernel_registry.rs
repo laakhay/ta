@@ -7,6 +7,10 @@ pub enum KernelId {
     Rsi,
     Atr,
     Stochastic,
+    Macd,
+    Bbands,
+    Adx,
+    Vwap,
 }
 
 impl KernelId {
@@ -15,6 +19,10 @@ impl KernelId {
             "rsi" => Some(Self::Rsi),
             "atr" => Some(Self::Atr),
             "stochastic" => Some(Self::Stochastic),
+            "macd" => Some(Self::Macd),
+            "bbands" => Some(Self::Bbands),
+            "adx" => Some(Self::Adx),
+            "vwap" => Some(Self::Vwap),
             _ => None,
         }
     }
@@ -45,7 +53,20 @@ pub fn coerce_incremental_input(
             let c = get_num(tick, "close").unwrap_or(0.0);
             IncrementalValue::Text(format!("{h},{l},{c}"))
         }
-        KernelId::Rsi => input_value,
+        KernelId::Vwap => {
+            let h = get_num(tick, "high").unwrap_or(0.0);
+            let l = get_num(tick, "low").unwrap_or(0.0);
+            let c = get_num(tick, "close").unwrap_or(0.0);
+            let v = get_num(tick, "volume").unwrap_or(0.0);
+            IncrementalValue::Text(format!("{h},{l},{c},{v}"))
+        }
+        KernelId::Adx => {
+            let h = get_num(tick, "high").unwrap_or(0.0);
+            let l = get_num(tick, "low").unwrap_or(0.0);
+            let c = get_num(tick, "close").unwrap_or(0.0);
+            IncrementalValue::Text(format!("{h},{l},{c}"))
+        }
+        KernelId::Macd | KernelId::Bbands | KernelId::Rsi => input_value,
     }
 }
 

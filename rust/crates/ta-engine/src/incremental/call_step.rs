@@ -23,6 +23,15 @@ pub enum KernelRuntimeState {
         highs: Vec<f64>,
         lows: Vec<f64>,
     },
+    Vwap {
+        highs: Vec<f64>,
+        lows: Vec<f64>,
+        closes: Vec<f64>,
+        volumes: Vec<f64>,
+    },
+    Generic {
+        kernel_id: KernelId,
+    },
 }
 
 pub fn initialize_kernel_state(
@@ -48,6 +57,13 @@ pub fn initialize_kernel_state(
             highs: Vec::new(),
             lows: Vec::new(),
         },
+        KernelId::Vwap => KernelRuntimeState::Vwap {
+            highs: Vec::new(),
+            lows: Vec::new(),
+            closes: Vec::new(),
+            volumes: Vec::new(),
+        },
+        id => KernelRuntimeState::Generic { kernel_id: id },
     }
 }
 
@@ -265,6 +281,82 @@ pub fn eval_call_step(
                 IncrementalValue::Number(k),
             )
         }
+        KernelRuntimeState::Vwap {
+            mut highs,
+            mut lows,
+            mut closes,
+            mut volumes,
+        } => {
+            let coerced = coerce_incremental_input(kernel_id, input_value, tick, None);
+            let (h, l, c, v) = match coerced {
+                IncrementalValue::Text(s) => {
+                    let parts: Vec<&str> = s.split(',').collect();
+                    if parts.len() != 4 {
+                        return (
+                            KernelRuntimeState::Vwap {
+                                highs,
+                                lows,
+                                closes,
+                                volumes,
+                            },
+                            IncrementalValue::Null,
+                        );
+                    }
+                    (
+                        parts[0].parse::<f64>().unwrap_or(0.0),
+                        parts[1].parse::<f64>().unwrap_or(0.0),
+                        parts[2].parse::<f64>().unwrap_or(0.0),
+                        parts[3].parse::<f64>().unwrap_or(0.0),
+                    )
+                }
+                _ => {
+                    return (
+                        KernelRuntimeState::Vwap {
+                            highs,
+                            lows,
+                            closes,
+                            volumes,
+                        },
+                        IncrementalValue::Null,
+                    )
+                }
+            };
+
+            highs.push(h);
+            lows.push(l);
+            closes.push(c);
+            volumes.push(v);
+
+            let hh = highs.iter().fold(f64::MIN, |a, b| a.max(*b));
+            let ll = lows.iter().fold(f64::MAX, |a, b| a.min(*b));
+            let _ = hh;
+            let _ = ll;
+
+            let mut sum_pv = 0.0;
+            let mut sum_v = 0.0;
+            for i in 0..closes.len() {
+                let tp = (highs[i] + lows[i] + closes[i]) / 3.0;
+                sum_pv += tp * volumes[i];
+                sum_v += volumes[i];
+            }
+
+            let vwap = if sum_v == 0.0 {
+                (h + l + c) / 3.0
+            } else {
+                sum_pv / sum_v
+            };
+
+            (
+                KernelRuntimeState::Vwap {
+                    highs,
+                    lows,
+                    closes,
+                    volumes,
+                },
+                IncrementalValue::Number(vwap),
+            )
+        }
+        KernelRuntimeState::Generic { kernel_id: _ } => (state, IncrementalValue::Null),
     }
 }
 
