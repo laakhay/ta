@@ -83,7 +83,9 @@ def test_incremental_rust_replay_parity(sample_dataset: Dataset) -> None:
     assert len(rust_replay_1) == len(events)
     assert len(rust_replay_1) == len(rust_replay_2)
     for lhs, rhs in zip(rust_replay_1, rust_replay_2, strict=True):
-        lhs_missing = lhs is None or (isinstance(lhs, float) and math.isnan(lhs)) or (hasattr(lhs, "is_nan") and lhs.is_nan())
+        lhs_missing = (
+            lhs is None or (isinstance(lhs, float) and math.isnan(lhs)) or (hasattr(lhs, "is_nan") and lhs.is_nan())
+        )
         rhs_missing = rhs is None or (isinstance(rhs, float) and math.isnan(rhs))
         if lhs_missing and rhs_missing:
             continue

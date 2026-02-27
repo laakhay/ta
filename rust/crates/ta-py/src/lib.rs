@@ -226,7 +226,7 @@ fn incremental_replay(
     for step in replay_out {
         py_list.append(incremental_map_to_pydict(py, &step)?)?;
     }
-    Ok(py_list.into_any().unbind().into())
+    Ok(py_list.into_any().unbind())
 }
 
 fn parse_requests(requests: &Bound<'_, PyList>) -> PyResult<Vec<KernelStepRequest>> {
@@ -268,7 +268,7 @@ fn parse_events(events: &Bound<'_, PyList>) -> PyResult<Vec<BTreeMap<String, Inc
     let mut out = Vec::with_capacity(events.len());
     for item in events.iter() {
         let d = item.downcast::<PyDict>()?;
-        out.push(parse_tick(&d)?);
+        out.push(parse_tick(d)?);
     }
     Ok(out)
 }
@@ -304,7 +304,7 @@ fn incremental_map_to_pydict(
             IncrementalValue::Null => d.set_item(k, py.None())?,
         }
     }
-    Ok(d.into_any().unbind().into())
+    Ok(d.into_any().unbind())
 }
 
 #[pymodule]

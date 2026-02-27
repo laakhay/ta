@@ -69,6 +69,7 @@ def test_incremental_replay(sample_dataset):
     """Test that snapshotting the state mid-stream and replaying produces matching output."""
     from laakhay.ta.expr.algebra.operators import Expression
     from laakhay.ta.expr.compile import compile_to_ir
+
     expr = Expression(compile_to_ir("sma(close, 14)"))
     plan = expr._ensure_plan()
 

@@ -7,7 +7,6 @@ from typing import Any
 from ...core import Series
 from ...core.dataset import Dataset
 from ...core.series import align_series
-from ...registry.models import SeriesContext
 from ..execution.context_builder import (
     build_evaluation_context,
     collect_required_field_names,

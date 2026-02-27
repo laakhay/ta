@@ -13,7 +13,7 @@ fn backend_step_snapshot_restore_replay_is_deterministic_for_rsi() {
         kwargs: BTreeMap::from([("period".to_string(), IncrementalValue::Number(2.0))]),
     }];
 
-    let events = vec![
+    let events = [
         BTreeMap::from([("close".to_string(), IncrementalValue::Number(10.0))]),
         BTreeMap::from([("close".to_string(), IncrementalValue::Number(11.0))]),
         BTreeMap::from([("close".to_string(), IncrementalValue::Number(12.0))]),
