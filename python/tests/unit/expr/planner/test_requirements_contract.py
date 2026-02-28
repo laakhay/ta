@@ -1,4 +1,6 @@
-from laakhay.ta.expr.dsl import compile_expression
+import pytest
+
+from laakhay.ta.expr.dsl import StrategyError, compile_expression
 
 
 def test_requirements_contract_presence():
@@ -61,15 +63,15 @@ def test_nested_indicator_requirements_golden():
 
 
 def test_multi_source_requirements_golden():
-    """Verify requirements for multi-source expressions."""
-    expr = compile_expression("BTC.trades.volume > mean(volume, 10)")
+    """Verify requirements for local-source expressions."""
+    expr = compile_expression("trades.volume > mean(volume, 10)")
     reqs = expr.requirements()
 
-    # Should have volume from trades (for BTC) and volume from ohlcv (default context)
+    # Should have volume from trades and volume from ohlcv (default context)
     vol_trades = next(r for r in reqs.data_requirements if r.source == "trades")
     vol_ohlcv = next(r for r in reqs.data_requirements if r.source == "ohlcv")
 
-    assert vol_trades.symbol == "BTC"
+    assert vol_trades.symbol is None
     assert vol_trades.field == "volume"
     assert vol_trades.min_lookback == 1
 
@@ -78,15 +80,7 @@ def test_multi_source_requirements_golden():
     assert vol_ohlcv.min_lookback == 10
 
 
-def test_exchange_qualified_requirements_golden():
-    """Verify requirements for exchange-qualified expressions."""
-    expr = compile_expression("binance.ETH.ohlcv.close > 2000")
-    reqs = expr.requirements()
-
-    assert len(reqs.data_requirements) == 1
-    req = reqs.data_requirements[0]
-    assert req.exchange == "binance"
-    assert req.symbol == "ETH"
-    assert req.source == "ohlcv"
-    assert req.field == "close"
-    assert req.min_lookback == 1
+def test_qualified_source_references_rejected():
+    """Verify exchange/symbol-qualified source references are rejected."""
+    with pytest.raises(StrategyError):
+        compile_expression("binance.ETH.ohlcv.close > 2000")

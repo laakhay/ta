@@ -130,7 +130,7 @@ class TestEvaluationBenchmarks:
         )
         ds.add_trade_series("BTCUSDT", "1h", trades_volume)
 
-        expr = compile_expression("sma(BTC.trades.volume, period=20)")
+        expr = compile_expression("sma(trades.volume, period=20)")
 
         def evaluate():
             return expr.run(ds)

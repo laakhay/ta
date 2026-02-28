@@ -54,7 +54,7 @@ class TestEvaluator:
         evaluator = Evaluator()
         ds = create_test_dataset()
 
-        expr = compile_expression("BTC.price > 100")
+        expr = compile_expression("close > 100")
         result = _extract_single_series(evaluator.evaluate(expr, ds))
 
         assert isinstance(result, Series)
@@ -67,7 +67,7 @@ class TestEvaluator:
         evaluator = Evaluator()
         ds = create_test_dataset()
 
-        expr = compile_expression("sma(BTC.price, period=5)")
+        expr = compile_expression("sma(close, period=5)")
         result = _extract_single_series(evaluator.evaluate(expr, ds))
 
         assert isinstance(result, Series)
@@ -87,7 +87,7 @@ class TestEvaluator:
         ]
         ds.add_series("ETHUSDT", "1h", OHLCV.from_bars(eth_bars, symbol="ETHUSDT", timeframe="1h"))
 
-        expr = compile_expression("BTC.price > 100")
+        expr = compile_expression("close > 100")
         results = evaluator.evaluate(expr, ds)
 
         assert isinstance(results, dict)
@@ -101,10 +101,10 @@ class TestEvaluator:
 
         # Create SourceRefNode directly
         source_expr = SourceRefNode(
-            symbol="BTCUSDT",
-            field="price",
+            symbol=None,
+            field="close",
             exchange=None,
-            timeframe="1h",
+            timeframe=None,
             source="ohlcv",
         )
 
@@ -208,7 +208,7 @@ class TestEvaluator:
         evaluator = Evaluator()
         ds = create_test_dataset()
 
-        expr = compile_expression("sma(BTC.price, period=5)")
+        expr = compile_expression("sma(close, period=5)")
 
         result1 = _extract_single_series(evaluator.evaluate(expr, ds))
         cache_size1 = len(evaluator._cache)
@@ -229,7 +229,7 @@ class TestEvaluator:
         evaluator = Evaluator()
         ds = Dataset()
 
-        expr = compile_expression("BTC.price > 100")
+        expr = compile_expression("close > 100")
         result = evaluator.evaluate(expr, ds)
         assert isinstance(result, dict)
         assert result == {}
@@ -258,7 +258,7 @@ class TestEvaluator:
         )
         ds.add_trade_series("BTCUSDT", "1h", trades_series)
 
-        expr = compile_expression("sma(BTC.trades.volume, period=5)")
+        expr = compile_expression("sma(trades.volume, period=5)")
         result = _extract_single_series(evaluator.evaluate(expr, ds))
 
         assert isinstance(result, Series)
