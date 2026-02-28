@@ -429,6 +429,11 @@ pub fn supertrend(
             final_lower[i] = basic_lower[i];
             continue;
         }
+        if final_upper[i - 1].is_nan() || final_lower[i - 1].is_nan() {
+            final_upper[i] = basic_upper[i];
+            final_lower[i] = basic_lower[i];
+            continue;
+        }
         final_upper[i] = if basic_upper[i] < final_upper[i - 1] || close[i - 1] > final_upper[i - 1] {
             basic_upper[i]
         } else {
@@ -441,13 +446,19 @@ pub fn supertrend(
         };
     }
 
-    for i in 0..n {
-        if basic_upper[i].is_nan() {
-            continue;
-        }
-        if i == 0 {
-            st[i] = final_upper[i];
-            direction[i] = -1.0;
+    let start = basic_upper
+        .iter()
+        .zip(final_upper.iter())
+        .position(|(b, f)| !b.is_nan() && !f.is_nan());
+    let Some(start_idx) = start else {
+        return (st, direction);
+    };
+
+    st[start_idx] = final_upper[start_idx];
+    direction[start_idx] = -1.0;
+
+    for i in (start_idx + 1)..n {
+        if basic_upper[i].is_nan() || final_upper[i].is_nan() || final_lower[i].is_nan() {
             continue;
         }
         if st[i - 1] == final_upper[i - 1] {
