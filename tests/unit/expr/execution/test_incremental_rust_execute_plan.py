@@ -34,17 +34,17 @@ def test_evaluate_uses_execute_plan_for_supported_root(sample_ohlcv_data, monkey
 
     called: dict[str, Any] = {}
 
-    def fake_execute_plan(dataset_id, symbol, timeframe, source, requests):  # noqa: ANN001
-        called["dataset_id"] = dataset_id
-        called["symbol"] = symbol
-        called["timeframe"] = timeframe
-        called["source"] = source
-        called["requests"] = requests
+    def fake_execute_plan_payload(payload):  # noqa: ANN001
+        called["dataset_id"] = payload["dataset_id"]
+        called["symbol"] = payload["partition"]["symbol"]
+        called["timeframe"] = payload["partition"]["timeframe"]
+        called["source"] = payload["partition"]["source"]
+        called["requests"] = payload["requests"]
         return {int(plan.graph.root_id): [42.0] * len(sample_ohlcv_data["timestamps"])}
 
     monkeypatch.setattr(
-        "laakhay.ta.expr.execution.backends.incremental_rust.ta_py.execute_plan",
-        fake_execute_plan,
+        "laakhay.ta.expr.execution.backends.incremental_rust.ta_py.execute_plan_payload",
+        fake_execute_plan_payload,
     )
 
     out = backend.evaluate(plan, ds)
@@ -86,13 +86,13 @@ def test_evaluate_uses_execute_plan_for_vwap_root(sample_ohlcv_data, monkeypatch
 
     called = {"count": 0}
 
-    def fake_execute_plan(dataset_id, symbol, timeframe, source, requests):  # noqa: ANN001
+    def fake_execute_plan_payload(payload):  # noqa: ANN001
         called["count"] += 1
         return {int(plan.graph.root_id): [1.0] * len(sample_ohlcv_data["timestamps"])}
 
     monkeypatch.setattr(
-        "laakhay.ta.expr.execution.backends.incremental_rust.ta_py.execute_plan",
-        fake_execute_plan,
+        "laakhay.ta.expr.execution.backends.incremental_rust.ta_py.execute_plan_payload",
+        fake_execute_plan_payload,
     )
 
     out = backend.evaluate(plan, ds)

@@ -124,13 +124,14 @@ class IncrementalRustBackend(ExecutionBackend):
             raise RuntimeError("execute_plan requires at least one rust-call request")
 
         selected_symbol, selected_timeframe, selected_source = self._resolve_partition(dataset, symbol, timeframe)
-        outputs = ta_py.execute_plan(
-            dataset.rust_dataset_id,
-            selected_symbol,
-            selected_timeframe,
-            selected_source,
-            requests,
+        payload = self._build_execute_plan_payload(
+            dataset_id=dataset.rust_dataset_id,
+            symbol=selected_symbol,
+            timeframe=selected_timeframe,
+            source=selected_source,
+            requests=requests,
         )
+        outputs = ta_py.execute_plan_payload(payload)
 
         root_id = int(plan.graph.root_id)
         root_values = outputs.get(root_id)
@@ -174,3 +175,24 @@ class IncrementalRustBackend(ExecutionBackend):
                 return str(key.symbol), key.timeframe, key.source
 
         raise RuntimeError("dataset must contain at least one OHLCV partition for execute_plan")
+
+    @staticmethod
+    def _build_execute_plan_payload(
+        *,
+        dataset_id: int,
+        symbol: str,
+        timeframe: str,
+        source: str,
+        requests: list[dict[str, Any]],
+    ) -> dict[str, Any]:
+        return {
+            "schema_version": 1,
+            "dataset_id": int(dataset_id),
+            "partition": {
+                "symbol": symbol,
+                "timeframe": timeframe,
+                "source": source,
+            },
+            "requests": requests,
+            "options": {},
+        }

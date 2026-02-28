@@ -28,18 +28,18 @@ def test_single_boundary_crossing_for_supported_plan(sample_ohlcv_data, monkeypa
     plan = compile_expression("rsi(close, 14)")._ensure_plan()
     backend = IncrementalRustBackend()
 
-    call_count = {"execute_plan": 0}
+    call_count = {"execute_plan_payload": 0}
 
     import laakhay.ta.expr.execution.backends.incremental_rust as backend_module
 
-    original = backend_module.ta_py.execute_plan
+    original = backend_module.ta_py.execute_plan_payload
 
-    def wrapped_execute_plan(*args, **kwargs):  # noqa: ANN002, ANN003
-        call_count["execute_plan"] += 1
+    def wrapped_execute_plan_payload(*args, **kwargs):  # noqa: ANN002, ANN003
+        call_count["execute_plan_payload"] += 1
         return original(*args, **kwargs)
 
-    monkeypatch.setattr(backend_module.ta_py, "execute_plan", wrapped_execute_plan)
+    monkeypatch.setattr(backend_module.ta_py, "execute_plan_payload", wrapped_execute_plan_payload)
     out = backend.evaluate(plan, ds)
 
     assert out
-    assert call_count["execute_plan"] == 1
+    assert call_count["execute_plan_payload"] == 1

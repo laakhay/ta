@@ -711,6 +711,47 @@ fn execute_plan(
     incremental_series_map_to_pydict(py, &out)
 }
 
+#[pyfunction]
+fn execute_plan_payload(py: Python<'_>, payload: &Bound<'_, PyDict>) -> PyResult<PyObject> {
+    let dataset_id: u64 = payload
+        .get_item("dataset_id")?
+        .ok_or_else(|| pyo3::exceptions::PyKeyError::new_err("missing dataset_id"))?
+        .extract()?;
+    let partition = payload
+        .get_item("partition")?
+        .ok_or_else(|| pyo3::exceptions::PyKeyError::new_err("missing partition"))?
+        .downcast_into::<PyDict>()?;
+    let symbol: String = partition
+        .get_item("symbol")?
+        .ok_or_else(|| pyo3::exceptions::PyKeyError::new_err("missing partition.symbol"))?
+        .extract()?;
+    let timeframe: String = partition
+        .get_item("timeframe")?
+        .ok_or_else(|| pyo3::exceptions::PyKeyError::new_err("missing partition.timeframe"))?
+        .extract()?;
+    let source: String = partition
+        .get_item("source")?
+        .ok_or_else(|| pyo3::exceptions::PyKeyError::new_err("missing partition.source"))?
+        .extract()?;
+    let requests = payload
+        .get_item("requests")?
+        .ok_or_else(|| pyo3::exceptions::PyKeyError::new_err("missing requests"))?
+        .downcast_into::<PyList>()?;
+
+    let parsed_requests = parse_requests(&requests)?;
+    let out = backend::execute_plan(
+        dataset_id,
+        &DatasetPartitionKey {
+            symbol,
+            timeframe,
+            source,
+        },
+        &parsed_requests,
+    )
+    .map_err(map_execute_plan_error)?;
+    incremental_series_map_to_pydict(py, &out)
+}
+
 fn parse_requests(requests: &Bound<'_, PyList>) -> PyResult<Vec<KernelStepRequest>> {
     let mut out = Vec::with_capacity(requests.len());
     for item in requests.iter() {
@@ -1011,5 +1052,6 @@ fn ta_py(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(incremental_snapshot, m)?)?;
     m.add_function(wrap_pyfunction!(incremental_replay, m)?)?;
     m.add_function(wrap_pyfunction!(execute_plan, m)?)?;
+    m.add_function(wrap_pyfunction!(execute_plan_payload, m)?)?;
     Ok(())
 }
