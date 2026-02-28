@@ -12,6 +12,7 @@ from ...registry.schemas import (
     IndicatorSpec,
     OutputSpec,
     ParamSpec,
+    RuntimeBindingSpec,
     SemanticsSpec,
 )
 from .._utils import results_to_series
@@ -25,6 +26,7 @@ CCI_SPEC = IndicatorSpec(
         required_fields=("high", "low", "close"),
         lookback_params=("period",),
     ),
+    runtime_binding=RuntimeBindingSpec(kernel_id="cci"),
 )
 
 

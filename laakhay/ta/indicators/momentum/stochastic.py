@@ -96,6 +96,7 @@ def stochastic(
             required_fields=("high", "low", "close"),
             lookback_params=("k_period", "d_period"),
         ),
+        runtime_binding=RuntimeBindingSpec(kernel_id="stochastic"),
     )
 )
 def stoch_k(ctx: SeriesContext, k_period: int = 14, d_period: int = 3, smooth: int = 1) -> Series[Price]:
@@ -116,6 +117,7 @@ def stoch_k(ctx: SeriesContext, k_period: int = 14, d_period: int = 3, smooth: i
             required_fields=("high", "low", "close"),
             lookback_params=("k_period", "d_period"),
         ),
+        runtime_binding=RuntimeBindingSpec(kernel_id="stochastic"),
     )
 )
 def stoch_d(ctx: SeriesContext, k_period: int = 14, d_period: int = 3, smooth: int = 1) -> Series[Price]:

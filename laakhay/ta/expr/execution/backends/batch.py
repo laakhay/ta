@@ -47,7 +47,7 @@ class BatchBackend(ExecutionBackend):
     def step(
         self,
         plan: PlanResult,
-        update_event: Any,
+        _update_event: Any,
         **options: Any,
     ) -> None:
         """Batch backend does not support incremental stepping."""
@@ -56,7 +56,7 @@ class BatchBackend(ExecutionBackend):
     def replay(
         self,
         plan: PlanResult,
-        replay_spec: Any,
+        _replay_spec: Any,
         **options: Any,
     ) -> None:
         """Batch backend does not support partial replay."""
