@@ -25,6 +25,25 @@ SOURCE_LIQUIDATION = "liquidation"
 SOURCE_DEFAULT = "default"
 
 
+def _load_ta_py() -> Any:
+    try:
+        import ta_py
+    except ImportError as exc:  # pragma: no cover - hard failure in runtime envs
+        raise RuntimeError("ta_py is required for rust-backed dataset execution") from exc
+    return ta_py
+
+
+def _to_epoch_millis(ts: Timestamp) -> int:
+    from .timestamps import coerce_timestamp
+
+    normalized = coerce_timestamp(ts)
+    return int(normalized.timestamp() * 1000)
+
+
+def _to_f64_list(values: tuple[Any, ...] | list[Any]) -> list[float]:
+    return [float(v) for v in values]
+
+
 @dataclass(frozen=True)
 class DatasetKey:
     """Immutable key for dataset series identification.
@@ -103,6 +122,8 @@ class Dataset:
 
     def __init__(self, metadata: DatasetMetadata | None = None):
         """Initialize dataset with optional metadata."""
+        self._ta_py = _load_ta_py()
+        self._rust_dataset_id: int = int(self._ta_py.dataset_create())
         self._series: dict[DatasetKey, OHLCV | Series[Any]] = {}
         self.metadata = metadata or DatasetMetadata()
         # Cache for multisource contexts per (symbol, timeframe, source) tuple
@@ -118,10 +139,57 @@ class Dataset:
         """Add a series to the dataset."""
         key = DatasetKey(symbol=symbol, timeframe=timeframe, source=source)
         self._series[key] = series
+        self._append_to_rust(key, series)
+        self._context_cache.clear()
 
     def add(self, symbol: Symbol, timeframe: str, source: str, series: OHLCV | Series[Any]) -> None:
         """Add a series to the dataset (alias for add_series with different parameter order)."""
         self.add_series(symbol, timeframe, series, source)
+
+    @property
+    def rust_dataset_id(self) -> int:
+        return self._rust_dataset_id
+
+    def rust_info(self) -> dict[str, int]:
+        return dict(self._ta_py.dataset_info(self._rust_dataset_id))
+
+    def _append_to_rust(self, key: DatasetKey, series: OHLCV | Series[Any]) -> None:
+        timestamps = [_to_epoch_millis(ts) for ts in series.timestamps]
+        if isinstance(series, OHLCV):
+            self._ta_py.dataset_append_ohlcv(
+                self._rust_dataset_id,
+                str(key.symbol),
+                key.timeframe,
+                key.source,
+                timestamps,
+                _to_f64_list(series.opens),
+                _to_f64_list(series.highs),
+                _to_f64_list(series.lows),
+                _to_f64_list(series.closes),
+                _to_f64_list(series.volumes),
+            )
+            return
+
+        field = key.source if key.source != SOURCE_DEFAULT else "value"
+        self._ta_py.dataset_append_series(
+            self._rust_dataset_id,
+            str(key.symbol),
+            key.timeframe,
+            key.source,
+            field,
+            timestamps,
+            _to_f64_list(series.values),
+        )
+
+    def __del__(self) -> None:
+        dataset_id = getattr(self, "_rust_dataset_id", None)
+        ta_py = getattr(self, "_ta_py", None)
+        if dataset_id is None or ta_py is None:
+            return
+        try:
+            ta_py.dataset_drop(dataset_id)
+        except Exception:
+            return
 
     def add_trade_series(
         self,
