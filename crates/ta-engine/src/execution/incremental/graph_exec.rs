@@ -126,6 +126,22 @@ pub(crate) fn execute_plan_graph_payload(
                     .collect::<Result<Vec<Vec<f64>>, ExecutePlanError>>()?;
                 dispatch_call_node(&name, meta, &child_series, ohlcv)?
             }
+            "time_shift" => {
+                if child_ids.is_empty() {
+                    return Err(ExecutePlanError::InvalidPayload(format!(
+                        "time_shift node {node_id} requires one child"
+                    )));
+                }
+                let base = outputs.get(&child_ids[0]).ok_or_else(|| {
+                    ExecutePlanError::InvalidPayload(format!(
+                        "missing time_shift child output for node {}",
+                        child_ids[0]
+                    ))
+                })?;
+                let steps = parse_shift_steps(meta.get("shift").map(|s| s.as_str()).unwrap_or("1")).max(1);
+                let operation = meta.get("operation").map(|s| s.as_str()).unwrap_or("change");
+                apply_time_shift_op(base, steps, operation)
+            }
             "binary_op" => {
                 if child_ids.len() < 2 {
                     return Err(ExecutePlanError::InvalidPayload(format!(
@@ -211,6 +227,36 @@ fn truthy(value: &IncrementalValue) -> bool {
     }
 }
 
+fn parse_shift_steps(shift: &str) -> usize {
+    let digits: String = shift.chars().take_while(|c| c.is_ascii_digit()).collect();
+    digits.parse::<usize>().unwrap_or(1)
+}
+
+fn apply_time_shift_op(base: &[IncrementalValue], steps: usize, operation: &str) -> Vec<IncrementalValue> {
+    let mut out = vec![IncrementalValue::Null; base.len()];
+    for i in steps..base.len() {
+        let cur = as_number(&base[i]);
+        let prev = as_number(&base[i - steps]);
+        out[i] = match operation {
+            "change_pct" => {
+                if prev == 0.0 || prev.is_nan() || cur.is_nan() {
+                    IncrementalValue::Null
+                } else {
+                    IncrementalValue::Number(((cur - prev) / prev) * 100.0)
+                }
+            }
+            _ => {
+                if prev.is_nan() || cur.is_nan() {
+                    IncrementalValue::Null
+                } else {
+                    IncrementalValue::Number(cur - prev)
+                }
+            }
+        };
+    }
+    out
+}
+
 fn dispatch_call_node(
     name: &str,
     meta: &BTreeMap<String, String>,
@@ -237,9 +283,28 @@ fn dispatch_call_node(
     let to_bool = |values: Vec<bool>| values.into_iter().map(IncrementalValue::Bool).collect();
 
     let out = match name {
+        "select" => {
+            let field = meta
+                .get("kw_field")
+                .or_else(|| meta.get("field"))
+                .map(|v| v.as_str())
+                .unwrap_or("close");
+            let selected = match field {
+                "open" => &ohlcv.open,
+                "high" => &ohlcv.high,
+                "low" => &ohlcv.low,
+                "volume" => &ohlcv.volume,
+                _ => &ohlcv.close,
+            };
+            selected.iter().copied().map(IncrementalValue::Number).collect()
+        }
         "sma" | "mean" | "rolling_mean" => {
             let period = get_usize(meta, "period", "arg_0", 20);
             to_num(crate::rolling::rolling_mean(&close, period))
+        }
+        "rolling_median" | "median" => {
+            let period = get_usize(meta, "period", "arg_0", 20);
+            to_num(crate::rolling::rolling_median(&close, period))
         }
         "ema" | "rolling_ema" => {
             let period = get_usize(meta, "period", "arg_0", 20);
