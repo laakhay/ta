@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import ta_py
 from decimal import Decimal
 
 from ...core import Series
@@ -14,8 +15,10 @@ from ...registry.schemas import (
     IndicatorSpec,
     OutputSpec,
     ParamSpec,
+    RuntimeBindingSpec,
     SemanticsSpec,
 )
+from .._utils import results_to_series
 
 CMO_SPEC = IndicatorSpec(
     name="cmo",
@@ -26,6 +29,7 @@ CMO_SPEC = IndicatorSpec(
         required_fields=("close",),
         lookback_params=("period",),
     ),
+    runtime_binding=RuntimeBindingSpec(kernel_id="cmo"),
 )
 
 
@@ -38,7 +42,11 @@ def cmo(ctx: SeriesContext, period: int = 14) -> Series[Price]:
     """
     if period <= 0:
         raise ValueError("CMO period must be positive")
+    if hasattr(ta_py, "cmo"):
+        out = ta_py.cmo([float(v) for v in ctx.close.values], period)
+        return results_to_series(out, ctx.close, value_class=Price)
 
+    # Temporary fallback while environments upgrade ta_py.
     close = ctx.close
     n = len(close)
     if n < 2:
@@ -49,14 +57,9 @@ def cmo(ctx: SeriesContext, period: int = 14) -> Series[Price]:
             timeframe=close.timeframe,
         )
 
-    # Calculate gains and losses
-    gains = []
-    losses = []
-
+    gains = [Decimal(0)]
+    losses = [Decimal(0)]
     prev_val = Decimal(str(close.values[0]))
-    gains.append(Decimal(0))
-    losses.append(Decimal(0))
-
     for i in range(1, n):
         curr_val = Decimal(str(close.values[i]))
         if curr_val > prev_val:
@@ -79,20 +82,15 @@ def cmo(ctx: SeriesContext, period: int = 14) -> Series[Price]:
         symbol=close.symbol,
         timeframe=close.timeframe,
     )
-
     sum_gains = rolling_sum(SeriesContext(close=gains_series), period=period)
     sum_losses = rolling_sum(SeriesContext(close=losses_series), period=period)
 
-    # CMO calculation with safe division
     cmo_vals = []
     for i in range(n):
         sg = Decimal(str(sum_gains.values[i]))
         sl = Decimal(str(sum_losses.values[i]))
         denom = sg + sl
-        if denom == 0:
-            cmo_vals.append(Decimal(0))
-        else:
-            cmo_vals.append(Decimal("100") * (sg - sl) / denom)
+        cmo_vals.append(Decimal(0) if denom == 0 else Decimal("100") * (sg - sl) / denom)
 
     return CoreSeries[Price](
         timestamps=close.timestamps,

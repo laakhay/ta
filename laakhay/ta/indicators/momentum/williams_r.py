@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import ta_py
 from decimal import Decimal
 
 from ...core import Series
@@ -13,8 +14,10 @@ from ...registry.schemas import (
     IndicatorSpec,
     OutputSpec,
     ParamSpec,
+    RuntimeBindingSpec,
     SemanticsSpec,
 )
+from .._utils import results_to_series
 
 WILLIAMS_R_SPEC = IndicatorSpec(
     name="williams_r",
@@ -25,6 +28,7 @@ WILLIAMS_R_SPEC = IndicatorSpec(
         required_fields=("high", "low", "close"),
         lookback_params=("period",),
     ),
+    runtime_binding=RuntimeBindingSpec(kernel_id="williams_r"),
 )
 
 
@@ -38,13 +42,20 @@ def williams_r(ctx: SeriesContext, period: int = 14) -> Series[Price]:
     if period <= 0:
         raise ValueError("Williams %R period must be positive")
 
+    if hasattr(ta_py, "williams_r"):
+        out = ta_py.williams_r(
+            [float(v) for v in ctx.high.values],
+            [float(v) for v in ctx.low.values],
+            [float(v) for v in ctx.close.values],
+            period,
+        )
+        return results_to_series(out, ctx.close, value_class=Price)
+
+    # Temporary fallback while environments upgrade ta_py.
     hh = rolling_max(ctx, period, field="high")
     ll = rolling_min(ctx, period, field="low")
     c = ctx.close
-
     range_hhll = hh - ll
-
-    # Safe division
     res_values = []
     for i in range(len(hh)):
         r = Decimal(str(range_hhll.values[i]))
@@ -52,7 +63,9 @@ def williams_r(ctx: SeriesContext, period: int = 14) -> Series[Price]:
             res_values.append(Decimal(0))
         else:
             res_values.append((Decimal(str(hh.values[i])) - Decimal(str(c.values[i]))) / r * Decimal("-100"))
-
     return Series[Price](
-        timestamps=hh.timestamps, values=tuple(Price(v) for v in res_values), symbol=hh.symbol, timeframe=hh.timeframe
+        timestamps=hh.timestamps,
+        values=tuple(Price(v) for v in res_values),
+        symbol=hh.symbol,
+        timeframe=hh.timeframe,
     )
