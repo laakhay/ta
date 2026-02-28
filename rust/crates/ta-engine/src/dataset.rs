@@ -162,6 +162,7 @@ pub fn dataset_info(id: DatasetId) -> Result<DatasetInfo, DatasetRegistryError> 
     })
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn append_ohlcv(
     id: DatasetId,
     key: DatasetPartitionKey,
@@ -305,10 +306,7 @@ fn ensure_strictly_increasing_timestamps(
     field: &'static str,
     timestamps: &[i64],
 ) -> Result<(), DatasetRegistryError> {
-    if timestamps
-        .windows(2)
-        .all(|w| matches!(w, [a, b] if b >= a))
-    {
+    if timestamps.windows(2).all(|w| matches!(w, [a, b] if b >= a)) {
         Ok(())
     } else {
         Err(DatasetRegistryError::NonMonotonicTimestamps { field })

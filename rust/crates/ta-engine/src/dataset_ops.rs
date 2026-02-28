@@ -100,13 +100,25 @@ pub fn sync_timeframe(
     }
 
     match fill {
-        "ffill" => Ok(sync_ffill(source_timestamps, source_values, reference_timestamps)),
-        "linear" => Ok(sync_linear(source_timestamps, source_values, reference_timestamps)),
+        "ffill" => Ok(sync_ffill(
+            source_timestamps,
+            source_values,
+            reference_timestamps,
+        )),
+        "linear" => Ok(sync_linear(
+            source_timestamps,
+            source_values,
+            reference_timestamps,
+        )),
         other => Err(DatasetOpsError::UnsupportedFillMode(other.to_string())),
     }
 }
 
-fn sync_ffill(source_timestamps: &[i64], source_values: &[f64], reference_timestamps: &[i64]) -> Vec<f64> {
+fn sync_ffill(
+    source_timestamps: &[i64],
+    source_values: &[f64],
+    reference_timestamps: &[i64],
+) -> Vec<f64> {
     let mut out = Vec::with_capacity(reference_timestamps.len());
     let mut pos = 0_usize;
     let mut last = source_values[0];
@@ -120,7 +132,11 @@ fn sync_ffill(source_timestamps: &[i64], source_values: &[f64], reference_timest
     out
 }
 
-fn sync_linear(source_timestamps: &[i64], source_values: &[f64], reference_timestamps: &[i64]) -> Vec<f64> {
+fn sync_linear(
+    source_timestamps: &[i64],
+    source_values: &[f64],
+    reference_timestamps: &[i64],
+) -> Vec<f64> {
     let mut out = Vec::with_capacity(reference_timestamps.len());
     for &ts in reference_timestamps {
         match source_timestamps.binary_search(&ts) {

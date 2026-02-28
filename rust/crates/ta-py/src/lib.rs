@@ -116,7 +116,8 @@ fn series_downsample(
     factor: usize,
     agg: String,
 ) -> PyResult<(Vec<i64>, Vec<f64>)> {
-    ta_engine::dataset_ops::downsample(&timestamps, &values, factor, &agg).map_err(map_dataset_ops_error)
+    ta_engine::dataset_ops::downsample(&timestamps, &values, factor, &agg)
+        .map_err(map_dataset_ops_error)
 }
 
 #[pyfunction]
@@ -125,7 +126,8 @@ fn series_upsample_ffill(
     values: Vec<f64>,
     factor: usize,
 ) -> PyResult<(Vec<i64>, Vec<f64>)> {
-    ta_engine::dataset_ops::upsample_ffill(&timestamps, &values, factor).map_err(map_dataset_ops_error)
+    ta_engine::dataset_ops::upsample_ffill(&timestamps, &values, factor)
+        .map_err(map_dataset_ops_error)
 }
 
 #[pyfunction]
@@ -874,9 +876,9 @@ fn map_execute_plan_error(err: ExecutePlanError) -> PyErr {
 
 fn map_dataset_ops_error(err: DatasetOpsError) -> PyErr {
     match err {
-        DatasetOpsError::LengthMismatch => {
-            pyo3::exceptions::PyValueError::new_err("timestamps and values must have identical lengths")
-        }
+        DatasetOpsError::LengthMismatch => pyo3::exceptions::PyValueError::new_err(
+            "timestamps and values must have identical lengths",
+        ),
         DatasetOpsError::InvalidFactor => {
             pyo3::exceptions::PyValueError::new_err("factor must be positive")
         }

@@ -67,7 +67,9 @@ def test_execute_plan_output_order_is_deterministic(sample_ohlcv_data) -> None:
             kwargs={"period": 14},
         ),
     ]
-    out = ta_py.execute_plan(ds.rust_dataset_id, sample_ohlcv_data["symbol"], sample_ohlcv_data["timeframe"], "ohlcv", requests)
+    out = ta_py.execute_plan(
+        ds.rust_dataset_id, sample_ohlcv_data["symbol"], sample_ohlcv_data["timeframe"], "ohlcv", requests
+    )
     assert list(out.keys()) == [1, 2]
 
     out2 = ta_py.execute_plan(

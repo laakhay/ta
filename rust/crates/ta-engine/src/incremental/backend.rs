@@ -1,11 +1,11 @@
 use std::collections::BTreeMap;
 
-use crate::dataset::{self, DatasetId, DatasetPartitionKey};
 use super::call_step::{eval_call_step, initialize_kernel_state, KernelRuntimeState};
 use super::contracts::{IncrementalValue, RuntimeSnapshot};
 use super::kernel_registry::KernelId;
 use super::state::NodeRuntimeState;
 use super::store::RuntimeStateStore;
+use crate::dataset::{self, DatasetId, DatasetPartitionKey};
 use thiserror::Error;
 
 #[derive(Debug, Clone)]
@@ -120,7 +120,9 @@ pub enum ExecutePlanError {
         timeframe: String,
         data_source: String,
     },
-    #[error("ohlcv columns missing for symbol={symbol} timeframe={timeframe} source={data_source}")]
+    #[error(
+        "ohlcv columns missing for symbol={symbol} timeframe={timeframe} source={data_source}"
+    )]
     MissingOhlcv {
         symbol: String,
         timeframe: String,
@@ -162,10 +164,19 @@ pub fn execute_plan(
     let rows = ohlcv.timestamps.len();
     for idx in 0..rows {
         let mut tick = BTreeMap::new();
-        tick.insert("open".to_string(), IncrementalValue::Number(ohlcv.open[idx]));
-        tick.insert("high".to_string(), IncrementalValue::Number(ohlcv.high[idx]));
+        tick.insert(
+            "open".to_string(),
+            IncrementalValue::Number(ohlcv.open[idx]),
+        );
+        tick.insert(
+            "high".to_string(),
+            IncrementalValue::Number(ohlcv.high[idx]),
+        );
         tick.insert("low".to_string(), IncrementalValue::Number(ohlcv.low[idx]));
-        tick.insert("close".to_string(), IncrementalValue::Number(ohlcv.close[idx]));
+        tick.insert(
+            "close".to_string(),
+            IncrementalValue::Number(ohlcv.close[idx]),
+        );
         tick.insert(
             "volume".to_string(),
             IncrementalValue::Number(ohlcv.volume[idx]),
@@ -183,7 +194,11 @@ pub fn execute_plan(
 pub fn execute_plan_payload(
     payload: &ExecutePlanPayload,
 ) -> Result<BTreeMap<u32, Vec<IncrementalValue>>, ExecutePlanError> {
-    execute_plan(payload.dataset_id, &payload.partition_key, &payload.requests)
+    execute_plan(
+        payload.dataset_id,
+        &payload.partition_key,
+        &payload.requests,
+    )
 }
 
 fn encode_kernel_state(state: &KernelRuntimeState) -> BTreeMap<String, IncrementalValue> {

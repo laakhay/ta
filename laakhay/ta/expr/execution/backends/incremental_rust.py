@@ -165,9 +165,7 @@ class IncrementalRustBackend(ExecutionBackend):
             if isinstance(fallback, OHLCV):
                 return symbol, timeframe, "default"
 
-            raise RuntimeError(
-                f"dataset does not contain OHLCV source for symbol={symbol} timeframe={timeframe}"
-            )
+            raise RuntimeError(f"dataset does not contain OHLCV source for symbol={symbol} timeframe={timeframe}")
 
         for key in dataset.keys:
             series_obj = dataset.series(key.symbol, key.timeframe, key.source)
