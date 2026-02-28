@@ -86,7 +86,7 @@ impl std::fmt::Display for DatasetRegistryError {
                 "length mismatch for {field}: expected {expected}, got {got}"
             ),
             Self::NonMonotonicTimestamps { field } => {
-                write!(f, "timestamps must be strictly increasing for {field}")
+                write!(f, "timestamps must be non-decreasing for {field}")
             }
             Self::EmptyField { field } => write!(f, "empty field not allowed: {field}"),
         }
@@ -208,7 +208,7 @@ pub fn append_ohlcv(
     });
 
     if let (Some(last), Some(first)) = (columns.timestamps.last(), timestamps.first()) {
-        if first <= last {
+        if first < last {
             return Err(DatasetRegistryError::NonMonotonicTimestamps {
                 field: "timestamps",
             });
@@ -266,7 +266,7 @@ pub fn append_series(
         });
 
     if let (Some(last), Some(first)) = (series.timestamps.last(), timestamps.first()) {
-        if first <= last {
+        if first < last {
             return Err(DatasetRegistryError::NonMonotonicTimestamps {
                 field: "timestamps",
             });
@@ -307,7 +307,7 @@ fn ensure_strictly_increasing_timestamps(
 ) -> Result<(), DatasetRegistryError> {
     if timestamps
         .windows(2)
-        .all(|w| matches!(w, [a, b] if b > a))
+        .all(|w| matches!(w, [a, b] if b >= a))
     {
         Ok(())
     } else {

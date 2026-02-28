@@ -884,7 +884,7 @@ fn map_dataset_error(err: DatasetRegistryError) -> PyErr {
         )),
         DatasetRegistryError::NonMonotonicTimestamps { field } => {
             pyo3::exceptions::PyValueError::new_err(format!(
-                "timestamps must be strictly increasing for {field}"
+                "timestamps must be non-decreasing for {field}"
             ))
         }
         DatasetRegistryError::EmptyField { field } => {
