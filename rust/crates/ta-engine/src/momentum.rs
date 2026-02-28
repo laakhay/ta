@@ -277,3 +277,98 @@ pub fn ao(high: &[f64], low: &[f64], fast_period: usize, slow_period: usize) -> 
     }
     out
 }
+
+pub fn coppock(values: &[f64], wma_period: usize, fast_roc: usize, slow_roc: usize) -> Vec<f64> {
+    let n = values.len();
+    let mut out = vec![f64::NAN; n];
+    if n == 0 || wma_period == 0 || fast_roc == 0 || slow_roc == 0 {
+        return out;
+    }
+
+    let roc_fast = roc(values, fast_roc);
+    let roc_slow = roc(values, slow_roc);
+    let mut sum = vec![f64::NAN; n];
+    for i in 0..n {
+        if !roc_fast[i].is_nan() && !roc_slow[i].is_nan() {
+            sum[i] = roc_fast[i] + roc_slow[i];
+        }
+    }
+    crate::moving_averages::wma(&sum, wma_period)
+}
+
+pub fn mfi(high: &[f64], low: &[f64], close: &[f64], volume: &[f64], period: usize) -> Vec<f64> {
+    let n = close.len();
+    let mut out = vec![f64::NAN; n];
+    if n == 0 || period == 0 || high.len() != n || low.len() != n || volume.len() != n {
+        return out;
+    }
+
+    let mut tp = vec![0.0; n];
+    let mut rmf = vec![0.0; n];
+    for i in 0..n {
+        tp[i] = (high[i] + low[i] + close[i]) / 3.0;
+        rmf[i] = tp[i] * volume[i];
+    }
+
+    let mut pos = vec![0.0; n];
+    let mut neg = vec![0.0; n];
+    for i in 1..n {
+        if tp[i] > tp[i - 1] {
+            pos[i] = rmf[i];
+        } else if tp[i] < tp[i - 1] {
+            neg[i] = rmf[i];
+        }
+    }
+
+    let pos_sum = crate::rolling::rolling_sum(&pos, period);
+    let neg_sum = crate::rolling::rolling_sum(&neg, period);
+    for i in 0..n {
+        if pos_sum[i].is_nan() || neg_sum[i].is_nan() {
+            continue;
+        }
+        if neg_sum[i] == 0.0 {
+            out[i] = 100.0;
+        } else {
+            let mfr = pos_sum[i] / neg_sum[i];
+            out[i] = 100.0 - (100.0 / (1.0 + mfr));
+        }
+    }
+    out
+}
+
+pub fn vortex(high: &[f64], low: &[f64], close: &[f64], period: usize) -> (Vec<f64>, Vec<f64>) {
+    let n = close.len();
+    let mut plus = vec![f64::NAN; n];
+    let mut minus = vec![f64::NAN; n];
+    if n == 0 || period == 0 || high.len() != n || low.len() != n {
+        return (plus, minus);
+    }
+
+    let mut tr = vec![f64::NAN; n];
+    let mut vm_plus = vec![f64::NAN; n];
+    let mut vm_minus = vec![f64::NAN; n];
+
+    for i in 1..n {
+        vm_plus[i] = (high[i] - low[i - 1]).abs();
+        vm_minus[i] = (low[i] - high[i - 1]).abs();
+
+        let hl = high[i] - low[i];
+        let hc = (high[i] - close[i - 1]).abs();
+        let lc = (low[i] - close[i - 1]).abs();
+        tr[i] = hl.max(hc).max(lc);
+    }
+
+    let tr_sum = crate::rolling::rolling_sum(&tr, period);
+    let vp_sum = crate::rolling::rolling_sum(&vm_plus, period);
+    let vm_sum = crate::rolling::rolling_sum(&vm_minus, period);
+
+    for i in 0..n {
+        if tr_sum[i].is_nan() || tr_sum[i] == 0.0 || vp_sum[i].is_nan() || vm_sum[i].is_nan() {
+            continue;
+        }
+        plus[i] = vp_sum[i] / tr_sum[i];
+        minus[i] = vm_sum[i] / tr_sum[i];
+    }
+
+    (plus, minus)
+}

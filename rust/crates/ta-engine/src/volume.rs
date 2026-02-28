@@ -120,3 +120,26 @@ pub fn vwap(high: &[f64], low: &[f64], close: &[f64], volume: &[f64]) -> Vec<f64
 
     out
 }
+
+pub fn klinger(
+    high: &[f64],
+    low: &[f64],
+    close: &[f64],
+    volume: &[f64],
+    fast_period: usize,
+    slow_period: usize,
+    signal_period: usize,
+) -> (Vec<f64>, Vec<f64>) {
+    let vf = klinger_vf(high, low, close, volume);
+    let ema_fast = crate::moving_averages::ema(&vf, fast_period);
+    let ema_slow = crate::moving_averages::ema(&vf, slow_period);
+    let n = close.len();
+    let mut klinger_line = vec![f64::NAN; n];
+    for i in 0..n {
+        if !ema_fast[i].is_nan() && !ema_slow[i].is_nan() {
+            klinger_line[i] = ema_fast[i] - ema_slow[i];
+        }
+    }
+    let signal = crate::moving_averages::ema(&klinger_line, signal_period);
+    (klinger_line, signal)
+}

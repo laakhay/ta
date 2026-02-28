@@ -198,3 +198,274 @@ pub fn swing_points_raw(
 
     (flags_high, flags_low)
 }
+
+pub fn elder_ray(high: &[f64], low: &[f64], close: &[f64], period: usize) -> (Vec<f64>, Vec<f64>) {
+    let ema_vals = crate::moving_averages::ema(close, period);
+    let n = close.len();
+    let mut bull = vec![f64::NAN; n];
+    let mut bear = vec![f64::NAN; n];
+    for i in 0..n {
+        if !ema_vals[i].is_nan() {
+            bull[i] = high[i] - ema_vals[i];
+            bear[i] = low[i] - ema_vals[i];
+        }
+    }
+    (bull, bear)
+}
+
+pub fn ichimoku(
+    high: &[f64],
+    low: &[f64],
+    close: &[f64],
+    tenkan_period: usize,
+    kijun_period: usize,
+    span_b_period: usize,
+    displacement: usize,
+) -> (Vec<f64>, Vec<f64>, Vec<f64>, Vec<f64>, Vec<f64>) {
+    let n = close.len();
+    let mut empty = vec![f64::NAN; n];
+    if n == 0
+        || high.len() != n
+        || low.len() != n
+        || tenkan_period == 0
+        || kijun_period == 0
+        || span_b_period == 0
+        || displacement == 0
+    {
+        return (
+            empty.clone(),
+            empty.clone(),
+            empty.clone(),
+            empty.clone(),
+            empty,
+        );
+    }
+
+    let tenkan_h = crate::rolling::rolling_max(high, tenkan_period);
+    let tenkan_l = crate::rolling::rolling_min(low, tenkan_period);
+    let kijun_h = crate::rolling::rolling_max(high, kijun_period);
+    let kijun_l = crate::rolling::rolling_min(low, kijun_period);
+    let span_b_h = crate::rolling::rolling_max(high, span_b_period);
+    let span_b_l = crate::rolling::rolling_min(low, span_b_period);
+
+    let mut tenkan = vec![f64::NAN; n];
+    let mut kijun = vec![f64::NAN; n];
+    let mut span_a = vec![f64::NAN; n];
+    let mut span_b = vec![f64::NAN; n];
+    let mut chikou = vec![f64::NAN; n];
+
+    for i in 0..n {
+        if !tenkan_h[i].is_nan() && !tenkan_l[i].is_nan() {
+            tenkan[i] = (tenkan_h[i] + tenkan_l[i]) / 2.0;
+        }
+        if !kijun_h[i].is_nan() && !kijun_l[i].is_nan() {
+            kijun[i] = (kijun_h[i] + kijun_l[i]) / 2.0;
+        }
+        if !span_b_h[i].is_nan() && !span_b_l[i].is_nan() {
+            span_b[i] = (span_b_h[i] + span_b_l[i]) / 2.0;
+        }
+    }
+
+    for i in 0..n {
+        if !tenkan[i].is_nan() && !kijun[i].is_nan() {
+            let target = i + displacement;
+            if target < n {
+                span_a[target] = (tenkan[i] + kijun[i]) / 2.0;
+            }
+        }
+        if !span_b[i].is_nan() {
+            let target = i + displacement;
+            if target < n {
+                span_b[target] = span_b[i];
+            }
+        }
+        if i >= displacement {
+            chikou[i - displacement] = close[i];
+        }
+    }
+
+    (tenkan, kijun, span_a, span_b, chikou)
+}
+
+pub fn fisher(high: &[f64], low: &[f64], period: usize) -> (Vec<f64>, Vec<f64>) {
+    let n = high.len();
+    let mut fisher = vec![f64::NAN; n];
+    let mut signal = vec![f64::NAN; n];
+    if n == 0 || low.len() != n || period == 0 {
+        return (fisher, signal);
+    }
+
+    let mut hl2 = vec![0.0; n];
+    for i in 0..n {
+        hl2[i] = (high[i] + low[i]) / 2.0;
+    }
+    let h_max = crate::rolling::rolling_max(&hl2, period);
+    let l_min = crate::rolling::rolling_min(&hl2, period);
+
+    let mut prev_value = 0.0;
+    let mut prev_fisher = 0.0;
+    for i in 0..n {
+        if h_max[i].is_nan() || l_min[i].is_nan() {
+            continue;
+        }
+        let diff = h_max[i] - l_min[i];
+        let x = if diff == 0.0 {
+            0.0
+        } else {
+            ((hl2[i] - l_min[i]) / diff) - 0.5
+        };
+        let mut value = 0.66 * x + 0.67 * prev_value;
+        value = value.clamp(-0.999, 0.999);
+        let f = 0.5 * ((1.0 + value) / (1.0 - value)).ln() + 0.5 * prev_fisher;
+        fisher[i] = f;
+        prev_value = value;
+        prev_fisher = f;
+    }
+
+    for i in 1..n {
+        signal[i] = fisher[i - 1];
+    }
+    if n > 0 {
+        signal[0] = 0.0;
+    }
+    (fisher, signal)
+}
+
+pub fn psar(
+    high: &[f64],
+    low: &[f64],
+    close: &[f64],
+    af_start: f64,
+    af_increment: f64,
+    af_max: f64,
+) -> (Vec<f64>, Vec<f64>) {
+    let n = close.len();
+    let mut sar = vec![f64::NAN; n];
+    let mut direction = vec![f64::NAN; n];
+    if n == 0 || high.len() != n || low.len() != n {
+        return (sar, direction);
+    }
+    if n == 1 {
+        sar[0] = low[0];
+        direction[0] = 1.0;
+        return (sar, direction);
+    }
+
+    let mut is_long = close[1] >= close[0];
+    let mut af = af_start;
+    let mut ep = if is_long { high[0] } else { low[0] };
+    sar[0] = if is_long { low[0] } else { high[0] };
+    direction[0] = if is_long { 1.0 } else { -1.0 };
+
+    for i in 1..n {
+        let mut curr = sar[i - 1] + af * (ep - sar[i - 1]);
+        if is_long {
+            curr = curr.min(low[i - 1]);
+            if i > 1 {
+                curr = curr.min(low[i - 2]);
+            }
+            if low[i] < curr {
+                is_long = false;
+                curr = ep;
+                ep = low[i];
+                af = af_start;
+            } else if high[i] > ep {
+                ep = high[i];
+                af = (af + af_increment).min(af_max);
+            }
+        } else {
+            curr = curr.max(high[i - 1]);
+            if i > 1 {
+                curr = curr.max(high[i - 2]);
+            }
+            if high[i] > curr {
+                is_long = true;
+                curr = ep;
+                ep = high[i];
+                af = af_start;
+            } else if low[i] < ep {
+                ep = low[i];
+                af = (af + af_increment).min(af_max);
+            }
+        }
+        sar[i] = curr;
+        direction[i] = if is_long { 1.0 } else { -1.0 };
+    }
+    (sar, direction)
+}
+
+pub fn supertrend(
+    high: &[f64],
+    low: &[f64],
+    close: &[f64],
+    period: usize,
+    multiplier: f64,
+) -> (Vec<f64>, Vec<f64>) {
+    let n = close.len();
+    let mut st = vec![f64::NAN; n];
+    let mut direction = vec![f64::NAN; n];
+    if n == 0 || high.len() != n || low.len() != n || period == 0 {
+        return (st, direction);
+    }
+
+    let atr = crate::volatility::atr(high, low, close, period);
+    let mut final_upper = vec![f64::NAN; n];
+    let mut final_lower = vec![f64::NAN; n];
+    let mut basic_upper = vec![f64::NAN; n];
+    let mut basic_lower = vec![f64::NAN; n];
+
+    for i in 0..n {
+        if atr[i].is_nan() {
+            continue;
+        }
+        let hl2 = (high[i] + low[i]) / 2.0;
+        basic_upper[i] = hl2 + multiplier * atr[i];
+        basic_lower[i] = hl2 - multiplier * atr[i];
+    }
+
+    for i in 0..n {
+        if i == 0 || basic_upper[i].is_nan() || basic_lower[i].is_nan() {
+            final_upper[i] = basic_upper[i];
+            final_lower[i] = basic_lower[i];
+            continue;
+        }
+        final_upper[i] = if basic_upper[i] < final_upper[i - 1] || close[i - 1] > final_upper[i - 1] {
+            basic_upper[i]
+        } else {
+            final_upper[i - 1]
+        };
+        final_lower[i] = if basic_lower[i] > final_lower[i - 1] || close[i - 1] < final_lower[i - 1] {
+            basic_lower[i]
+        } else {
+            final_lower[i - 1]
+        };
+    }
+
+    for i in 0..n {
+        if basic_upper[i].is_nan() {
+            continue;
+        }
+        if i == 0 {
+            st[i] = final_upper[i];
+            direction[i] = -1.0;
+            continue;
+        }
+        if st[i - 1] == final_upper[i - 1] {
+            if close[i] <= final_upper[i] {
+                st[i] = final_upper[i];
+                direction[i] = -1.0;
+            } else {
+                st[i] = final_lower[i];
+                direction[i] = 1.0;
+            }
+        } else if close[i] >= final_lower[i] {
+            st[i] = final_lower[i];
+            direction[i] = 1.0;
+        } else {
+            st[i] = final_upper[i];
+            direction[i] = -1.0;
+        }
+    }
+
+    (st, direction)
+}

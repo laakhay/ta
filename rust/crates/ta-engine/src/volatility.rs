@@ -48,3 +48,39 @@ pub fn bbands(values: &[f64], period: usize, std_dev: f64) -> (Vec<f64>, Vec<f64
 
     (upper, mean, lower)
 }
+
+pub fn donchian(high: &[f64], low: &[f64], period: usize) -> (Vec<f64>, Vec<f64>, Vec<f64>) {
+    let upper = crate::rolling::rolling_max(high, period);
+    let lower = crate::rolling::rolling_min(low, period);
+    let n = upper.len().min(lower.len());
+    let mut middle = vec![f64::NAN; n];
+    for i in 0..n {
+        if !upper[i].is_nan() && !lower[i].is_nan() {
+            middle[i] = (upper[i] + lower[i]) / 2.0;
+        }
+    }
+    (upper, lower, middle)
+}
+
+pub fn keltner(
+    high: &[f64],
+    low: &[f64],
+    close: &[f64],
+    ema_period: usize,
+    atr_period: usize,
+    multiplier: f64,
+) -> (Vec<f64>, Vec<f64>, Vec<f64>) {
+    let middle = crate::moving_averages::ema(close, ema_period);
+    let atr_vals = atr(high, low, close, atr_period);
+    let n = close.len();
+    let mut upper = vec![f64::NAN; n];
+    let mut lower = vec![f64::NAN; n];
+    for i in 0..n {
+        if !middle[i].is_nan() && !atr_vals[i].is_nan() {
+            let offset = atr_vals[i] * multiplier;
+            upper[i] = middle[i] + offset;
+            lower[i] = middle[i] - offset;
+        }
+    }
+    (upper, middle, lower)
+}
