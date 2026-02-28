@@ -1,6 +1,9 @@
 pub mod backend;
 pub mod call_step;
 pub mod contracts;
+pub mod graph_exec;
 pub mod kernel_registry;
+pub mod payload_parse;
 pub mod state;
+pub mod state_codec;
 pub mod store;
