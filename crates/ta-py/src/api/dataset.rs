@@ -134,6 +134,14 @@ pub(crate) fn indicator_catalog(py: Python<'_>) -> PyResult<PyObject> {
 }
 
 #[pyfunction]
+pub(crate) fn indicator_catalog_contract(py: Python<'_>) -> PyResult<PyObject> {
+    let out = PyDict::new(py);
+    out.set_item("contract_version", 1)?;
+    out.set_item("indicators", indicator_catalog(py)?)?;
+    Ok(out.into_any().unbind())
+}
+
+#[pyfunction]
 pub(crate) fn indicator_meta(py: Python<'_>, id: String) -> PyResult<PyObject> {
     let meta = ta_engine::metadata::find_indicator_meta(&id).ok_or_else(|| {
         pyo3::exceptions::PyKeyError::new_err(format!(

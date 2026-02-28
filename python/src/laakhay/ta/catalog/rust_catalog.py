@@ -23,7 +23,9 @@ def rust_catalog_available() -> bool:
         ta_py = _load_ta_py()
     except Exception:
         return False
-    return hasattr(ta_py, "indicator_catalog") and hasattr(ta_py, "indicator_meta")
+    has_catalog = hasattr(ta_py, "indicator_catalog") and hasattr(ta_py, "indicator_meta")
+    has_contract = hasattr(ta_py, "indicator_catalog_contract")
+    return has_catalog or has_contract
 
 
 def _normalize_entry(entry: Mapping[str, Any]) -> dict[str, Any]:
@@ -74,7 +76,11 @@ def _normalize_entry(entry: Mapping[str, Any]) -> dict[str, Any]:
 def list_rust_catalog() -> dict[str, dict[str, Any]]:
     """Return Rust indicator metadata keyed by canonical id."""
     ta_py = _load_ta_py()
-    raw = ta_py.indicator_catalog()
+    if hasattr(ta_py, "indicator_catalog_contract"):
+        contract = ta_py.indicator_catalog_contract()
+        raw = contract.get("indicators", [])
+    else:
+        raw = ta_py.indicator_catalog()
     out: dict[str, dict[str, Any]] = {}
     for item in raw:
         normalized = _normalize_entry(item)
