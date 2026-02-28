@@ -165,3 +165,115 @@ pub fn cci(high: &[f64], low: &[f64], close: &[f64], period: usize) -> Vec<f64> 
 
     out
 }
+
+pub fn roc(values: &[f64], period: usize) -> Vec<f64> {
+    let n = values.len();
+    let mut out = vec![f64::NAN; n];
+    if period == 0 || n == 0 {
+        return out;
+    }
+
+    for i in period..n {
+        let prev = values[i - period];
+        if prev == 0.0 || prev.is_nan() || values[i].is_nan() {
+            out[i] = f64::NAN;
+        } else {
+            out[i] = ((values[i] - prev) / prev) * 100.0;
+        }
+    }
+    out
+}
+
+pub fn williams_r(high: &[f64], low: &[f64], close: &[f64], period: usize) -> Vec<f64> {
+    let n = close.len();
+    let mut out = vec![f64::NAN; n];
+    if period == 0 || high.len() != n || low.len() != n || n == 0 {
+        return out;
+    }
+
+    for i in 0..n {
+        if i + 1 < period {
+            continue;
+        }
+        let start = i + 1 - period;
+        let mut hh = high[start];
+        let mut ll = low[start];
+        for j in (start + 1)..=i {
+            if high[j] > hh {
+                hh = high[j];
+            }
+            if low[j] < ll {
+                ll = low[j];
+            }
+        }
+        let range = hh - ll;
+        if range == 0.0 {
+            out[i] = 0.0;
+        } else {
+            out[i] = ((hh - close[i]) / range) * -100.0;
+        }
+    }
+    out
+}
+
+pub fn cmo(values: &[f64], period: usize) -> Vec<f64> {
+    let n = values.len();
+    let mut out = vec![f64::NAN; n];
+    if period == 0 || n < 2 {
+        return out;
+    }
+
+    let mut gains = vec![0.0; n];
+    let mut losses = vec![0.0; n];
+    for i in 1..n {
+        let diff = values[i] - values[i - 1];
+        if diff > 0.0 {
+            gains[i] = diff;
+        } else {
+            losses[i] = -diff;
+        }
+    }
+
+    let sum_gains = crate::rolling::rolling_sum(&gains, period);
+    let sum_losses = crate::rolling::rolling_sum(&losses, period);
+
+    for i in 0..n {
+        let sg = sum_gains[i];
+        let sl = sum_losses[i];
+        if sg.is_nan() || sl.is_nan() {
+            continue;
+        }
+        let denom = sg + sl;
+        out[i] = if denom == 0.0 {
+            0.0
+        } else {
+            100.0 * (sg - sl) / denom
+        };
+    }
+
+    out
+}
+
+pub fn ao(high: &[f64], low: &[f64], fast_period: usize, slow_period: usize) -> Vec<f64> {
+    let n = high.len();
+    let mut out = vec![f64::NAN; n];
+    if n == 0 || low.len() != n || fast_period == 0 || slow_period == 0 {
+        return out;
+    }
+
+    let mut median = vec![0.0; n];
+    for i in 0..n {
+        median[i] = (high[i] + low[i]) / 2.0;
+    }
+
+    let fast = crate::rolling::rolling_mean(&median, fast_period);
+    let slow = crate::rolling::rolling_mean(&median, slow_period);
+
+    for i in 0..n {
+        if fast[i].is_nan() || slow[i].is_nan() {
+            continue;
+        }
+        out[i] = fast[i] - slow[i];
+    }
+    out
+}

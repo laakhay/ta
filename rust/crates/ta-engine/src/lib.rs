@@ -2,6 +2,7 @@
 
 pub mod contracts;
 pub mod incremental;
+pub mod metadata;
 pub mod momentum;
 pub mod moving_averages;
 pub mod rolling;

@@ -26,6 +26,23 @@ fn engine_version() -> &'static str {
     ta_engine::engine_version()
 }
 
+#[pyfunction]
+fn indicator_catalog(py: Python<'_>) -> PyResult<PyObject> {
+    let py_list = PyList::empty(py);
+    for meta in ta_engine::metadata::indicator_catalog() {
+        py_list.append(indicator_meta_to_pydict(py, meta)?)?;
+    }
+    Ok(py_list.into_any().unbind())
+}
+
+#[pyfunction]
+fn indicator_meta(py: Python<'_>, id: String) -> PyResult<PyObject> {
+    let meta = ta_engine::metadata::find_indicator_meta(&id).ok_or_else(|| {
+        pyo3::exceptions::PyKeyError::new_err(format!("indicator metadata not found for id/alias '{id}'"))
+    })?;
+    indicator_meta_to_pydict(py, meta)
+}
+
 fn validate_period(period: usize) -> PyResult<()> {
     if period == 0 {
         return Err(pyo3::exceptions::PyValueError::new_err(
@@ -87,6 +104,30 @@ fn rolling_wma(values: Vec<f64>, period: usize) -> PyResult<Vec<f64>> {
 fn rsi(values: Vec<f64>, period: usize) -> PyResult<Vec<f64>> {
     validate_period(period)?;
     Ok(ta_engine::momentum::rsi(&values, period))
+}
+
+#[pyfunction]
+fn roc(values: Vec<f64>, period: usize) -> PyResult<Vec<f64>> {
+    validate_period(period)?;
+    Ok(ta_engine::momentum::roc(&values, period))
+}
+
+#[pyfunction]
+fn cmo(values: Vec<f64>, period: usize) -> PyResult<Vec<f64>> {
+    validate_period(period)?;
+    Ok(ta_engine::momentum::cmo(&values, period))
+}
+
+#[pyfunction]
+fn ao(high: Vec<f64>, low: Vec<f64>, fast_period: usize, slow_period: usize) -> PyResult<Vec<f64>> {
+    validate_period(fast_period)?;
+    validate_period(slow_period)?;
+    Ok(ta_engine::momentum::ao(
+        &high,
+        &low,
+        fast_period,
+        slow_period,
+    ))
 }
 
 #[pyfunction]
@@ -182,6 +223,12 @@ fn swing_points_raw(
 #[pyfunction]
 fn cci(high: Vec<f64>, low: Vec<f64>, close: Vec<f64>, period: usize) -> PyResult<Vec<f64>> {
     Ok(ta_engine::momentum::cci(&high, &low, &close, period))
+}
+
+#[pyfunction]
+fn williams_r(high: Vec<f64>, low: Vec<f64>, close: Vec<f64>, period: usize) -> PyResult<Vec<f64>> {
+    validate_period(period)?;
+    Ok(ta_engine::momentum::williams_r(&high, &low, &close, period))
 }
 
 #[pyfunction]
@@ -381,9 +428,88 @@ fn incremental_map_to_pydict(
     Ok(d.into_any().unbind())
 }
 
+fn indicator_meta_to_pydict(
+    py: Python<'_>,
+    meta: &ta_engine::metadata::IndicatorMeta,
+) -> PyResult<PyObject> {
+    let d = PyDict::new(py);
+    d.set_item("id", meta.id)?;
+    d.set_item("display_name", meta.display_name)?;
+    d.set_item("category", meta.category)?;
+    d.set_item("runtime_binding", meta.runtime_binding)?;
+
+    let aliases = PyList::empty(py);
+    for alias in meta.aliases {
+        aliases.append(alias)?;
+    }
+    d.set_item("aliases", aliases)?;
+
+    let param_aliases = PyDict::new(py);
+    for alias in meta.param_aliases {
+        param_aliases.set_item(alias.alias, alias.target)?;
+    }
+    d.set_item("param_aliases", param_aliases)?;
+
+    let params = PyList::empty(py);
+    for param in meta.params {
+        let p = PyDict::new(py);
+        p.set_item("name", param.name)?;
+        let kind = match param.kind {
+            ta_engine::metadata::IndicatorParamKind::Integer => "int",
+            ta_engine::metadata::IndicatorParamKind::Float => "float",
+            ta_engine::metadata::IndicatorParamKind::Boolean => "bool",
+            ta_engine::metadata::IndicatorParamKind::String => "string",
+        };
+        p.set_item("kind", kind)?;
+        p.set_item("required", param.required)?;
+        p.set_item("default", param.default)?;
+        p.set_item("description", param.description)?;
+        p.set_item("min", param.min)?;
+        p.set_item("max", param.max)?;
+        params.append(p)?;
+    }
+    d.set_item("params", params)?;
+
+    let outputs = PyList::empty(py);
+    for output in meta.outputs {
+        let o = PyDict::new(py);
+        o.set_item("name", output.name)?;
+        o.set_item("kind", output.kind)?;
+        o.set_item("description", output.description)?;
+        outputs.append(o)?;
+    }
+    d.set_item("outputs", outputs)?;
+
+    let semantics = PyDict::new(py);
+    let required_fields = PyList::empty(py);
+    for field in meta.semantics.required_fields {
+        required_fields.append(field)?;
+    }
+    semantics.set_item("required_fields", required_fields)?;
+
+    let optional_fields = PyList::empty(py);
+    for field in meta.semantics.optional_fields {
+        optional_fields.append(field)?;
+    }
+    semantics.set_item("optional_fields", optional_fields)?;
+
+    let lookback_params = PyList::empty(py);
+    for param in meta.semantics.lookback_params {
+        lookback_params.append(param)?;
+    }
+    semantics.set_item("lookback_params", lookback_params)?;
+    semantics.set_item("default_lookback", meta.semantics.default_lookback)?;
+    semantics.set_item("warmup_policy", meta.semantics.warmup_policy)?;
+    d.set_item("semantics", semantics)?;
+
+    Ok(d.into_any().unbind())
+}
+
 #[pymodule]
 fn ta_py(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(engine_version, m)?)?;
+    m.add_function(wrap_pyfunction!(indicator_catalog, m)?)?;
+    m.add_function(wrap_pyfunction!(indicator_meta, m)?)?;
     m.add_function(wrap_pyfunction!(rolling_sum, m)?)?;
     m.add_function(wrap_pyfunction!(rolling_mean, m)?)?;
     m.add_function(wrap_pyfunction!(rolling_std, m)?)?;
@@ -393,6 +519,9 @@ fn ta_py(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(rolling_rma, m)?)?;
     m.add_function(wrap_pyfunction!(rolling_wma, m)?)?;
     m.add_function(wrap_pyfunction!(rsi, m)?)?;
+    m.add_function(wrap_pyfunction!(roc, m)?)?;
+    m.add_function(wrap_pyfunction!(cmo, m)?)?;
+    m.add_function(wrap_pyfunction!(ao, m)?)?;
     m.add_function(wrap_pyfunction!(atr, m)?)?;
     m.add_function(wrap_pyfunction!(atr_from_tr, m)?)?;
     m.add_function(wrap_pyfunction!(stochastic_kd, m)?)?;
@@ -401,6 +530,7 @@ fn ta_py(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(adx, m)?)?;
     m.add_function(wrap_pyfunction!(swing_points_raw, m)?)?;
     m.add_function(wrap_pyfunction!(cci, m)?)?;
+    m.add_function(wrap_pyfunction!(williams_r, m)?)?;
     m.add_function(wrap_pyfunction!(vwap, m)?)?;
     m.add_function(wrap_pyfunction!(obv, m)?)?;
     m.add_function(wrap_pyfunction!(klinger_vf, m)?)?;
