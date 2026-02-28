@@ -5,6 +5,7 @@ from __future__ import annotations
 import inspect
 import threading
 from collections.abc import Callable
+from functools import lru_cache
 from typing import Any, Union
 
 from ..core.series import Series
@@ -19,150 +20,15 @@ from .schemas import (
     schema_to_indicator_spec,
 )
 
-# Metadata hints for built-in indicators/primitives. These entries drive the
-# planner so we can infer required fields and lookback windows without relying
-# on string heuristics.
-_METADATA_HINTS: dict[str, IndicatorMetadata] = {
-    # Rolling primitives
-    "rolling_mean": IndicatorMetadata(required_fields=("close",), lookback_params=("period",)),
-    "rolling_sum": IndicatorMetadata(required_fields=("close",), lookback_params=("period",)),
-    "rolling_std": IndicatorMetadata(required_fields=("close",), lookback_params=("period",)),
-    "rolling_median": IndicatorMetadata(required_fields=("close",), lookback_params=("period",)),
-    "rolling_ema": IndicatorMetadata(required_fields=("close",), lookback_params=("period",)),
-    "rolling_rma": IndicatorMetadata(required_fields=("close",), lookback_params=("period",)),
-    "max": IndicatorMetadata(required_fields=("close",), lookback_params=("period",)),
-    "min": IndicatorMetadata(required_fields=("close",), lookback_params=("period",)),
-    "rolling_argmax": IndicatorMetadata(required_fields=("close",), lookback_params=("period",)),
-    "rolling_argmin": IndicatorMetadata(required_fields=("close",), lookback_params=("period",)),
-    # Element-wise primitives
-    "elementwise_max": IndicatorMetadata(
-        required_fields=("close",),
-        optional_fields=("other_series",),
-        default_lookback=1,
-    ),
-    "elementwise_min": IndicatorMetadata(
-        required_fields=("close",),
-        optional_fields=("other_series",),
-        default_lookback=1,
-    ),
-    # Transform primitives
-    "cumulative_sum": IndicatorMetadata(required_fields=("close",), default_lookback=1),
-    "diff": IndicatorMetadata(required_fields=("close",), default_lookback=2),
-    "shift": IndicatorMetadata(required_fields=("close",), lookback_params=("periods",), default_lookback=1),
-    "positive_values": IndicatorMetadata(required_fields=("close",), default_lookback=1),
-    "negative_values": IndicatorMetadata(required_fields=("close",), default_lookback=1),
-    "sign": IndicatorMetadata(required_fields=("close",), default_lookback=2),
-    "true_range": IndicatorMetadata(required_fields=("high", "low", "close"), default_lookback=2),
-    "typical_price": IndicatorMetadata(required_fields=("high", "low", "close"), default_lookback=1),
-    # Resample helpers
-    "downsample": IndicatorMetadata(required_fields=("close",), lookback_params=("factor",), default_lookback=1),
-    "upsample": IndicatorMetadata(required_fields=("close",), lookback_params=("factor",), default_lookback=1),
-    "sync_timeframe": IndicatorMetadata(required_fields=("close",), optional_fields=("reference",), default_lookback=1),
-    "select": IndicatorMetadata(required_fields=("close",), optional_fields=("field",), default_lookback=1),
-    # Trend indicators
-    "sma": IndicatorMetadata(
-        required_fields=("close",),
-        lookback_params=("period",),
-        input_field="close",
-        input_series_param="input_series",
-    ),
-    "ema": IndicatorMetadata(
-        required_fields=("close",),
-        lookback_params=("period",),
-        input_field="close",
-        input_series_param="input_series",
-    ),
-    "macd": IndicatorMetadata(
-        required_fields=("close",),
-        lookback_params=("fast_period", "slow_period", "signal_period"),
-        default_lookback=1,
-    ),
-    "bbands": IndicatorMetadata(required_fields=("close",), lookback_params=("period",)),
-    # Momentum
-    "rsi": IndicatorMetadata(
-        required_fields=("close",),
-        lookback_params=("period",),
-        input_field="close",
-        input_series_param="input_series",
-    ),
-    "stochastic": IndicatorMetadata(
-        required_fields=("high", "low", "close"),
-        lookback_params=("k_period", "d_period"),
-    ),
-    # Volatility
-    "atr": IndicatorMetadata(required_fields=("high", "low", "close"), lookback_params=("period",)),
-    # Volume / price-volume indicators
-    "obv": IndicatorMetadata(required_fields=("close", "volume"), default_lookback=2),
-    "vwap": IndicatorMetadata(required_fields=("high", "low", "close", "volume"), default_lookback=1),
-    # Pattern indicators
-    "swing_points": IndicatorMetadata(required_fields=("high", "low"), lookback_params=("left", "right")),
-    "fib_retracement": IndicatorMetadata(required_fields=("high", "low"), lookback_params=("left", "right", "leg")),
-    "swing_highs": IndicatorMetadata(required_fields=("high", "low"), lookback_params=("left", "right")),
-    "swing_lows": IndicatorMetadata(required_fields=("high", "low"), lookback_params=("left", "right")),
-    "swing_high_at": IndicatorMetadata(required_fields=("high", "low"), lookback_params=("left", "right", "index")),
-    "swing_low_at": IndicatorMetadata(required_fields=("high", "low"), lookback_params=("left", "right", "index")),
-    "fib_anchor_high": IndicatorMetadata(required_fields=("high", "low"), lookback_params=("left", "right", "leg")),
-    "fib_anchor_low": IndicatorMetadata(required_fields=("high", "low"), lookback_params=("left", "right", "leg")),
-    "fib_level_down": IndicatorMetadata(required_fields=("high", "low"), lookback_params=("left", "right", "leg")),
-    "fib_level_up": IndicatorMetadata(required_fields=("high", "low"), lookback_params=("left", "right", "leg")),
-    # Channel / event indicators (price, upper, lower accept series or scalars)
-    "in_channel": IndicatorMetadata(
-        required_fields=("close",),
-        input_field="close",
-        input_series_param="price",
-    ),
-    "out": IndicatorMetadata(
-        required_fields=("close",),
-        input_field="close",
-        input_series_param="price",
-    ),
-    "enter": IndicatorMetadata(
-        required_fields=("close",),
-        input_field="close",
-        input_series_param="price",
-    ),
-    "exit": IndicatorMetadata(
-        required_fields=("close",),
-        input_field="close",
-        input_series_param="price",
-    ),
-    # Crossing / trend patterns (a, b accept series or scalars)
-    "crossup": IndicatorMetadata(
-        required_fields=("close",),
-        input_field="close",
-        input_series_param="a",
-    ),
-    "crossdown": IndicatorMetadata(
-        required_fields=("close",),
-        input_field="close",
-        input_series_param="a",
-    ),
-    "cross": IndicatorMetadata(
-        required_fields=("close",),
-        input_field="close",
-        input_series_param="a",
-    ),
-    "rising": IndicatorMetadata(
-        required_fields=("close",),
-        input_field="close",
-        input_series_param="a",
-    ),
-    "falling": IndicatorMetadata(
-        required_fields=("close",),
-        input_field="close",
-        input_series_param="a",
-    ),
-    "rising_pct": IndicatorMetadata(
-        required_fields=("close",),
-        input_field="close",
-        input_series_param="a",
-    ),
-    "falling_pct": IndicatorMetadata(
-        required_fields=("close",),
-        input_field="close",
-        input_series_param="a",
-    ),
-}
+
+@lru_cache(maxsize=512)
+def _rust_indicator_metadata(name: str) -> dict[str, Any] | None:
+    try:
+        import ta_py
+
+        return ta_py.indicator_meta(name)
+    except Exception:
+        return None
 
 
 class Registry:
@@ -461,10 +327,19 @@ class Registry:
         return Any  # type: ignore[return-value]
 
     def _infer_metadata(self, name: str) -> IndicatorMetadata:
-        key = name.lower()
-        meta = _METADATA_HINTS.get(key)
-        if meta is not None:
-            return meta
+        rust_meta = _rust_indicator_metadata(name.lower())
+        if rust_meta is not None:
+            semantics = rust_meta.get("semantics", {}) or {}
+            required_fields = tuple(str(v) for v in semantics.get("required_fields", ()))
+            optional_fields = tuple(str(v) for v in semantics.get("optional_fields", ()))
+            lookback_params = tuple(str(v) for v in semantics.get("lookback_params", ()))
+            default_lookback = semantics.get("default_lookback")
+            return IndicatorMetadata(
+                required_fields=required_fields or ("close",),
+                optional_fields=optional_fields,
+                lookback_params=lookback_params,
+                default_lookback=(int(default_lookback) if isinstance(default_lookback, int | float) else None),
+            )
 
         return IndicatorMetadata(
             required_fields=("close",),
