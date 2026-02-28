@@ -17,7 +17,6 @@ from ...registry.schemas import (
 )
 from .._utils import results_to_series
 
-
 FISHER_SPEC = IndicatorSpec(
     name="fisher",
     description="Fisher Transform",

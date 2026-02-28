@@ -2,12 +2,9 @@
 
 from __future__ import annotations
 
-import math
-
 import ta_py
 
 from ...core import Series
-from ...core.series import Series as CoreSeries
 from ...core.types import Price
 from ...registry.schemas import (
     IndicatorSpec,

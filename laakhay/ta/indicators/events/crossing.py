@@ -31,6 +31,7 @@ def _bool_values_to_series(values: list[bool], template: Series[Price]) -> Serie
         timeframe=template.timeframe,
     )
 
+
 CROSSUP_SPEC = IndicatorSpec(
     name="crossup",
     description="Detect when series a crosses above series b",

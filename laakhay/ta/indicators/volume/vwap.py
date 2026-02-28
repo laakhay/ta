@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from ...core import Series
 from ...core.types import Price
-from ...primitives.elementwise_ops import cumulative_sum, typical_price
 from ...registry.models import SeriesContext
 from ...registry.registry import register
 from ...registry.schemas import (
@@ -45,6 +44,7 @@ def vwap(ctx: SeriesContext) -> Series[Price]:
         raise ValueError("All series must have the same length")
 
     import ta_py
+
     from .._utils import results_to_series
 
     out = ta_py.vwap(

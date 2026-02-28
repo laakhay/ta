@@ -2,13 +2,8 @@
 
 from __future__ import annotations
 
-from decimal import Decimal
-
 from ...core import Series
-from ...core.series import Series as CoreSeries
 from ...core.types import Price
-from ...primitives.elementwise_ops import _zip_hlc_series
-from ...primitives.kernels.adx import ADXKernel
 from ...registry.models import SeriesContext
 from ...registry.registry import register
 from ...registry.schemas import (
@@ -54,6 +49,7 @@ def adx(ctx: SeriesContext, period: int = 14) -> tuple[Series[Price], Series[Pri
         return empty, empty, empty
 
     import ta_py
+
     from .._utils import results_to_series
 
     adx_val, pdi_val, mdi_val = ta_py.adx(
