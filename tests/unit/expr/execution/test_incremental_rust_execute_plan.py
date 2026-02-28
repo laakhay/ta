@@ -48,10 +48,11 @@ def test_evaluate_uses_execute_plan_for_supported_root(sample_ohlcv_data, monkey
     )
 
     out = backend.evaluate(plan, ds)
-    assert isinstance(out, Series)
+    assert isinstance(out, dict)
     assert called["dataset_id"] == ds.rust_dataset_id
     assert called["source"] == "ohlcv"
-    assert len(out.values) == len(sample_ohlcv_data["timestamps"])
+    result_series = next(iter(out.values()))
+    assert len(result_series.values) == len(sample_ohlcv_data["timestamps"])
 
 
 def test_evaluate_falls_back_to_batch_for_non_supported_root(sample_ohlcv_data, monkeypatch) -> None:

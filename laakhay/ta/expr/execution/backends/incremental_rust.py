@@ -118,7 +118,7 @@ class IncrementalRustBackend(ExecutionBackend):
         dataset: Dataset,
         symbol: str | None,
         timeframe: str | None,
-    ) -> Series[Any]:
+    ) -> dict[tuple[str, str, str], Series[Any]]:
         requests = self._build_requests(plan)
         if not requests:
             raise RuntimeError("execute_plan requires at least one rust-call request")
@@ -144,12 +144,14 @@ class IncrementalRustBackend(ExecutionBackend):
             )
 
         values = tuple(float(v) if v is not None else float("nan") for v in root_values)
-        return Series[Any](
+        series = Series[Any](
             timestamps=series_obj.timestamps,
             values=values,
             symbol=selected_symbol,
             timeframe=selected_timeframe,
         )
+        output_source = "default" if selected_source in {"ohlcv", "default"} else selected_source
+        return {(selected_symbol, selected_timeframe, output_source): series}
 
     @staticmethod
     def _resolve_partition(dataset: Dataset, symbol: str | None, timeframe: str | None) -> tuple[str, str, str]:
