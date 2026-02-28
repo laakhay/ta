@@ -7,6 +7,7 @@ from typing import Any
 
 from ...registry.registry import get_global_registry
 from ..semantics.source_schema import SOURCE_DEFS
+from .types import PlanResult
 
 
 def generate_capability_manifest() -> dict[str, Any]:
@@ -249,3 +250,83 @@ def _merge_exchange_metadata(sources: dict[str, dict[str, Any]]) -> dict[str, di
                 }
 
     return exchange_support
+
+
+def build_rust_execution_payload(
+    plan: PlanResult,
+    *,
+    dataset_id: int,
+    symbol: str,
+    timeframe: str,
+    source: str,
+    requests: list[dict[str, Any]],
+) -> dict[str, Any]:
+    """Build normalized DAG execution payload for Rust runtime."""
+    nodes = {str(node_id): _serialize_ir_node(graph_node.node) for node_id, graph_node in plan.graph.nodes.items()}
+    edges = {str(node_id): [int(c) for c in graph_node.children] for node_id, graph_node in plan.graph.nodes.items()}
+    return {
+        "dataset_id": int(dataset_id),
+        "partition": {
+            "symbol": symbol,
+            "timeframe": timeframe,
+            "source": source,
+        },
+        "graph": {
+            "root_id": int(plan.graph.root_id),
+            "node_order": [int(n) for n in plan.node_order],
+            "nodes": nodes,
+            "edges": edges,
+        },
+        "requests": requests,
+        "alignment": {
+            "how": plan.alignment.how,
+            "fill": plan.alignment.fill,
+            "left_fill_value": plan.alignment.left_fill_value,
+            "right_fill_value": plan.alignment.right_fill_value,
+        },
+        "options": {},
+    }
+
+
+def _serialize_ir_node(node: Any) -> dict[str, Any]:
+    kind = type(node).__name__
+    if kind == "LiteralNode":
+        return {"kind": "literal", "value": node.value}
+    if kind == "SourceRefNode":
+        return {
+            "kind": "source_ref",
+            "source": node.source,
+            "field": node.field,
+            "symbol": node.symbol,
+            "timeframe": node.timeframe,
+            "exchange": node.exchange,
+        }
+    if kind == "CallNode":
+        kwargs: dict[str, str] = {}
+        for key, val in node.kwargs.items():
+            raw = val.value if hasattr(val, "value") else val
+            kwargs[f"kw_{key}"] = str(raw)
+        args: dict[str, str] = {}
+        for index, arg in enumerate(node.args):
+            raw = arg.value if hasattr(arg, "value") else arg
+            args[f"arg_{index}"] = str(raw)
+        serialized = {
+            "kind": "call",
+            "name": node.name,
+            "output": node.output,
+            "args_count": str(len(node.args)),
+        }
+        serialized.update(kwargs)
+        serialized.update(args)
+        return serialized
+    if kind == "BinaryOpNode":
+        return {"kind": "binary_op", "operator": node.operator}
+    if kind == "UnaryOpNode":
+        return {"kind": "unary_op", "operator": node.operator}
+    if kind == "FilterNode":
+        return {"kind": "filter"}
+    if kind == "AggregateNode":
+        return {"kind": "aggregate", "operation": node.operation, "field": node.field}
+    if kind == "TimeShiftNode":
+        return {"kind": "time_shift", "shift": node.shift, "operation": node.operation}
+    return {"kind": "unsupported", "type": kind}

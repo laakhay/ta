@@ -2,9 +2,10 @@ from __future__ import annotations
 
 from typing import Any
 
+import pytest
+
 from laakhay.ta.core.dataset import Dataset
 from laakhay.ta.core.ohlcv import OHLCV
-from laakhay.ta.core.series import Series
 from laakhay.ta.expr.dsl import compile_expression
 from laakhay.ta.expr.execution.backends.incremental_rust import IncrementalRustBackend
 
@@ -55,32 +56,19 @@ def test_evaluate_uses_execute_plan_for_supported_root(sample_ohlcv_data, monkey
     assert len(result_series.values) == len(sample_ohlcv_data["timestamps"])
 
 
-def test_evaluate_falls_back_to_batch_for_non_supported_root(sample_ohlcv_data, monkeypatch) -> None:
+def test_evaluate_rejects_non_supported_root(sample_ohlcv_data) -> None:
     ds = _build_dataset(sample_ohlcv_data)
-    expr = compile_expression("close + 1")
+    expr = compile_expression("atr(14)")
     plan = expr._ensure_plan()
     backend = IncrementalRustBackend()
 
-    def fake_batch_evaluate(self, plan_arg, dataset_arg, symbol=None, timeframe=None, **options):  # noqa: ANN001
-        return Series[Any](
-            timestamps=sample_ohlcv_data["timestamps"],
-            values=tuple([1.0] * len(sample_ohlcv_data["timestamps"])),
-            symbol=sample_ohlcv_data["symbol"],
-            timeframe=sample_ohlcv_data["timeframe"],
-        )
-
-    monkeypatch.setattr(
-        "laakhay.ta.expr.execution.backends.batch.BatchBackend.evaluate",
-        fake_batch_evaluate,
-    )
-
-    out = backend.evaluate(plan, ds)
-    assert isinstance(out, Series)
+    with pytest.raises(RuntimeError, match="unsupported nodes"):
+        backend.evaluate(plan, ds)
 
 
-def test_evaluate_uses_execute_plan_for_vwap_root(sample_ohlcv_data, monkeypatch) -> None:
+def test_evaluate_uses_execute_plan_for_boolean_graph(sample_ohlcv_data, monkeypatch) -> None:
     ds = _build_dataset(sample_ohlcv_data)
-    expr = compile_expression("vwap()")
+    expr = compile_expression("sma(20) > sma(50) and rsi(14) > 50")
     plan = expr._ensure_plan()
     backend = IncrementalRustBackend()
 
@@ -88,7 +76,7 @@ def test_evaluate_uses_execute_plan_for_vwap_root(sample_ohlcv_data, monkeypatch
 
     def fake_execute_plan_payload(payload):  # noqa: ANN001
         called["count"] += 1
-        return {int(plan.graph.root_id): [1.0] * len(sample_ohlcv_data["timestamps"])}
+        return {int(plan.graph.root_id): [False] * len(sample_ohlcv_data["timestamps"])}
 
     monkeypatch.setattr(
         "laakhay.ta.expr.execution.backends.incremental_rust.ta_py.execute_plan_payload",

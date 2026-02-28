@@ -49,7 +49,7 @@ def _create_tick(ds: Dataset, idx: int) -> dict[str, Any]:
     return tick
 
 
-@pytest.mark.parametrize("expr_text", ["rsi(close, 14)", "atr(14)"])
+@pytest.mark.parametrize("expr_text", ["rsi(close, 14)", "sma(close, 14)"])
 def test_incremental_rust_vs_batch_evaluate_parity(sample_dataset: Dataset, expr_text: str) -> None:
     plan = compile_expression(expr_text)._ensure_plan()
 

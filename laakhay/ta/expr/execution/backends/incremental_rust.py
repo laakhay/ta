@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import math
 from typing import Any
 
 import ta_py
@@ -8,6 +9,7 @@ from ....core.dataset import Dataset
 from ....core.ohlcv import OHLCV
 from ....core.series import Series
 from ...ir.nodes import CallNode
+from ...planner.manifest import build_rust_execution_payload
 from ...planner.types import PlanResult
 from .base import ExecutionBackend
 
@@ -32,12 +34,11 @@ class IncrementalRustBackend(ExecutionBackend):
         timeframe: str | None = None,
         **options: Any,
     ) -> Series[Any] | dict[tuple[str, str, str], Series[Any]]:
-        if isinstance(dataset, Dataset) and self._can_execute_plan(plan):
-            return self._evaluate_with_execute_plan(plan, dataset, symbol=symbol, timeframe=timeframe)
-
-        from .batch import BatchBackend
-
-        return BatchBackend().evaluate(plan, dataset, symbol, timeframe, **options)
+        if not isinstance(dataset, Dataset):
+            raise RuntimeError("IncrementalRustBackend requires Dataset input")
+        if not self._can_execute_plan(plan):
+            raise RuntimeError("plan contains unsupported nodes for rust graph execution backend")
+        return self._evaluate_with_execute_plan(plan, dataset, symbol=symbol, timeframe=timeframe)
 
     def initialize(
         self,
@@ -109,8 +110,25 @@ class IncrementalRustBackend(ExecutionBackend):
 
     @staticmethod
     def _can_execute_plan(plan: PlanResult) -> bool:
-        root = plan.graph.nodes[plan.graph.root_id].node
-        return isinstance(root, CallNode) and root.name in {"rsi", "atr", "stochastic", "vwap"}
+        allowed_calls = {"sma", "mean", "rolling_mean", "rsi"}
+        allowed_binary = {"gt", "lt", "eq", "and", "or", "add", "sub", "mul", "div"}
+        for graph_node in plan.graph.nodes.values():
+            node = graph_node.node
+            if type(node).__name__ == "SourceRefNode":
+                continue
+            if type(node).__name__ == "LiteralNode":
+                continue
+            if type(node).__name__ == "CallNode":
+                if not isinstance(node, CallNode) or node.name not in allowed_calls:
+                    return False
+                continue
+            if type(node).__name__ == "BinaryOpNode":
+                op = getattr(node, "operator", None)
+                if op not in allowed_binary:
+                    return False
+                continue
+            return False
+        return True
 
     def _evaluate_with_execute_plan(
         self,
@@ -119,17 +137,14 @@ class IncrementalRustBackend(ExecutionBackend):
         symbol: str | None,
         timeframe: str | None,
     ) -> dict[tuple[str, str, str], Series[Any]]:
-        requests = self._build_requests(plan)
-        if not requests:
-            raise RuntimeError("execute_plan requires at least one rust-call request")
-
         selected_symbol, selected_timeframe, selected_source = self._resolve_partition(dataset, symbol, timeframe)
-        payload = self._build_execute_plan_payload(
+        payload = build_rust_execution_payload(
+            plan,
             dataset_id=dataset.rust_dataset_id,
             symbol=selected_symbol,
             timeframe=selected_timeframe,
             source=selected_source,
-            requests=requests,
+            requests=[],
         )
         outputs = ta_py.execute_plan_payload(payload)
 
@@ -144,7 +159,14 @@ class IncrementalRustBackend(ExecutionBackend):
                 "execute_plan currently requires OHLCV partition in dataset for selected symbol/timeframe/source"
             )
 
-        values = tuple(float(v) if v is not None else float("nan") for v in root_values)
+        normalized_values: list[Any] = []
+        for value in root_values:
+            if value is None:
+                normalized_values.append(None)
+                continue
+            number = float(value)
+            normalized_values.append(None if math.isnan(number) else number)
+        values = tuple(normalized_values)
         series = Series[Any](
             timestamps=series_obj.timestamps,
             values=values,
@@ -160,11 +182,6 @@ class IncrementalRustBackend(ExecutionBackend):
             explicit = dataset.series(symbol, timeframe, "ohlcv")
             if isinstance(explicit, OHLCV):
                 return symbol, timeframe, "ohlcv"
-
-            fallback = dataset.series(symbol, timeframe, "default")
-            if isinstance(fallback, OHLCV):
-                return symbol, timeframe, "default"
-
             raise RuntimeError(f"dataset does not contain OHLCV source for symbol={symbol} timeframe={timeframe}")
 
         for key in dataset.keys:
@@ -173,24 +190,3 @@ class IncrementalRustBackend(ExecutionBackend):
                 return str(key.symbol), key.timeframe, key.source
 
         raise RuntimeError("dataset must contain at least one OHLCV partition for execute_plan")
-
-    @staticmethod
-    def _build_execute_plan_payload(
-        *,
-        dataset_id: int,
-        symbol: str,
-        timeframe: str,
-        source: str,
-        requests: list[dict[str, Any]],
-    ) -> dict[str, Any]:
-        return {
-            "schema_version": 1,
-            "dataset_id": int(dataset_id),
-            "partition": {
-                "symbol": symbol,
-                "timeframe": timeframe,
-                "source": source,
-            },
-            "requests": requests,
-            "options": {},
-        }

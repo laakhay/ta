@@ -33,13 +33,7 @@ def sample_dataset(sample_ohlcv_data) -> Dataset:
     [
         "sma(close, 14)",
         "rsi(close, 14)",
-        "atr(14)",
-        "close + 10",
-        "close * 2",
-        "sma(ema(close, 10), 5)",
-        "(close > 10) and (close < 1000000)",
-        "close.change_1h",
-        "close.change_pct_1h",
+        "sma(20) > sma(50) and rsi(14) > 50",
     ],
 )
 def test_evaluation_parity(sample_dataset, expr_text):
@@ -63,6 +57,27 @@ def test_evaluation_parity(sample_dataset, expr_text):
         assert_dict_parity(res1, res2)
     else:
         assert_series_parity(res1, res2)
+
+
+@pytest.mark.parametrize(
+    "expr_text",
+    [
+        "atr(14)",
+        "(close > 10) and (close < 1000000)",
+        "sma(ema(close, 10), 5)",
+        "close.change_1h",
+        "close.change_pct_1h",
+    ],
+)
+def test_evaluation_rejects_unsupported_graphs(sample_dataset, expr_text):
+    from laakhay.ta.expr.algebra.operators import Expression
+    from laakhay.ta.expr.compile import compile_to_ir
+
+    expr = Expression(compile_to_ir(expr_text))
+    plan = expr._ensure_plan()
+
+    with pytest.raises(RuntimeError, match="unsupported nodes"):
+        IncrementalRustBackend().evaluate(plan, sample_dataset)
 
 
 def test_incremental_replay(sample_dataset):
