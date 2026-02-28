@@ -5,6 +5,7 @@ from typing import Any
 import ta_py
 
 from ....core.dataset import Dataset
+from ....core.ohlcv import OHLCV
 from ....core.series import Series
 from ...ir.nodes import CallNode
 from ...planner.types import PlanResult
@@ -31,8 +32,9 @@ class IncrementalRustBackend(ExecutionBackend):
         timeframe: str | None = None,
         **options: Any,
     ) -> Series[Any] | dict[tuple[str, str, str], Series[Any]]:
-        # Full one-shot evaluate still routes through batch execution while
-        # incremental lifecycle operations are handled by Rust.
+        if isinstance(dataset, Dataset) and self._can_execute_plan(plan):
+            return self._evaluate_with_execute_plan(plan, dataset, symbol=symbol, timeframe=timeframe)
+
         from .batch import BatchBackend
 
         return BatchBackend().evaluate(plan, dataset, symbol, timeframe, **options)
@@ -104,3 +106,69 @@ class IncrementalRustBackend(ExecutionBackend):
                 }
             )
         return requests
+
+    @staticmethod
+    def _can_execute_plan(plan: PlanResult) -> bool:
+        root = plan.graph.nodes[plan.graph.root_id].node
+        return isinstance(root, CallNode) and root.name in {"rsi", "atr", "stochastic"}
+
+    def _evaluate_with_execute_plan(
+        self,
+        plan: PlanResult,
+        dataset: Dataset,
+        symbol: str | None,
+        timeframe: str | None,
+    ) -> Series[Any]:
+        requests = self._build_requests(plan)
+        if not requests:
+            raise RuntimeError("execute_plan requires at least one rust-call request")
+
+        selected_symbol, selected_timeframe, selected_source = self._resolve_partition(dataset, symbol, timeframe)
+        outputs = ta_py.execute_plan(
+            dataset.rust_dataset_id,
+            selected_symbol,
+            selected_timeframe,
+            selected_source,
+            requests,
+        )
+
+        root_id = int(plan.graph.root_id)
+        root_values = outputs.get(root_id)
+        if root_values is None:
+            raise RuntimeError(f"execute_plan did not return output for root node {root_id}")
+
+        series_obj = dataset.series(selected_symbol, selected_timeframe, selected_source)
+        if not isinstance(series_obj, OHLCV):
+            raise RuntimeError(
+                "execute_plan currently requires OHLCV partition in dataset for selected symbol/timeframe/source"
+            )
+
+        values = tuple(float(v) if v is not None else float("nan") for v in root_values)
+        return Series[Any](
+            timestamps=series_obj.timestamps,
+            values=values,
+            symbol=selected_symbol,
+            timeframe=selected_timeframe,
+        )
+
+    @staticmethod
+    def _resolve_partition(dataset: Dataset, symbol: str | None, timeframe: str | None) -> tuple[str, str, str]:
+        if symbol and timeframe:
+            explicit = dataset.series(symbol, timeframe, "ohlcv")
+            if isinstance(explicit, OHLCV):
+                return symbol, timeframe, "ohlcv"
+
+            fallback = dataset.series(symbol, timeframe, "default")
+            if isinstance(fallback, OHLCV):
+                return symbol, timeframe, "default"
+
+            raise RuntimeError(
+                f"dataset does not contain OHLCV source for symbol={symbol} timeframe={timeframe}"
+            )
+
+        for key in dataset.keys:
+            series_obj = dataset.series(key.symbol, key.timeframe, key.source)
+            if isinstance(series_obj, OHLCV):
+                return str(key.symbol), key.timeframe, key.source
+
+        raise RuntimeError("dataset must contain at least one OHLCV partition for execute_plan")
