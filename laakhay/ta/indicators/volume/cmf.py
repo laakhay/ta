@@ -15,6 +15,7 @@ from ...registry.schemas import (
     IndicatorSpec,
     OutputSpec,
     ParamSpec,
+    RuntimeBindingSpec,
     SemanticsSpec,
 )
 
@@ -27,6 +28,7 @@ CMF_SPEC = IndicatorSpec(
         required_fields=("high", "low", "close", "volume"),
         lookback_params=("period",),
     ),
+    runtime_binding=RuntimeBindingSpec(kernel_id="cmf"),
 )
 
 
