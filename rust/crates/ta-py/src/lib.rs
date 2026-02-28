@@ -5,6 +5,7 @@ use std::sync::{Mutex, OnceLock};
 use pyo3::prelude::*;
 use pyo3::types::{PyDict, PyList};
 use ta_engine::dataset::{self, DatasetPartitionKey, DatasetRegistryError};
+use ta_engine::dataset_ops::DatasetOpsError;
 use ta_engine::incremental::backend::{self, ExecutePlanError, IncrementalBackend, KernelStepRequest};
 use ta_engine::incremental::contracts::{IncrementalValue, RuntimeSnapshot};
 use ta_engine::incremental::kernel_registry::KernelId;
@@ -104,6 +105,41 @@ fn dataset_info(py: Python<'_>, dataset_id: u64) -> PyResult<PyObject> {
     out.set_item("series_row_count", info.series_row_count)?;
     out.set_item("series_count", info.series_count)?;
     Ok(out.into_any().unbind())
+}
+
+#[pyfunction]
+fn series_downsample(
+    timestamps: Vec<i64>,
+    values: Vec<f64>,
+    factor: usize,
+    agg: String,
+) -> PyResult<(Vec<i64>, Vec<f64>)> {
+    ta_engine::dataset_ops::downsample(&timestamps, &values, factor, &agg).map_err(map_dataset_ops_error)
+}
+
+#[pyfunction]
+fn series_upsample_ffill(
+    timestamps: Vec<i64>,
+    values: Vec<f64>,
+    factor: usize,
+) -> PyResult<(Vec<i64>, Vec<f64>)> {
+    ta_engine::dataset_ops::upsample_ffill(&timestamps, &values, factor).map_err(map_dataset_ops_error)
+}
+
+#[pyfunction]
+fn series_sync_timeframe(
+    source_timestamps: Vec<i64>,
+    source_values: Vec<f64>,
+    reference_timestamps: Vec<i64>,
+    fill: String,
+) -> PyResult<Vec<f64>> {
+    ta_engine::dataset_ops::sync_timeframe(
+        &source_timestamps,
+        &source_values,
+        &reference_timestamps,
+        &fill,
+    )
+    .map_err(map_dataset_ops_error)
 }
 
 #[pyfunction]
@@ -793,6 +829,23 @@ fn map_execute_plan_error(err: ExecutePlanError) -> PyErr {
     }
 }
 
+fn map_dataset_ops_error(err: DatasetOpsError) -> PyErr {
+    match err {
+        DatasetOpsError::LengthMismatch => {
+            pyo3::exceptions::PyValueError::new_err("timestamps and values must have identical lengths")
+        }
+        DatasetOpsError::InvalidFactor => {
+            pyo3::exceptions::PyValueError::new_err("factor must be positive")
+        }
+        DatasetOpsError::UnsupportedAggregation(agg) => {
+            pyo3::exceptions::PyValueError::new_err(format!("unsupported aggregation: {agg}"))
+        }
+        DatasetOpsError::UnsupportedFillMode(fill) => {
+            pyo3::exceptions::PyValueError::new_err(format!("unsupported sync fill mode: {fill}"))
+        }
+    }
+}
+
 fn indicator_meta_to_pydict(
     py: Python<'_>,
     meta: &ta_engine::metadata::IndicatorMeta,
@@ -901,6 +954,9 @@ fn ta_py(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(dataset_append_ohlcv, m)?)?;
     m.add_function(wrap_pyfunction!(dataset_append_series, m)?)?;
     m.add_function(wrap_pyfunction!(dataset_info, m)?)?;
+    m.add_function(wrap_pyfunction!(series_downsample, m)?)?;
+    m.add_function(wrap_pyfunction!(series_upsample_ffill, m)?)?;
+    m.add_function(wrap_pyfunction!(series_sync_timeframe, m)?)?;
     m.add_function(wrap_pyfunction!(indicator_catalog, m)?)?;
     m.add_function(wrap_pyfunction!(indicator_meta, m)?)?;
     m.add_function(wrap_pyfunction!(rolling_sum, m)?)?;
