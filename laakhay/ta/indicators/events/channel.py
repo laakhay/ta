@@ -108,32 +108,12 @@ def in_channel(
         return Series[bool](timestamps=(), values=(), symbol=price_series.symbol, timeframe=price_series.timeframe)
     price_aligned, upper_aligned, lower_aligned = aligned
 
-    if hasattr(ta_py, "in_channel"):
-        out = ta_py.in_channel(
-            [float(v) for v in price_aligned.values],
-            [float(v) for v in upper_aligned.values],
-            [float(v) for v in lower_aligned.values],
-        )
-        return _bool_values_to_series(out, price_aligned)
-
-    # Check: price >= lower AND price <= upper
-    def _in_chan(p, l, u):
-        try:
-            return bool(p >= l) and bool(p <= u)
-        except Exception:
-            return False
-
-    result_values = tuple(
-        _in_chan(price_aligned.values[i], lower_aligned.values[i], upper_aligned.values[i])
-        for i in range(len(price_aligned))
+    out = ta_py.in_channel(
+        [float(v) for v in price_aligned.values],
+        [float(v) for v in upper_aligned.values],
+        [float(v) for v in lower_aligned.values],
     )
-
-    return Series[bool](
-        timestamps=price_aligned.timestamps,
-        values=result_values,
-        symbol=price_aligned.symbol,
-        timeframe=price_aligned.timeframe,
-    )
+    return _bool_values_to_series(out, price_aligned)
 
 
 OUT_SPEC = IndicatorSpec(
@@ -194,32 +174,12 @@ def out(
         return Series[bool](timestamps=(), values=(), symbol=price_series.symbol, timeframe=price_series.timeframe)
     price_aligned, upper_aligned, lower_aligned = aligned
 
-    if hasattr(ta_py, "out_channel"):
-        out_vals = ta_py.out_channel(
-            [float(v) for v in price_aligned.values],
-            [float(v) for v in upper_aligned.values],
-            [float(v) for v in lower_aligned.values],
-        )
-        return _bool_values_to_series(out_vals, price_aligned)
-
-    # Check: price > upper OR price < lower
-    def _out_chan(p, u, l):
-        try:
-            return bool(p > u) or bool(p < l)
-        except Exception:
-            return False
-
-    result_values = tuple(
-        _out_chan(price_aligned.values[i], upper_aligned.values[i], lower_aligned.values[i])
-        for i in range(len(price_aligned))
+    out_vals = ta_py.out_channel(
+        [float(v) for v in price_aligned.values],
+        [float(v) for v in upper_aligned.values],
+        [float(v) for v in lower_aligned.values],
     )
-
-    return Series[bool](
-        timestamps=price_aligned.timestamps,
-        values=result_values,
-        symbol=price_aligned.symbol,
-        timeframe=price_aligned.timeframe,
-    )
+    return _bool_values_to_series(out_vals, price_aligned)
 
 
 ENTER_SPEC = IndicatorSpec(
@@ -294,56 +254,12 @@ def enter(
         )
     price_aligned, upper_aligned, lower_aligned = aligned
 
-    if hasattr(ta_py, "enter_channel"):
-        out_vals = ta_py.enter_channel(
-            [float(v) for v in price_aligned.values],
-            [float(v) for v in upper_aligned.values],
-            [float(v) for v in lower_aligned.values],
-        )
-        return _bool_values_to_series(out_vals, price_aligned)
-
-    # Build result: first value is always False (no previous)
-    result_values: list[bool] = [False]
-    result_timestamps: list = [price_aligned.timestamps[0]]
-
-    # Check entries starting from index 1
-    for i in range(1, len(price_aligned)):
-        price_curr = price_aligned.values[i]
-        upper_curr = upper_aligned.values[i]
-        lower_curr = lower_aligned.values[i]
-
-        price_prev = price_aligned.values[i - 1]
-        upper_prev = upper_aligned.values[i - 1]
-        lower_prev = lower_aligned.values[i - 1]
-
-        # Current: inside channel
-        def _is_in(p, l, u):
-            try:
-                return bool(p >= l) and bool(p <= u)
-            except Exception:
-                return False
-
-        def _is_out(p, u, l):
-            try:
-                return bool(p > u) or bool(p < l)
-            except Exception:
-                return False
-
-        currently_in = _is_in(price_curr, lower_curr, upper_curr)
-        previously_out = _is_out(price_prev, upper_prev, lower_prev)
-
-        # Entry: currently in AND previously out
-        entered = currently_in and previously_out
-
-        result_values.append(entered)
-        result_timestamps.append(price_aligned.timestamps[i])
-
-    return Series[bool](
-        timestamps=tuple(result_timestamps),
-        values=tuple(result_values),
-        symbol=price_aligned.symbol,
-        timeframe=price_aligned.timeframe,
+    out_vals = ta_py.enter_channel(
+        [float(v) for v in price_aligned.values],
+        [float(v) for v in upper_aligned.values],
+        [float(v) for v in lower_aligned.values],
     )
+    return _bool_values_to_series(out_vals, price_aligned)
 
 
 EXIT_SPEC = IndicatorSpec(
@@ -417,42 +333,9 @@ def exit(
         )
     price_aligned, upper_aligned, lower_aligned = aligned
 
-    if hasattr(ta_py, "exit_channel"):
-        out_vals = ta_py.exit_channel(
-            [float(v) for v in price_aligned.values],
-            [float(v) for v in upper_aligned.values],
-            [float(v) for v in lower_aligned.values],
-        )
-        return _bool_values_to_series(out_vals, price_aligned)
-
-    # Build result: first value is always False (no previous)
-    result_values: list[bool] = [False]
-    result_timestamps: list = [price_aligned.timestamps[0]]
-
-    # Check exits starting from index 1
-    for i in range(1, len(price_aligned)):
-        price_curr = price_aligned.values[i]
-        upper_curr = upper_aligned.values[i]
-        lower_curr = lower_aligned.values[i]
-
-        price_prev = price_aligned.values[i - 1]
-        upper_prev = upper_aligned.values[i - 1]
-        lower_prev = lower_aligned.values[i - 1]
-
-        # Current: outside channel
-        currently_out = (price_curr > upper_curr) or (price_curr < lower_curr)
-        # Previous: inside channel
-        previously_in = (price_prev >= lower_prev) and (price_prev <= upper_prev)
-
-        # Exit: currently out AND previously in
-        exited = currently_out and previously_in
-
-        result_values.append(exited)
-        result_timestamps.append(price_aligned.timestamps[i])
-
-    return Series[bool](
-        timestamps=tuple(result_timestamps),
-        values=tuple(result_values),
-        symbol=price_aligned.symbol,
-        timeframe=price_aligned.timeframe,
+    out_vals = ta_py.exit_channel(
+        [float(v) for v in price_aligned.values],
+        [float(v) for v in upper_aligned.values],
+        [float(v) for v in lower_aligned.values],
     )
+    return _bool_values_to_series(out_vals, price_aligned)

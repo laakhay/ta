@@ -79,26 +79,8 @@ def rising(
             timeframe=a_series.timeframe,
         )
 
-    if hasattr(ta_py, "rising"):
-        out = ta_py.rising([float(v) for v in a_series.values])
-        return _bool_values_to_series(out, a_series)
-
-    # First value is always False (no previous)
-    result_values: list[bool] = [False]
-    result_timestamps: list = [a_series.timestamps[0]]
-
-    # Check rising: current > previous (direct comparison)
-    for i in range(1, len(a_series)):
-        is_rising = a_series.values[i] > a_series.values[i - 1]
-        result_values.append(is_rising)
-        result_timestamps.append(a_series.timestamps[i])
-
-    return Series[bool](
-        timestamps=tuple(result_timestamps),
-        values=tuple(result_values),
-        symbol=a_series.symbol,
-        timeframe=a_series.timeframe,
-    )
+    out = ta_py.rising([float(v) for v in a_series.values])
+    return _bool_values_to_series(out, a_series)
 
 
 FALLING_SPEC = IndicatorSpec(
@@ -149,24 +131,8 @@ def falling(
             timeframe=a_series.timeframe,
         )
 
-    if hasattr(ta_py, "falling"):
-        out = ta_py.falling([float(v) for v in a_series.values])
-        return _bool_values_to_series(out, a_series)
-
-    result_values: list[bool] = [False]
-    result_timestamps: list = [a_series.timestamps[0]]
-
-    for i in range(1, len(a_series)):
-        is_falling = a_series.values[i] < a_series.values[i - 1]
-        result_values.append(is_falling)
-        result_timestamps.append(a_series.timestamps[i])
-
-    return Series[bool](
-        timestamps=tuple(result_timestamps),
-        values=tuple(result_values),
-        symbol=a_series.symbol,
-        timeframe=a_series.timeframe,
-    )
+    out = ta_py.falling([float(v) for v in a_series.values])
+    return _bool_values_to_series(out, a_series)
 
 
 RISING_PCT_SPEC = IndicatorSpec(
@@ -222,28 +188,8 @@ def rising_pct(
             timeframe=a_series.timeframe,
         )
 
-    if hasattr(ta_py, "rising_pct"):
-        out = ta_py.rising_pct([float(v) for v in a_series.values], float(pct))
-        return _bool_values_to_series(out, a_series)
-
-    pct_decimal = Decimal(str(pct))
-    multiplier = Decimal("1") + (pct_decimal / Decimal("100"))
-
-    result_values: list[bool] = [False]
-    result_timestamps: list = [a_series.timestamps[0]]
-
-    for i in range(1, len(a_series)):
-        threshold = a_series.values[i - 1] * multiplier
-        is_rising_pct = a_series.values[i] >= threshold
-        result_values.append(is_rising_pct)
-        result_timestamps.append(a_series.timestamps[i])
-
-    return Series[bool](
-        timestamps=tuple(result_timestamps),
-        values=tuple(result_values),
-        symbol=a_series.symbol,
-        timeframe=a_series.timeframe,
-    )
+    out = ta_py.rising_pct([float(v) for v in a_series.values], float(pct))
+    return _bool_values_to_series(out, a_series)
 
 
 FALLING_PCT_SPEC = IndicatorSpec(
@@ -296,25 +242,5 @@ def falling_pct(
             timeframe=a_series.timeframe,
         )
 
-    if hasattr(ta_py, "falling_pct"):
-        out = ta_py.falling_pct([float(v) for v in a_series.values], float(pct))
-        return _bool_values_to_series(out, a_series)
-
-    pct_decimal = Decimal(str(pct))
-    multiplier = Decimal("1") - (pct_decimal / Decimal("100"))
-
-    result_values: list[bool] = [False]
-    result_timestamps: list = [a_series.timestamps[0]]
-
-    for i in range(1, len(a_series)):
-        threshold = a_series.values[i - 1] * multiplier
-        is_falling_pct = a_series.values[i] <= threshold
-        result_values.append(is_falling_pct)
-        result_timestamps.append(a_series.timestamps[i])
-
-    return Series[bool](
-        timestamps=tuple(result_timestamps),
-        values=tuple(result_values),
-        symbol=a_series.symbol,
-        timeframe=a_series.timeframe,
-    )
+    out = ta_py.falling_pct([float(v) for v in a_series.values], float(pct))
+    return _bool_values_to_series(out, a_series)
