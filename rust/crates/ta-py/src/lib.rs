@@ -772,7 +772,7 @@ fn execute_plan_payload(py: Python<'_>, payload: &Bound<'_, PyDict>) -> PyResult
         let details = v.downcast::<PyDict>()?;
         let mut map = BTreeMap::new();
         for (dk, dv) in details.iter() {
-            map.insert(dk.extract::<String>()?, format!("{:?}", dv));
+            map.insert(dk.extract::<String>()?, extract_scalar_string(&dv)?);
         }
         nodes.insert(node_id, map);
     }
@@ -799,9 +799,7 @@ fn execute_plan_payload(py: Python<'_>, payload: &Bound<'_, PyDict>) -> PyResult
         },
         requests: parse_contract_requests(&requests)?,
     };
-    let parsed_payload =
-        backend::parse_execute_plan_payload(&contract_payload).map_err(map_execute_plan_error)?;
-    let out = backend::execute_plan_payload(&parsed_payload).map_err(map_execute_plan_error)?;
+    let out = backend::execute_plan_graph_payload(&contract_payload).map_err(map_execute_plan_error)?;
     incremental_series_map_to_pydict(py, &out)
 }
 
@@ -909,6 +907,22 @@ fn extract_node_id(value: &Bound<'_, PyAny>) -> PyResult<u32> {
     Err(pyo3::exceptions::PyValueError::new_err(
         "invalid node id type",
     ))
+}
+
+fn extract_scalar_string(value: &Bound<'_, PyAny>) -> PyResult<String> {
+    if let Ok(text) = value.extract::<String>() {
+        return Ok(text);
+    }
+    if let Ok(v) = value.extract::<bool>() {
+        return Ok(v.to_string());
+    }
+    if let Ok(v) = value.extract::<i64>() {
+        return Ok(v.to_string());
+    }
+    if let Ok(v) = value.extract::<f64>() {
+        return Ok(v.to_string());
+    }
+    Ok(format!("{value:?}"))
 }
 
 fn incremental_map_to_pydict(

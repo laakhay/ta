@@ -302,16 +302,23 @@ def _serialize_ir_node(node: Any) -> dict[str, Any]:
             "exchange": node.exchange,
         }
     if kind == "CallNode":
-        kwargs: dict[str, Any] = {}
+        kwargs: dict[str, str] = {}
         for key, val in node.kwargs.items():
-            kwargs[key] = val.value if hasattr(val, "value") else repr(val)
-        return {
+            raw = val.value if hasattr(val, "value") else val
+            kwargs[f"kw_{key}"] = str(raw)
+        args: dict[str, str] = {}
+        for index, arg in enumerate(node.args):
+            raw = arg.value if hasattr(arg, "value") else arg
+            args[f"arg_{index}"] = str(raw)
+        serialized = {
             "kind": "call",
             "name": node.name,
             "output": node.output,
-            "args_count": len(node.args),
-            "kwargs": kwargs,
+            "args_count": str(len(node.args)),
         }
+        serialized.update(kwargs)
+        serialized.update(args)
+        return serialized
     if kind == "BinaryOpNode":
         return {"kind": "binary_op", "operator": node.operator}
     if kind == "UnaryOpNode":

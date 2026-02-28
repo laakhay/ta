@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import math
 from typing import Any
 
 import ta_py
@@ -110,8 +111,25 @@ class IncrementalRustBackend(ExecutionBackend):
 
     @staticmethod
     def _can_execute_plan(plan: PlanResult) -> bool:
-        root = plan.graph.nodes[plan.graph.root_id].node
-        return isinstance(root, CallNode) and root.name in {"rsi", "atr", "stochastic", "vwap"}
+        allowed_calls = {"sma", "mean", "rolling_mean", "rsi"}
+        allowed_binary = {"gt", "lt", "eq", "and", "or", "add", "sub", "mul", "div"}
+        for graph_node in plan.graph.nodes.values():
+            node = graph_node.node
+            if type(node).__name__ == "SourceRefNode":
+                continue
+            if type(node).__name__ == "LiteralNode":
+                continue
+            if type(node).__name__ == "CallNode":
+                if not isinstance(node, CallNode) or node.name not in allowed_calls:
+                    return False
+                continue
+            if type(node).__name__ == "BinaryOpNode":
+                op = getattr(node, "operator", None)
+                if op not in allowed_binary:
+                    return False
+                continue
+            return False
+        return True
 
     def _evaluate_with_execute_plan(
         self,
@@ -121,8 +139,6 @@ class IncrementalRustBackend(ExecutionBackend):
         timeframe: str | None,
     ) -> dict[tuple[str, str, str], Series[Any]]:
         requests = self._build_requests(plan)
-        if not requests:
-            raise RuntimeError("execute_plan requires at least one rust-call request")
 
         selected_symbol, selected_timeframe, selected_source = self._resolve_partition(dataset, symbol, timeframe)
         payload = build_rust_execution_payload(
@@ -146,7 +162,14 @@ class IncrementalRustBackend(ExecutionBackend):
                 "execute_plan currently requires OHLCV partition in dataset for selected symbol/timeframe/source"
             )
 
-        values = tuple(float(v) if v is not None else float("nan") for v in root_values)
+        normalized_values: list[Any] = []
+        for value in root_values:
+            if value is None:
+                normalized_values.append(None)
+                continue
+            number = float(value)
+            normalized_values.append(None if math.isnan(number) else number)
+        values = tuple(normalized_values)
         series = Series[Any](
             timestamps=series_obj.timestamps,
             values=values,
