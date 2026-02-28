@@ -5,7 +5,7 @@ use std::sync::{Mutex, OnceLock};
 use pyo3::prelude::*;
 use pyo3::types::{PyDict, PyList};
 use ta_engine::dataset::{self, DatasetPartitionKey, DatasetRegistryError};
-use ta_engine::incremental::backend::{IncrementalBackend, KernelStepRequest};
+use ta_engine::incremental::backend::{self, ExecutePlanError, IncrementalBackend, KernelStepRequest};
 use ta_engine::incremental::contracts::{IncrementalValue, RuntimeSnapshot};
 use ta_engine::incremental::kernel_registry::KernelId;
 
@@ -652,6 +652,29 @@ fn incremental_replay(
     Ok(py_list.into_any().unbind())
 }
 
+#[pyfunction]
+fn execute_plan(
+    py: Python<'_>,
+    dataset_id: u64,
+    symbol: String,
+    timeframe: String,
+    source: String,
+    requests: &Bound<'_, PyList>,
+) -> PyResult<PyObject> {
+    let parsed_requests = parse_requests(requests)?;
+    let out = backend::execute_plan(
+        dataset_id,
+        &DatasetPartitionKey {
+            symbol,
+            timeframe,
+            source,
+        },
+        &parsed_requests,
+    )
+    .map_err(map_execute_plan_error)?;
+    incremental_series_map_to_pydict(py, &out)
+}
+
 fn parse_requests(requests: &Bound<'_, PyList>) -> PyResult<Vec<KernelStepRequest>> {
     let mut out = Vec::with_capacity(requests.len());
     for item in requests.iter() {
@@ -728,6 +751,46 @@ fn incremental_map_to_pydict(
         }
     }
     Ok(d.into_any().unbind())
+}
+
+fn incremental_series_map_to_pydict(
+    py: Python<'_>,
+    values: &BTreeMap<u32, Vec<IncrementalValue>>,
+) -> PyResult<PyObject> {
+    let d = PyDict::new(py);
+    for (k, series) in values {
+        let py_list = PyList::empty(py);
+        for v in series {
+            match v {
+                IncrementalValue::Number(n) => py_list.append(*n)?,
+                IncrementalValue::Bool(b) => py_list.append(*b)?,
+                IncrementalValue::Text(s) => py_list.append(s)?,
+                IncrementalValue::Null => py_list.append(py.None())?,
+            }
+        }
+        d.set_item(k, py_list)?;
+    }
+    Ok(d.into_any().unbind())
+}
+
+fn map_execute_plan_error(err: ExecutePlanError) -> PyErr {
+    match err {
+        ExecutePlanError::Dataset(inner) => map_dataset_error(inner),
+        ExecutePlanError::PartitionNotFound {
+            symbol,
+            timeframe,
+            data_source,
+        } => pyo3::exceptions::PyKeyError::new_err(format!(
+            "dataset partition not found for symbol={symbol} timeframe={timeframe} source={data_source}"
+        )),
+        ExecutePlanError::MissingOhlcv {
+            symbol,
+            timeframe,
+            data_source,
+        } => pyo3::exceptions::PyValueError::new_err(format!(
+            "ohlcv columns missing for symbol={symbol} timeframe={timeframe} source={data_source}"
+        )),
+    }
 }
 
 fn indicator_meta_to_pydict(
@@ -891,5 +954,6 @@ fn ta_py(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(incremental_step, m)?)?;
     m.add_function(wrap_pyfunction!(incremental_snapshot, m)?)?;
     m.add_function(wrap_pyfunction!(incremental_replay, m)?)?;
+    m.add_function(wrap_pyfunction!(execute_plan, m)?)?;
     Ok(())
 }
