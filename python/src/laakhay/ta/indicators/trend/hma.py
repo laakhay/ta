@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-import math
+import ta_py
 
 from ...core import Series
 from ...core.types import Price
@@ -12,9 +12,10 @@ from ...registry.schemas import (
     IndicatorSpec,
     OutputSpec,
     ParamSpec,
+    RuntimeBindingSpec,
     SemanticsSpec,
 )
-from .wma import wma
+from .._utils import results_to_series
 
 HMA_SPEC = IndicatorSpec(
     name="hma",
@@ -25,37 +26,14 @@ HMA_SPEC = IndicatorSpec(
         required_fields=("close",),
         lookback_params=("period",),
     ),
+    runtime_binding=RuntimeBindingSpec(kernel_id="hma"),
 )
 
 
 @register(spec=HMA_SPEC)
 def hma(ctx: SeriesContext, period: int = 14) -> Series[Price]:
-    """
-    Hull Moving Average (HMA) implementation.
-
-    Formula:
-    WMA1 = WMA(n/2, close)
-    WMA2 = WMA(n, close)
-    Raw_HMA = 2 * WMA1 - WMA2
-    HMA = WMA(sqrt(n), Raw_HMA)
-    """
+    """Hull Moving Average (HMA) implementation."""
     if period <= 0:
         raise ValueError("HMA period must be positive")
-
-    # 1. Calculate WMA(period/2)
-    wma_half = wma(ctx, period=period // 2)
-
-    # 2. Calculate WMA(period)
-    wma_full = wma(ctx, period=period)
-
-    # 3. Raw HMA series: 2 * WMA(n/2) - WMA(n)
-    raw_hma_series = (wma_half * 2) - wma_full
-
-    # 4. Final HMA: WMA(sqrt(n), Raw_HMA)
-    sqrt_period = int(math.sqrt(period))
-    if sqrt_period < 1:
-        sqrt_period = 1
-
-    # We need a new context for the final WMA call
-    new_ctx = SeriesContext(close=raw_hma_series)
-    return wma(new_ctx, period=sqrt_period)
+    result = ta_py.hma([float(v) for v in ctx.close.values], period)
+    return results_to_series(result, ctx.close, value_class=Price)
