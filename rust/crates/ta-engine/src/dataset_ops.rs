@@ -37,9 +37,12 @@ pub fn downsample(
         out_ts.push(timestamps[end - 1]);
         let bucket = &values[i..end];
         let v = match agg {
+            "first" => bucket[0],
             "last" => bucket[bucket.len() - 1],
             "mean" => bucket.iter().sum::<f64>() / bucket.len() as f64,
             "sum" => bucket.iter().sum(),
+            "max" => bucket.iter().copied().fold(f64::NEG_INFINITY, f64::max),
+            "min" => bucket.iter().copied().fold(f64::INFINITY, f64::min),
             other => return Err(DatasetOpsError::UnsupportedAggregation(other.to_string())),
         };
         out_values.push(v);

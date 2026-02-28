@@ -16,6 +16,15 @@ fn downsample_last_mean_sum() {
     let (sum_ts, sum_vals) = downsample(&ts, &values, 2, "sum").expect("downsample sum should work");
     assert_eq!(sum_ts, vec![2, 4, 5]);
     assert_eq!(sum_vals, vec![30.0, 70.0, 50.0]);
+
+    let (_, first_vals) = downsample(&ts, &values, 2, "first").expect("downsample first should work");
+    assert_eq!(first_vals, vec![10.0, 30.0, 50.0]);
+
+    let (_, max_vals) = downsample(&ts, &values, 2, "max").expect("downsample max should work");
+    assert_eq!(max_vals, vec![20.0, 40.0, 50.0]);
+
+    let (_, min_vals) = downsample(&ts, &values, 2, "min").expect("downsample min should work");
+    assert_eq!(min_vals, vec![10.0, 30.0, 50.0]);
 }
 
 #[test]
