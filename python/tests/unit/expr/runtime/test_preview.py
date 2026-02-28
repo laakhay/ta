@@ -197,7 +197,7 @@ class TestIndicatorEmissions:
         assert sma_emission.render.pane_hint == "volume"
 
     def test_explicit_source_binding_for_trades(self, multi_source_dataset):
-        result = preview("sma(BTC.trades.volume, period=10)", dataset=multi_source_dataset)
+        result = preview("sma(trades.volume, period=10)", dataset=multi_source_dataset)
 
         assert result.indicator_emissions is not None
         sma_emission = next((item for item in result.indicator_emissions if item.indicator == "sma"), None)

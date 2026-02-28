@@ -20,7 +20,6 @@ from laakhay.ta.core.series import Series
 from laakhay.ta.core.types import Price
 from laakhay.ta.expr.dsl import compile_expression
 from laakhay.ta.expr.planner import plan_expression
-from laakhay.ta.expr.planner.evaluator import Evaluator
 from laakhay.ta.runtime.backend import RuntimeBackend, get_runtime_backend
 
 # Try to import pytest-benchmark, fall back to None if not available
@@ -88,34 +87,6 @@ class TestEvaluationBenchmarks:
         result = benchmark(evaluate)
         assert result is not None
 
-    def test_evaluator_benchmark(self, benchmark):
-        """Benchmark Evaluator directly."""
-        ds = create_large_dataset(1000)
-        evaluator = Evaluator()
-        expr = compile_expression("sma(20)")
-
-        def evaluate():
-            return evaluator.evaluate(expr, ds)
-
-        result = benchmark(evaluate)
-        assert result is not None
-
-    def test_cached_evaluation_benchmark(self, benchmark):
-        """Benchmark cached evaluation (second run should be faster)."""
-        ds = create_large_dataset(1000)
-        evaluator = Evaluator()
-        expr = compile_expression("sma(20)")
-
-        # First evaluation (populates cache)
-        evaluator.evaluate(expr, ds)
-
-        # Second evaluation (uses cache)
-        def evaluate_cached():
-            return evaluator.evaluate(expr, ds)
-
-        result = benchmark(evaluate_cached)
-        assert result is not None
-
     def test_multi_source_expression_benchmark(self, benchmark):
         """Benchmark multi-source expression evaluation."""
         ds = create_large_dataset(1000)
@@ -130,7 +101,7 @@ class TestEvaluationBenchmarks:
         )
         ds.add_trade_series("BTCUSDT", "1h", trades_volume)
 
-        expr = compile_expression("sma(BTC.trades.volume, period=20)")
+        expr = compile_expression("sma(trades.volume, period=20)")
 
         def evaluate():
             return expr.run(ds)

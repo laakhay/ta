@@ -144,6 +144,177 @@ const P_STD_DEV_2: IndicatorParamMeta = IndicatorParamMeta {
     max: None,
 };
 
+const P_PCT_5: IndicatorParamMeta = IndicatorParamMeta {
+    name: "pct",
+    kind: IndicatorParamKind::Float,
+    required: false,
+    default: Some("5"),
+    description: "Percentage threshold",
+    min: Some(0.0),
+    max: None,
+};
+const P_SOURCE_STR: IndicatorParamMeta = IndicatorParamMeta {
+    name: "source",
+    kind: IndicatorParamKind::String,
+    required: false,
+    default: None,
+    description: "Source field override",
+    min: None,
+    max: None,
+};
+const P_A_SERIES: IndicatorParamMeta = IndicatorParamMeta {
+    name: "a",
+    kind: IndicatorParamKind::String,
+    required: false,
+    default: None,
+    description: "Primary series input",
+    min: None,
+    max: None,
+};
+const P_B_SERIES: IndicatorParamMeta = IndicatorParamMeta {
+    name: "b",
+    kind: IndicatorParamKind::String,
+    required: false,
+    default: None,
+    description: "Secondary series input",
+    min: None,
+    max: None,
+};
+const P_PRICE_SERIES: IndicatorParamMeta = IndicatorParamMeta {
+    name: "price",
+    kind: IndicatorParamKind::String,
+    required: false,
+    default: None,
+    description: "Price series input",
+    min: None,
+    max: None,
+};
+const P_UPPER_SERIES: IndicatorParamMeta = IndicatorParamMeta {
+    name: "upper",
+    kind: IndicatorParamKind::String,
+    required: false,
+    default: None,
+    description: "Upper bound input",
+    min: None,
+    max: None,
+};
+const P_LOWER_SERIES: IndicatorParamMeta = IndicatorParamMeta {
+    name: "lower",
+    kind: IndicatorParamKind::String,
+    required: false,
+    default: None,
+    description: "Lower bound input",
+    min: None,
+    max: None,
+};
+
+const P_MULTIPLIER_3: IndicatorParamMeta = IndicatorParamMeta {
+    name: "multiplier",
+    kind: IndicatorParamKind::Float,
+    required: false,
+    default: Some("3.0"),
+    description: "Channel multiplier",
+    min: Some(0.0),
+    max: None,
+};
+const P_MULTIPLIER_2: IndicatorParamMeta = IndicatorParamMeta {
+    name: "multiplier",
+    kind: IndicatorParamKind::Float,
+    required: false,
+    default: Some("2.0"),
+    description: "Channel multiplier",
+    min: Some(0.0),
+    max: None,
+};
+const P_EMA_PERIOD_20: IndicatorParamMeta = IndicatorParamMeta {
+    name: "ema_period",
+    kind: IndicatorParamKind::Integer,
+    required: false,
+    default: Some("20"),
+    description: "EMA period",
+    min: Some(1.0),
+    max: None,
+};
+const P_ATR_PERIOD_10: IndicatorParamMeta = IndicatorParamMeta {
+    name: "atr_period",
+    kind: IndicatorParamKind::Integer,
+    required: false,
+    default: Some("10"),
+    description: "ATR period",
+    min: Some(1.0),
+    max: None,
+};
+
+const P_TENKAN_9: IndicatorParamMeta = IndicatorParamMeta {
+    name: "tenkan_period",
+    kind: IndicatorParamKind::Integer,
+    required: false,
+    default: Some("9"),
+    description: "Tenkan-sen period",
+    min: Some(1.0),
+    max: None,
+};
+
+const P_KIJUN_26: IndicatorParamMeta = IndicatorParamMeta {
+    name: "kijun_period",
+    kind: IndicatorParamKind::Integer,
+    required: false,
+    default: Some("26"),
+    description: "Kijun-sen period",
+    min: Some(1.0),
+    max: None,
+};
+
+const P_SPAN_B_52: IndicatorParamMeta = IndicatorParamMeta {
+    name: "span_b_period",
+    kind: IndicatorParamKind::Integer,
+    required: false,
+    default: Some("52"),
+    description: "Senkou Span B period",
+    min: Some(1.0),
+    max: None,
+};
+
+const P_DISPLACEMENT_26: IndicatorParamMeta = IndicatorParamMeta {
+    name: "displacement",
+    kind: IndicatorParamKind::Integer,
+    required: false,
+    default: Some("26"),
+    description: "Ichimoku displacement",
+    min: Some(1.0),
+    max: None,
+};
+
+const P_AF_START_002: IndicatorParamMeta = IndicatorParamMeta {
+    name: "af_start",
+    kind: IndicatorParamKind::Float,
+    required: false,
+    default: Some("0.02"),
+    description: "Initial acceleration factor",
+    min: Some(0.0),
+    max: None,
+};
+
+const P_AF_INCREMENT_002: IndicatorParamMeta = IndicatorParamMeta {
+    name: "af_increment",
+    kind: IndicatorParamKind::Float,
+    required: false,
+    default: Some("0.02"),
+    description: "Acceleration factor increment",
+    min: Some(0.0),
+    max: None,
+};
+
+const P_AF_MAX_02: IndicatorParamMeta = IndicatorParamMeta {
+    name: "af_max",
+    kind: IndicatorParamKind::Float,
+    required: false,
+    default: Some("0.2"),
+    description: "Maximum acceleration factor",
+    min: Some(0.0),
+    max: None,
+};
+
 const P_K_PERIOD_14: IndicatorParamMeta = IndicatorParamMeta {
     name: "k_period",
     kind: IndicatorParamKind::Integer,
@@ -241,6 +412,22 @@ const SEM_OHLC_STOCH: IndicatorSemanticsMeta = IndicatorSemanticsMeta {
     warmup_policy: "window",
 };
 
+const SEM_CLOSE_NO_LOOKBACK: IndicatorSemanticsMeta = IndicatorSemanticsMeta {
+    required_fields: &["close"],
+    optional_fields: &[],
+    lookback_params: &[],
+    default_lookback: Some(1),
+    warmup_policy: "none",
+};
+
+const SEM_CLOSE_PAIR: IndicatorSemanticsMeta = IndicatorSemanticsMeta {
+    required_fields: &["close"],
+    optional_fields: &[],
+    lookback_params: &[],
+    default_lookback: Some(2),
+    warmup_policy: "none",
+};
+
 const CATALOG: &[IndicatorMeta] = &[
     IndicatorMeta {
         id: "adx",
@@ -309,7 +496,7 @@ const CATALOG: &[IndicatorMeta] = &[
         id: "bbands",
         display_name: "Bollinger Bands",
         category: "volatility",
-        aliases: &["bb"],
+        aliases: &["bb", "bb_upper", "bb_lower"],
         param_aliases: &[PARAM_ALIAS_LOOKBACK_PERIOD],
         params: &[P_PERIOD_20, P_STD_DEV_2],
         outputs: &[
@@ -384,10 +571,384 @@ const CATALOG: &[IndicatorMeta] = &[
         runtime_binding: "cmo",
     },
     IndicatorMeta {
+        id: "coppock",
+        display_name: "Coppock Curve",
+        category: "momentum",
+        aliases: &[],
+        param_aliases: &[],
+        params: &[
+            IndicatorParamMeta {
+                name: "wma_period",
+                kind: IndicatorParamKind::Integer,
+                required: false,
+                default: Some("10"),
+                description: "WMA period",
+                min: Some(1.0),
+                max: None,
+            },
+            IndicatorParamMeta {
+                name: "fast_roc",
+                kind: IndicatorParamKind::Integer,
+                required: false,
+                default: Some("11"),
+                description: "Fast ROC period",
+                min: Some(1.0),
+                max: None,
+            },
+            IndicatorParamMeta {
+                name: "slow_roc",
+                kind: IndicatorParamKind::Integer,
+                required: false,
+                default: Some("14"),
+                description: "Slow ROC period",
+                min: Some(1.0),
+                max: None,
+            },
+        ],
+        outputs: &[IndicatorOutputMeta {
+            name: "result",
+            kind: "line",
+            description: "Coppock value",
+        }],
+        semantics: SEM_CLOSE_FAST_SLOW_SIGNAL,
+        runtime_binding: "coppock",
+    },
+    IndicatorMeta {
+        id: "cross",
+        display_name: "Cross",
+        category: "event",
+        aliases: &[],
+        param_aliases: &[],
+        params: &[P_A_SERIES, P_B_SERIES],
+        outputs: &[IndicatorOutputMeta {
+            name: "result",
+            kind: "signal",
+            description: "Any cross event",
+        }],
+        semantics: SEM_CLOSE_PAIR,
+        runtime_binding: "cross",
+    },
+    IndicatorMeta {
+        id: "crossdown",
+        display_name: "Cross Down",
+        category: "event",
+        aliases: &[],
+        param_aliases: &[],
+        params: &[P_A_SERIES, P_B_SERIES],
+        outputs: &[IndicatorOutputMeta {
+            name: "result",
+            kind: "signal",
+            description: "Cross down event",
+        }],
+        semantics: SEM_CLOSE_PAIR,
+        runtime_binding: "crossdown",
+    },
+    IndicatorMeta {
+        id: "crossup",
+        display_name: "Cross Up",
+        category: "event",
+        aliases: &[],
+        param_aliases: &[],
+        params: &[P_A_SERIES, P_B_SERIES],
+        outputs: &[IndicatorOutputMeta {
+            name: "result",
+            kind: "signal",
+            description: "Cross up event",
+        }],
+        semantics: SEM_CLOSE_PAIR,
+        runtime_binding: "crossup",
+    },
+    IndicatorMeta {
+        id: "donchian",
+        display_name: "Donchian Channel",
+        category: "volatility",
+        aliases: &[],
+        param_aliases: &[PARAM_ALIAS_LOOKBACK_PERIOD],
+        params: &[P_PERIOD_20],
+        outputs: &[
+            IndicatorOutputMeta {
+                name: "upper",
+                kind: "band_upper",
+                description: "Upper channel",
+            },
+            IndicatorOutputMeta {
+                name: "lower",
+                kind: "band_lower",
+                description: "Lower channel",
+            },
+            IndicatorOutputMeta {
+                name: "middle",
+                kind: "band_middle",
+                description: "Middle channel",
+            },
+        ],
+        semantics: IndicatorSemanticsMeta {
+            required_fields: &["high", "low"],
+            optional_fields: &[],
+            lookback_params: &["period"],
+            default_lookback: None,
+            warmup_policy: "window",
+        },
+        runtime_binding: "donchian",
+    },
+    IndicatorMeta {
+        id: "elder_ray",
+        display_name: "Elder Ray Index",
+        category: "trend",
+        aliases: &[],
+        param_aliases: &[PARAM_ALIAS_LOOKBACK_PERIOD],
+        params: &[IndicatorParamMeta {
+            name: "period",
+            kind: IndicatorParamKind::Integer,
+            required: false,
+            default: Some("13"),
+            description: "EMA period",
+            min: Some(1.0),
+            max: None,
+        }],
+        outputs: &[
+            IndicatorOutputMeta {
+                name: "bull",
+                kind: "histogram",
+                description: "Bull power",
+            },
+            IndicatorOutputMeta {
+                name: "bear",
+                kind: "histogram",
+                description: "Bear power",
+            },
+        ],
+        semantics: SEM_OHLC_PERIOD,
+        runtime_binding: "elder_ray",
+    },
+    IndicatorMeta {
+        id: "ema",
+        display_name: "Exponential Moving Average",
+        category: "trend",
+        aliases: &["rolling_ema"],
+        param_aliases: &[PARAM_ALIAS_LOOKBACK_PERIOD],
+        params: &[P_PERIOD_20, P_SOURCE_STR],
+        outputs: &[IndicatorOutputMeta {
+            name: "result",
+            kind: "line",
+            description: "EMA value",
+        }],
+        semantics: SEM_CLOSE_PERIOD,
+        runtime_binding: "ema",
+    },
+    IndicatorMeta {
+        id: "enter",
+        display_name: "Enter Channel",
+        category: "event",
+        aliases: &[],
+        param_aliases: &[],
+        params: &[P_PRICE_SERIES, P_UPPER_SERIES, P_LOWER_SERIES],
+        outputs: &[IndicatorOutputMeta {
+            name: "result",
+            kind: "signal",
+            description: "Enter channel event",
+        }],
+        semantics: IndicatorSemanticsMeta {
+            required_fields: &["close"],
+            optional_fields: &["upper", "lower"],
+            lookback_params: &[],
+            default_lookback: Some(2),
+            warmup_policy: "none",
+        },
+        runtime_binding: "enter",
+    },
+    IndicatorMeta {
+        id: "exit",
+        display_name: "Exit Channel",
+        category: "event",
+        aliases: &[],
+        param_aliases: &[],
+        params: &[P_PRICE_SERIES, P_UPPER_SERIES, P_LOWER_SERIES],
+        outputs: &[IndicatorOutputMeta {
+            name: "result",
+            kind: "signal",
+            description: "Exit channel event",
+        }],
+        semantics: IndicatorSemanticsMeta {
+            required_fields: &["close"],
+            optional_fields: &["upper", "lower"],
+            lookback_params: &[],
+            default_lookback: Some(2),
+            warmup_policy: "none",
+        },
+        runtime_binding: "exit",
+    },
+    IndicatorMeta {
+        id: "falling",
+        display_name: "Falling",
+        category: "event",
+        aliases: &[],
+        param_aliases: &[],
+        params: &[P_A_SERIES],
+        outputs: &[IndicatorOutputMeta {
+            name: "result",
+            kind: "signal",
+            description: "Falling event",
+        }],
+        semantics: SEM_CLOSE_NO_LOOKBACK,
+        runtime_binding: "falling",
+    },
+    IndicatorMeta {
+        id: "falling_pct",
+        display_name: "Falling By Percent",
+        category: "event",
+        aliases: &[],
+        param_aliases: &[],
+        params: &[P_A_SERIES, P_PCT_5],
+        outputs: &[IndicatorOutputMeta {
+            name: "result",
+            kind: "signal",
+            description: "Falling by percent event",
+        }],
+        semantics: SEM_CLOSE_NO_LOOKBACK,
+        runtime_binding: "falling_pct",
+    },
+    IndicatorMeta {
+        id: "fisher",
+        display_name: "Fisher Transform",
+        category: "trend",
+        aliases: &[],
+        param_aliases: &[PARAM_ALIAS_LOOKBACK_PERIOD],
+        params: &[IndicatorParamMeta {
+            name: "period",
+            kind: IndicatorParamKind::Integer,
+            required: false,
+            default: Some("9"),
+            description: "Lookback period",
+            min: Some(1.0),
+            max: None,
+        }],
+        outputs: &[
+            IndicatorOutputMeta {
+                name: "fisher",
+                kind: "line",
+                description: "Fisher value",
+            },
+            IndicatorOutputMeta {
+                name: "signal",
+                kind: "signal",
+                description: "Signal value",
+            },
+        ],
+        semantics: IndicatorSemanticsMeta {
+            required_fields: &["high", "low"],
+            optional_fields: &[],
+            lookback_params: &["period"],
+            default_lookback: None,
+            warmup_policy: "window",
+        },
+        runtime_binding: "fisher",
+    },
+    IndicatorMeta {
+        id: "hma",
+        display_name: "Hull Moving Average",
+        category: "trend",
+        aliases: &[],
+        param_aliases: &[PARAM_ALIAS_LOOKBACK_PERIOD],
+        params: &[P_PERIOD_14],
+        outputs: &[IndicatorOutputMeta {
+            name: "result",
+            kind: "line",
+            description: "HMA value",
+        }],
+        semantics: SEM_CLOSE_PERIOD,
+        runtime_binding: "hma",
+    },
+    IndicatorMeta {
+        id: "ichimoku",
+        display_name: "Ichimoku Cloud",
+        category: "trend",
+        aliases: &[],
+        param_aliases: &[],
+        params: &[P_TENKAN_9, P_KIJUN_26, P_SPAN_B_52, P_DISPLACEMENT_26],
+        outputs: &[
+            IndicatorOutputMeta {
+                name: "tenkan_sen",
+                kind: "line",
+                description: "Tenkan-sen",
+            },
+            IndicatorOutputMeta {
+                name: "kijun_sen",
+                kind: "line",
+                description: "Kijun-sen",
+            },
+            IndicatorOutputMeta {
+                name: "senkou_span_a",
+                kind: "line",
+                description: "Senkou Span A",
+            },
+            IndicatorOutputMeta {
+                name: "senkou_span_b",
+                kind: "line",
+                description: "Senkou Span B",
+            },
+            IndicatorOutputMeta {
+                name: "chikou_span",
+                kind: "line",
+                description: "Chikou Span",
+            },
+        ],
+        semantics: SEM_OHLC_PERIOD,
+        runtime_binding: "ichimoku",
+    },
+    IndicatorMeta {
+        id: "in_channel",
+        display_name: "In Channel",
+        category: "event",
+        aliases: &[],
+        param_aliases: &[],
+        params: &[P_PRICE_SERIES, P_UPPER_SERIES, P_LOWER_SERIES],
+        outputs: &[IndicatorOutputMeta {
+            name: "result",
+            kind: "signal",
+            description: "In channel event",
+        }],
+        semantics: IndicatorSemanticsMeta {
+            required_fields: &["close"],
+            optional_fields: &["upper", "lower"],
+            lookback_params: &[],
+            default_lookback: Some(1),
+            warmup_policy: "none",
+        },
+        runtime_binding: "in_channel",
+    },
+    IndicatorMeta {
+        id: "keltner",
+        display_name: "Keltner Channel",
+        category: "volatility",
+        aliases: &[],
+        param_aliases: &[],
+        params: &[P_EMA_PERIOD_20, P_ATR_PERIOD_10, P_MULTIPLIER_2],
+        outputs: &[
+            IndicatorOutputMeta {
+                name: "upper",
+                kind: "band_upper",
+                description: "Upper channel",
+            },
+            IndicatorOutputMeta {
+                name: "middle",
+                kind: "band_middle",
+                description: "Middle channel",
+            },
+            IndicatorOutputMeta {
+                name: "lower",
+                kind: "band_lower",
+                description: "Lower channel",
+            },
+        ],
+        semantics: SEM_OHLC_PERIOD,
+        runtime_binding: "keltner",
+    },
+    IndicatorMeta {
         id: "klinger_vf",
         display_name: "Klinger Volume Force",
         category: "volume",
-        aliases: &[],
+        aliases: &["klinger"],
         param_aliases: &[],
         params: &[],
         outputs: &[IndicatorOutputMeta {
@@ -432,6 +993,27 @@ const CATALOG: &[IndicatorMeta] = &[
         runtime_binding: "macd",
     },
     IndicatorMeta {
+        id: "mfi",
+        display_name: "Money Flow Index",
+        category: "momentum",
+        aliases: &[],
+        param_aliases: &[PARAM_ALIAS_LOOKBACK_PERIOD],
+        params: &[P_PERIOD_14],
+        outputs: &[IndicatorOutputMeta {
+            name: "result",
+            kind: "line",
+            description: "MFI value",
+        }],
+        semantics: IndicatorSemanticsMeta {
+            required_fields: &["high", "low", "close", "volume"],
+            optional_fields: &[],
+            lookback_params: &["period"],
+            default_lookback: None,
+            warmup_policy: "window",
+        },
+        runtime_binding: "mfi",
+    },
+    IndicatorMeta {
         id: "obv",
         display_name: "On Balance Volume",
         category: "volume",
@@ -451,6 +1033,79 @@ const CATALOG: &[IndicatorMeta] = &[
             warmup_policy: "none",
         },
         runtime_binding: "obv",
+    },
+    IndicatorMeta {
+        id: "out",
+        display_name: "Out Of Channel",
+        category: "event",
+        aliases: &["out_channel"],
+        param_aliases: &[],
+        params: &[P_PRICE_SERIES, P_UPPER_SERIES, P_LOWER_SERIES],
+        outputs: &[IndicatorOutputMeta {
+            name: "result",
+            kind: "signal",
+            description: "Out of channel event",
+        }],
+        semantics: IndicatorSemanticsMeta {
+            required_fields: &["close"],
+            optional_fields: &["upper", "lower"],
+            lookback_params: &[],
+            default_lookback: Some(1),
+            warmup_policy: "none",
+        },
+        runtime_binding: "out",
+    },
+    IndicatorMeta {
+        id: "psar",
+        display_name: "Parabolic SAR",
+        category: "trend",
+        aliases: &[],
+        param_aliases: &[],
+        params: &[P_AF_START_002, P_AF_INCREMENT_002, P_AF_MAX_02],
+        outputs: &[
+            IndicatorOutputMeta {
+                name: "sar",
+                kind: "line",
+                description: "SAR value",
+            },
+            IndicatorOutputMeta {
+                name: "direction",
+                kind: "signal",
+                description: "Trend direction",
+            },
+        ],
+        semantics: SEM_OHLC_PERIOD,
+        runtime_binding: "psar",
+    },
+    IndicatorMeta {
+        id: "rising",
+        display_name: "Rising",
+        category: "event",
+        aliases: &[],
+        param_aliases: &[],
+        params: &[P_A_SERIES],
+        outputs: &[IndicatorOutputMeta {
+            name: "result",
+            kind: "signal",
+            description: "Rising event",
+        }],
+        semantics: SEM_CLOSE_NO_LOOKBACK,
+        runtime_binding: "rising",
+    },
+    IndicatorMeta {
+        id: "rising_pct",
+        display_name: "Rising By Percent",
+        category: "event",
+        aliases: &[],
+        param_aliases: &[],
+        params: &[P_A_SERIES, P_PCT_5],
+        outputs: &[IndicatorOutputMeta {
+            name: "result",
+            kind: "signal",
+            description: "Rising by percent event",
+        }],
+        semantics: SEM_CLOSE_NO_LOOKBACK,
+        runtime_binding: "rising_pct",
     },
     IndicatorMeta {
         id: "roc",
@@ -483,10 +1138,25 @@ const CATALOG: &[IndicatorMeta] = &[
         runtime_binding: "rsi",
     },
     IndicatorMeta {
+        id: "sma",
+        display_name: "Simple Moving Average",
+        category: "trend",
+        aliases: &["rolling_mean", "mean"],
+        param_aliases: &[PARAM_ALIAS_LOOKBACK_PERIOD],
+        params: &[P_PERIOD_20, P_SOURCE_STR],
+        outputs: &[IndicatorOutputMeta {
+            name: "result",
+            kind: "line",
+            description: "SMA value",
+        }],
+        semantics: SEM_CLOSE_PERIOD,
+        runtime_binding: "sma",
+    },
+    IndicatorMeta {
         id: "stochastic",
         display_name: "Stochastic Oscillator",
         category: "momentum",
-        aliases: &["stoch", "stochastic_kd"],
+        aliases: &["stoch", "stochastic_kd", "stoch_k", "stoch_d"],
         param_aliases: &[],
         params: &[P_K_PERIOD_14, P_D_PERIOD_3, P_SMOOTH_1],
         outputs: &[
@@ -505,10 +1175,38 @@ const CATALOG: &[IndicatorMeta] = &[
         runtime_binding: "stochastic_kd",
     },
     IndicatorMeta {
+        id: "supertrend",
+        display_name: "Supertrend",
+        category: "trend",
+        aliases: &[],
+        param_aliases: &[],
+        params: &[P_PERIOD_12, P_MULTIPLIER_3],
+        outputs: &[
+            IndicatorOutputMeta {
+                name: "supertrend",
+                kind: "line",
+                description: "Supertrend line",
+            },
+            IndicatorOutputMeta {
+                name: "direction",
+                kind: "signal",
+                description: "Trend direction",
+            },
+        ],
+        semantics: SEM_OHLC_PERIOD,
+        runtime_binding: "supertrend",
+    },
+    IndicatorMeta {
         id: "swing_points",
         display_name: "Swing Points",
         category: "pattern",
-        aliases: &["swing_points_raw"],
+        aliases: &[
+            "swing_points_raw",
+            "swing_highs",
+            "swing_lows",
+            "swing_high_at",
+            "swing_low_at",
+        ],
         param_aliases: &[],
         params: &[P_LEFT_2, P_RIGHT_2, P_ALLOW_EQUAL_FALSE],
         outputs: &[
@@ -531,6 +1229,28 @@ const CATALOG: &[IndicatorMeta] = &[
             warmup_policy: "window",
         },
         runtime_binding: "swing_points_raw",
+    },
+    IndicatorMeta {
+        id: "vortex",
+        display_name: "Vortex Indicator",
+        category: "momentum",
+        aliases: &[],
+        param_aliases: &[PARAM_ALIAS_LOOKBACK_PERIOD],
+        params: &[P_PERIOD_14],
+        outputs: &[
+            IndicatorOutputMeta {
+                name: "plus",
+                kind: "line",
+                description: "VI+",
+            },
+            IndicatorOutputMeta {
+                name: "minus",
+                kind: "line",
+                description: "VI-",
+            },
+        ],
+        semantics: SEM_OHLC_PERIOD,
+        runtime_binding: "vortex",
     },
     IndicatorMeta {
         id: "vwap",
@@ -567,6 +1287,21 @@ const CATALOG: &[IndicatorMeta] = &[
         }],
         semantics: SEM_OHLC_PERIOD,
         runtime_binding: "williams_r",
+    },
+    IndicatorMeta {
+        id: "wma",
+        display_name: "Weighted Moving Average",
+        category: "trend",
+        aliases: &["rolling_wma"],
+        param_aliases: &[PARAM_ALIAS_LOOKBACK_PERIOD],
+        params: &[P_PERIOD_14, P_SOURCE_STR],
+        outputs: &[IndicatorOutputMeta {
+            name: "result",
+            kind: "line",
+            description: "WMA value",
+        }],
+        semantics: SEM_CLOSE_PERIOD,
+        runtime_binding: "wma",
     },
 ];
 

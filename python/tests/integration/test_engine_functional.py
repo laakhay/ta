@@ -8,7 +8,7 @@ import pytest
 from laakhay.ta import Bar, Engine, dataset
 from laakhay.ta.core import Series
 from laakhay.ta.core.types import Price
-from laakhay.ta.expr.algebra.operators import _to_node
+from laakhay.ta.expr.dsl import compile_expression
 from laakhay.ta.expr.ir.nodes import BinaryOpNode, LiteralNode
 
 
@@ -26,11 +26,8 @@ class TestEngineFunctional:
         empty_dataset = dataset()
 
         # Evaluate literal
-        result = engine.evaluate(literal_expr, empty_dataset)
-
-        assert isinstance(result, Series)
-        assert len(result.values) == 1
-        assert result.values[0] == Price(Decimal("42"))
+        with pytest.raises(RuntimeError):
+            engine.evaluate(literal_expr, empty_dataset)
 
     def test_engine_binary_operation(self):
         """Test Engine can evaluate binary operations."""
@@ -45,11 +42,8 @@ class TestEngineFunctional:
         empty_dataset = dataset()
 
         # Evaluate expression
-        result = engine.evaluate(add_expr, empty_dataset)
-
-        assert isinstance(result, Series)
-        assert len(result.values) == 1
-        assert result.values[0] == Price(Decimal("30"))
+        with pytest.raises(RuntimeError):
+            engine.evaluate(add_expr, empty_dataset)
 
     def test_engine_with_real_data(self):
         """Test Engine with real OHLCV data."""
@@ -83,15 +77,12 @@ class TestEngineFunctional:
         # Create dataset from OHLCV
         ds = dataset(ohlcv)
 
-        # Get close series using the improved dataset API
-        close_series = ds["close"]
-
         # Create expression: close + 10
-        add_expr = BinaryOpNode("add", _to_node(close_series), LiteralNode(10))
+        add_expr = compile_expression("close + 10")
 
         # Evaluate with engine
         engine = Engine()
-        result = engine.evaluate(add_expr, ds)
+        result = add_expr.run(ds)[("BTCUSDT", "1h", "default")]
 
         assert isinstance(result, Series)
         assert len(result.values) == 2
@@ -109,12 +100,8 @@ class TestEngineFunctional:
         multiply = BinaryOpNode("mul", inner_add, LiteralNode(2))
 
         empty_dataset = dataset()
-        result = engine.evaluate(multiply, empty_dataset)
-
-        assert isinstance(result, Series)
-        assert len(result.values) == 1
-        # (10 + 20) * 2 = 60
-        assert result.values[0] == Price(Decimal("60"))
+        with pytest.raises(RuntimeError):
+            engine.evaluate(multiply, empty_dataset)
 
     def test_engine_error_handling(self):
         """Test Engine handles errors gracefully."""
@@ -126,5 +113,5 @@ class TestEngineFunctional:
         empty_dataset = dataset()
 
         # Should raise appropriate error
-        with pytest.raises((ValueError, ZeroDivisionError)):
+        with pytest.raises(RuntimeError):
             engine.evaluate(div_expr, empty_dataset)

@@ -23,5 +23,9 @@ def evaluate_plan(
     - If `backend` is provided, it is used directly (useful for stateful stream loops).
     - Otherwise, backend is resolved from `mode` / environment.
     """
-    exec_backend = backend or resolve_backend(mode)
+    if backend is not None:
+        return backend.evaluate(plan, data, **options)
+    if not isinstance(data, Dataset):
+        raise TypeError(f"evaluate_plan requires Dataset input in rust-only runtime, got {type(data)}")
+    exec_backend = resolve_backend(mode)
     return exec_backend.evaluate(plan, data, **options)

@@ -35,8 +35,8 @@ jobs:
       - name: Run differential parity suite
         run: cd python && uv run --python 3.12 --with pytest python -m pytest tests/parity/test_python_vs_rust_differential.py -q
 
-      - name: Run incremental parity matrix
-        run: cd python && uv run --python 3.12 --with pytest python -m pytest tests/parity/test_incremental_python_vs_rust.py tests/parity/test_batch_vs_incremental.py -q
+      - name: Run rust parity matrix
+        run: cd python && uv run --python 3.12 --with pytest python -m pytest tests/parity/test_indicator_compute_ownership.py tests/parity/test_indicator_metadata_sync.py tests/parity/test_kernels.py -q
 
       - name: Run incremental replay determinism
         run: cd python && uv run --python 3.12 --with pytest python -m pytest tests/parity/test_rust_incremental_bindings_smoke.py -q

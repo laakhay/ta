@@ -112,6 +112,25 @@ pub fn rolling_max(values: &[f64], period: usize) -> Vec<f64> {
     out
 }
 
+pub fn rolling_median(values: &[f64], period: usize) -> Vec<f64> {
+    let n = values.len();
+    let mut out = vec![f64::NAN; n];
+    if period == 0 || n == 0 {
+        return out;
+    }
+
+    for i in 0..n {
+        if i + 1 >= period {
+            let start = i + 1 - period;
+            let mut window: Vec<f64> = values[start..=i].to_vec();
+            window.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+            out[i] = window[period / 2];
+        }
+    }
+
+    out
+}
+
 pub fn ema(values: &[f64], period: usize) -> Vec<f64> {
     let n = values.len();
     let mut out = vec![f64::NAN; n];

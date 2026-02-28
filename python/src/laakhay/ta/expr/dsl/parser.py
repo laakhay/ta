@@ -362,7 +362,7 @@ class ExpressionParser:
         raise StrategyError(f"Unknown identifier '{node.id}'")
 
     def _convert_attribute(self, node: ast.Attribute) -> CanonicalExpression:
-        """Convert attribute access like BTC.trades.volume or binance.BTC.orderbook.imbalance"""
+        """Convert attribute access for local source fields/time-shifts only."""
         # Check if this might be an aggregation property (e.g., trades.count)
         # Aggregation properties: count
         aggregation_properties = {"count"}
@@ -383,9 +383,31 @@ class ExpressionParser:
             series_expr = self._convert_node(node.value)
             return AggregateNode(series=series_expr, operation=last_attr, field=None)
 
-        # Otherwise, treat as regular attribute access
-        # Build chain: [binance, BTC, 1h, trades, volume] or [BTC, trades, volume]
-        # Only support attribute chain format (no bracket notation)
+        # Support direct source-field access only (no symbol/exchange/timeframe qualifiers):
+        # - ohlcv.close, trades.volume, orderbook.imbalance, liquidation.count
+        # All qualified chains (e.g. BTC.price, binance.BTC.price, BTC.h1.close) are rejected.
+        if isinstance(node.value, ast.Name) and node.value.id.lower() in KNOWN_SOURCES:
+            source = node.value.id.lower()
+            field = node.attr.lower()
+            self._validate_attribute_combination(
+                exchange=None,
+                symbol="__local__",
+                timeframe=None,
+                source=source,
+                field=field,
+            )
+            return SourceRefNode(
+                symbol=None,
+                field=field,
+                exchange=None,
+                timeframe=None,
+                source=source,
+                base=None,
+                quote=None,
+                instrument_type=None,
+            )
+
+        # Otherwise, treat as regular attribute chain expression.
         chain = []
         current = node
         while isinstance(current, ast.Attribute):
@@ -401,21 +423,9 @@ class ExpressionParser:
                 expr = MemberAccessNode(expr=expr, member=attr.lower())
             return expr
 
-        # Parse chain into components (now includes base, quote, instrument_type)
-        exchange, symbol, timeframe, source, field, base, quote, instrument_type = self._parse_attribute_chain(chain)
-
-        # Validate the combination
-        self._validate_attribute_combination(exchange, symbol, timeframe, source, field)
-
-        return SourceRefNode(
-            symbol=symbol,
-            field=field,
-            exchange=exchange,
-            timeframe=timeframe,
-            source=source,
-            base=base,
-            quote=quote,
-            instrument_type=instrument_type,
+        raise StrategyError(
+            "Qualified source references are not supported anymore. "
+            "Use local fields/sources only (e.g., close, ohlcv.close, trades.volume)."
         )
 
     def _parse_attribute_chain(

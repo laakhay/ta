@@ -22,6 +22,7 @@ install-dev: ## Install dependencies (dev mode)
 test: test-py test-rs ## Run all tests (Python + Rust)
 
 test-py: ## Run Python tests (without coverage)
+	@$(UV_RUN) --with maturin maturin develop --manifest-path $(MATURIN_MANIFEST)
 	@$(UV_RUN) --with pytest python -m pytest $(PYTHON_TESTS_DIR)/ -q
 
 test-rs: ## Run Rust workspace tests

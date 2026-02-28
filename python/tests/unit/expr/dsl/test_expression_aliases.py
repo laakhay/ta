@@ -68,15 +68,12 @@ def test_parse_nested_stats_aliases():
 
 
 def test_parse_explicit_source_with_alias():
-    """Test alias with symbol prefix."""
-    expr = parse_expression_text("BTC.price > mean(BTC.price, lookback=50)")
+    """Test alias with local source selector input."""
+    expr = parse_expression_text("close > mean(close, lookback=50)")
     indicators = extract_indicator_nodes(expr)
-    # BTC.price is an AttributeNode, not an IndicatorNode.
-    # So we only expect the 'mean' (rolling_mean) indicator.
-    # Note: the input_expr of 'mean' will be the AttributeNode, which is not collected by collect().
-    assert len(indicators) == 1
-    assert indicators[0].name == "rolling_mean"
-    assert indicators[0].kwargs["period"].value == 50
+    assert any(ind.name == "rolling_mean" for ind in indicators)
+    mean_node = next(ind for ind in indicators if ind.name == "rolling_mean")
+    assert mean_node.kwargs["period"].value == 50
 
 
 def test_parse_mean_positional_field():

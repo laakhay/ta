@@ -27,6 +27,7 @@ fn ta_py(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(api::indicators::rolling_ema, m)?)?;
     m.add_function(wrap_pyfunction!(api::indicators::rolling_rma, m)?)?;
     m.add_function(wrap_pyfunction!(api::indicators::rolling_wma, m)?)?;
+    m.add_function(wrap_pyfunction!(api::indicators::hma, m)?)?;
     m.add_function(wrap_pyfunction!(api::indicators::rsi, m)?)?;
     m.add_function(wrap_pyfunction!(api::indicators::roc, m)?)?;
     m.add_function(wrap_pyfunction!(api::indicators::cmo, m)?)?;

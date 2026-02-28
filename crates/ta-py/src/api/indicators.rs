@@ -52,6 +52,11 @@ pub(crate) fn rolling_wma(values: Vec<f64>, period: usize) -> PyResult<Vec<f64>>
     Ok(ta_engine::moving_averages::wma(&values, period))
 }
 #[pyfunction]
+pub(crate) fn hma(values: Vec<f64>, period: usize) -> PyResult<Vec<f64>> {
+    validate_period(period)?;
+    Ok(ta_engine::moving_averages::hma(&values, period))
+}
+#[pyfunction]
 pub(crate) fn rsi(values: Vec<f64>, period: usize) -> PyResult<Vec<f64>> {
     validate_period(period)?;
     Ok(ta_engine::momentum::rsi(&values, period))

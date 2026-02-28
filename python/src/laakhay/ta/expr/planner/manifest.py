@@ -102,20 +102,20 @@ def generate_capability_manifest() -> dict[str, Any]:
             "close > 50000",
         ],
         "multi_source": [
-            "BTC/USDT.price > 50000",
-            "BTC/USDT.trades.volume > 1000000",
-            "BTC/USDT.orderbook.imbalance > 0.5",
+            "ohlcv.close > 50000",
+            "trades.volume > 1000000",
+            "orderbook.imbalance > 0.5",
         ],
         "filters": [
-            "BTC/USDT.trades.filter(amount > 1000000).count > 10",
+            "trades.filter(amount > 1000000).count > 10",
         ],
         "aggregations": [
-            "BTC/USDT.trades.sum(amount) > 50000000",
-            "BTC/USDT.trades.count > 100",
+            "trades.sum(amount) > 50000000",
+            "trades.count > 100",
         ],
         "time_shifts": [
-            "BTC/USDT.price.24h_ago < BTC/USDT.price",
-            "BTC/USDT.volume.change_pct_24h > 10",
+            "close.24h_ago < close",
+            "volume.change_pct_24h > 10",
         ],
     }
 
@@ -128,7 +128,7 @@ def generate_capability_manifest() -> dict[str, Any]:
         "version": "1.3.0",  # Bumped version for rich metadata
         "dsl_version": "1.0.0",
         "features": {
-            "multi_source": True,
+            "multi_source": False,
             "explicit_indicator_inputs": True,
             "filters": True,
             "aggregations": True,
