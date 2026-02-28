@@ -39,6 +39,7 @@ INDICATOR_PORT_STATUS: dict[str, PortStatus] = {
     "in_channel": "rust_native",
     "keltner": "rust_native",
     "klinger": "rust_native",
+    "klinger_vf": "rust_native",
     "macd": "rust_native",
     "mfi": "rust_native",
     "obv": "rust_native",

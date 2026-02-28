@@ -16,8 +16,6 @@ from ...registry.schemas import (
     SemanticsSpec,
 )
 from .._utils import results_to_series
-from ..trend.ema import ema
-from ..volatility.atr import atr
 
 KELTNER_SPEC = IndicatorSpec(
     name="keltner",
@@ -54,32 +52,16 @@ def keltner(
     if ema_period <= 0 or atr_period <= 0:
         raise ValueError("Keltner periods must be positive")
 
-    if hasattr(ta_py, "keltner"):
-        upper_vals, middle_vals, lower_vals = ta_py.keltner(
-            [float(v) for v in ctx.high.values],
-            [float(v) for v in ctx.low.values],
-            [float(v) for v in ctx.close.values],
-            ema_period,
-            atr_period,
-            multiplier,
-        )
-        return (
-            results_to_series(upper_vals, ctx.close, value_class=Price),
-            results_to_series(middle_vals, ctx.close, value_class=Price),
-            results_to_series(lower_vals, ctx.close, value_class=Price),
-        )
-
-    # Temporary fallback while ta_py upgrades.
-    middle = ema(ctx, ema_period)
-    v_atr = atr(ctx, atr_period)
-
-    # ATR is calculated over high/low/close.
-    # The middle line EMA is also calculated.
-    # We need to ensure they are aligned if they have different start points.
-    # However, both use standard library primitives which should handle alignment.
-
-    offset = v_atr * multiplier
-    upper = middle + offset
-    lower = middle - offset
-
-    return upper, middle, lower
+    upper_vals, middle_vals, lower_vals = ta_py.keltner(
+        [float(v) for v in ctx.high.values],
+        [float(v) for v in ctx.low.values],
+        [float(v) for v in ctx.close.values],
+        ema_period,
+        atr_period,
+        multiplier,
+    )
+    return (
+        results_to_series(upper_vals, ctx.close, value_class=Price),
+        results_to_series(middle_vals, ctx.close, value_class=Price),
+        results_to_series(lower_vals, ctx.close, value_class=Price),
+    )
