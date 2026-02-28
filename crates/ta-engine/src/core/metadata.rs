@@ -154,6 +154,86 @@ const P_PCT_5: IndicatorParamMeta = IndicatorParamMeta {
     max: None,
 };
 
+const P_MULTIPLIER_3: IndicatorParamMeta = IndicatorParamMeta {
+    name: "multiplier",
+    kind: IndicatorParamKind::Float,
+    required: false,
+    default: Some("3.0"),
+    description: "Channel multiplier",
+    min: Some(0.0),
+    max: None,
+};
+
+const P_TENKAN_9: IndicatorParamMeta = IndicatorParamMeta {
+    name: "tenkan_period",
+    kind: IndicatorParamKind::Integer,
+    required: false,
+    default: Some("9"),
+    description: "Tenkan-sen period",
+    min: Some(1.0),
+    max: None,
+};
+
+const P_KIJUN_26: IndicatorParamMeta = IndicatorParamMeta {
+    name: "kijun_period",
+    kind: IndicatorParamKind::Integer,
+    required: false,
+    default: Some("26"),
+    description: "Kijun-sen period",
+    min: Some(1.0),
+    max: None,
+};
+
+const P_SPAN_B_52: IndicatorParamMeta = IndicatorParamMeta {
+    name: "span_b_period",
+    kind: IndicatorParamKind::Integer,
+    required: false,
+    default: Some("52"),
+    description: "Senkou Span B period",
+    min: Some(1.0),
+    max: None,
+};
+
+const P_DISPLACEMENT_26: IndicatorParamMeta = IndicatorParamMeta {
+    name: "displacement",
+    kind: IndicatorParamKind::Integer,
+    required: false,
+    default: Some("26"),
+    description: "Ichimoku displacement",
+    min: Some(1.0),
+    max: None,
+};
+
+const P_AF_START_002: IndicatorParamMeta = IndicatorParamMeta {
+    name: "af_start",
+    kind: IndicatorParamKind::Float,
+    required: false,
+    default: Some("0.02"),
+    description: "Initial acceleration factor",
+    min: Some(0.0),
+    max: None,
+};
+
+const P_AF_INCREMENT_002: IndicatorParamMeta = IndicatorParamMeta {
+    name: "af_increment",
+    kind: IndicatorParamKind::Float,
+    required: false,
+    default: Some("0.02"),
+    description: "Acceleration factor increment",
+    min: Some(0.0),
+    max: None,
+};
+
+const P_AF_MAX_02: IndicatorParamMeta = IndicatorParamMeta {
+    name: "af_max",
+    kind: IndicatorParamKind::Float,
+    required: false,
+    default: Some("0.2"),
+    description: "Maximum acceleration factor",
+    min: Some(0.0),
+    max: None,
+};
+
 const P_K_PERIOD_14: IndicatorParamMeta = IndicatorParamMeta {
     name: "k_period",
     kind: IndicatorParamKind::Integer,
@@ -410,6 +490,45 @@ const CATALOG: &[IndicatorMeta] = &[
         runtime_binding: "cmo",
     },
     IndicatorMeta {
+        id: "coppock",
+        display_name: "Coppock Curve",
+        category: "momentum",
+        aliases: &[],
+        param_aliases: &[],
+        params: &[IndicatorParamMeta {
+            name: "wma_period",
+            kind: IndicatorParamKind::Integer,
+            required: false,
+            default: Some("10"),
+            description: "WMA period",
+            min: Some(1.0),
+            max: None,
+        }, IndicatorParamMeta {
+            name: "fast_roc",
+            kind: IndicatorParamKind::Integer,
+            required: false,
+            default: Some("11"),
+            description: "Fast ROC period",
+            min: Some(1.0),
+            max: None,
+        }, IndicatorParamMeta {
+            name: "slow_roc",
+            kind: IndicatorParamKind::Integer,
+            required: false,
+            default: Some("14"),
+            description: "Slow ROC period",
+            min: Some(1.0),
+            max: None,
+        }],
+        outputs: &[IndicatorOutputMeta {
+            name: "result",
+            kind: "line",
+            description: "Coppock value",
+        }],
+        semantics: SEM_CLOSE_FAST_SLOW_SIGNAL,
+        runtime_binding: "coppock",
+    },
+    IndicatorMeta {
         id: "cross",
         display_name: "Cross",
         category: "event",
@@ -486,6 +605,36 @@ const CATALOG: &[IndicatorMeta] = &[
             warmup_policy: "window",
         },
         runtime_binding: "donchian",
+    },
+    IndicatorMeta {
+        id: "elder_ray",
+        display_name: "Elder Ray Index",
+        category: "trend",
+        aliases: &[],
+        param_aliases: &[PARAM_ALIAS_LOOKBACK_PERIOD],
+        params: &[IndicatorParamMeta {
+            name: "period",
+            kind: IndicatorParamKind::Integer,
+            required: false,
+            default: Some("13"),
+            description: "EMA period",
+            min: Some(1.0),
+            max: None,
+        }],
+        outputs: &[
+            IndicatorOutputMeta {
+                name: "bull",
+                kind: "histogram",
+                description: "Bull power",
+            },
+            IndicatorOutputMeta {
+                name: "bear",
+                kind: "histogram",
+                description: "Bear power",
+            },
+        ],
+        semantics: SEM_OHLC_PERIOD,
+        runtime_binding: "elder_ray",
     },
     IndicatorMeta {
         id: "ema",
@@ -573,6 +722,79 @@ const CATALOG: &[IndicatorMeta] = &[
         }],
         semantics: SEM_CLOSE_NO_LOOKBACK,
         runtime_binding: "falling_pct",
+    },
+    IndicatorMeta {
+        id: "fisher",
+        display_name: "Fisher Transform",
+        category: "trend",
+        aliases: &[],
+        param_aliases: &[PARAM_ALIAS_LOOKBACK_PERIOD],
+        params: &[IndicatorParamMeta {
+            name: "period",
+            kind: IndicatorParamKind::Integer,
+            required: false,
+            default: Some("9"),
+            description: "Lookback period",
+            min: Some(1.0),
+            max: None,
+        }],
+        outputs: &[
+            IndicatorOutputMeta {
+                name: "fisher",
+                kind: "line",
+                description: "Fisher value",
+            },
+            IndicatorOutputMeta {
+                name: "signal",
+                kind: "signal",
+                description: "Signal value",
+            },
+        ],
+        semantics: IndicatorSemanticsMeta {
+            required_fields: &["high", "low"],
+            optional_fields: &[],
+            lookback_params: &["period"],
+            default_lookback: None,
+            warmup_policy: "window",
+        },
+        runtime_binding: "fisher",
+    },
+    IndicatorMeta {
+        id: "ichimoku",
+        display_name: "Ichimoku Cloud",
+        category: "trend",
+        aliases: &[],
+        param_aliases: &[],
+        params: &[P_TENKAN_9, P_KIJUN_26, P_SPAN_B_52, P_DISPLACEMENT_26],
+        outputs: &[
+            IndicatorOutputMeta {
+                name: "tenkan_sen",
+                kind: "line",
+                description: "Tenkan-sen",
+            },
+            IndicatorOutputMeta {
+                name: "kijun_sen",
+                kind: "line",
+                description: "Kijun-sen",
+            },
+            IndicatorOutputMeta {
+                name: "senkou_span_a",
+                kind: "line",
+                description: "Senkou Span A",
+            },
+            IndicatorOutputMeta {
+                name: "senkou_span_b",
+                kind: "line",
+                description: "Senkou Span B",
+            },
+            IndicatorOutputMeta {
+                name: "chikou_span",
+                kind: "line",
+                description: "Chikou Span",
+            },
+        ],
+        semantics: SEM_OHLC_PERIOD,
+        runtime_binding: "ichimoku",
     },
     IndicatorMeta {
         id: "in_channel",
@@ -713,6 +935,28 @@ const CATALOG: &[IndicatorMeta] = &[
         runtime_binding: "out",
     },
     IndicatorMeta {
+        id: "psar",
+        display_name: "Parabolic SAR",
+        category: "trend",
+        aliases: &[],
+        param_aliases: &[],
+        params: &[P_AF_START_002, P_AF_INCREMENT_002, P_AF_MAX_02],
+        outputs: &[
+            IndicatorOutputMeta {
+                name: "sar",
+                kind: "line",
+                description: "SAR value",
+            },
+            IndicatorOutputMeta {
+                name: "direction",
+                kind: "signal",
+                description: "Trend direction",
+            },
+        ],
+        semantics: SEM_OHLC_PERIOD,
+        runtime_binding: "psar",
+    },
+    IndicatorMeta {
         id: "rising",
         display_name: "Rising",
         category: "event",
@@ -810,6 +1054,28 @@ const CATALOG: &[IndicatorMeta] = &[
         runtime_binding: "stochastic_kd",
     },
     IndicatorMeta {
+        id: "supertrend",
+        display_name: "Supertrend",
+        category: "trend",
+        aliases: &[],
+        param_aliases: &[],
+        params: &[P_PERIOD_12, P_MULTIPLIER_3],
+        outputs: &[
+            IndicatorOutputMeta {
+                name: "supertrend",
+                kind: "line",
+                description: "Supertrend line",
+            },
+            IndicatorOutputMeta {
+                name: "direction",
+                kind: "signal",
+                description: "Trend direction",
+            },
+        ],
+        semantics: SEM_OHLC_PERIOD,
+        runtime_binding: "supertrend",
+    },
+    IndicatorMeta {
         id: "swing_points",
         display_name: "Swing Points",
         category: "pattern",
@@ -842,6 +1108,28 @@ const CATALOG: &[IndicatorMeta] = &[
             warmup_policy: "window",
         },
         runtime_binding: "swing_points_raw",
+    },
+    IndicatorMeta {
+        id: "vortex",
+        display_name: "Vortex Indicator",
+        category: "momentum",
+        aliases: &[],
+        param_aliases: &[PARAM_ALIAS_LOOKBACK_PERIOD],
+        params: &[P_PERIOD_14],
+        outputs: &[
+            IndicatorOutputMeta {
+                name: "plus",
+                kind: "line",
+                description: "VI+",
+            },
+            IndicatorOutputMeta {
+                name: "minus",
+                kind: "line",
+                description: "VI-",
+            },
+        ],
+        semantics: SEM_OHLC_PERIOD,
+        runtime_binding: "vortex",
     },
     IndicatorMeta {
         id: "vwap",
