@@ -31,7 +31,7 @@ class ExecutionBackend(Protocol):
     def step(
         self,
         plan: PlanResult,
-        update_event: Any,
+        _update_event: Any,
         **options: Any,
     ) -> None:
         """Process an incremental update event."""
@@ -40,7 +40,7 @@ class ExecutionBackend(Protocol):
     def replay(
         self,
         plan: PlanResult,
-        replay_spec: Any,
+        _replay_spec: Any,
         **options: Any,
     ) -> None:
         """Replay a specific range of historical data."""

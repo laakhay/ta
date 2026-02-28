@@ -441,6 +441,8 @@ def downsample(
 )
 def upsample(ctx: SeriesContext, *, factor: int = 2, method: str = "ffill") -> Series[Price]:
     src = _select(ctx)
+    if method != "ffill":
+        raise ValueError(f"Unsupported upsample method: {method}")
     if factor <= 1:
         return src
     n = len(src)
