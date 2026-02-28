@@ -57,7 +57,7 @@ def test_evaluate_uses_execute_plan_for_supported_root(sample_ohlcv_data, monkey
 
 def test_evaluate_falls_back_to_batch_for_non_supported_root(sample_ohlcv_data, monkeypatch) -> None:
     ds = _build_dataset(sample_ohlcv_data)
-    expr = compile_expression("close + 1")
+    expr = compile_expression("atr(14)")
     plan = expr._ensure_plan()
     backend = IncrementalRustBackend()
 
@@ -80,7 +80,7 @@ def test_evaluate_falls_back_to_batch_for_non_supported_root(sample_ohlcv_data, 
 
 def test_evaluate_uses_execute_plan_for_vwap_root(sample_ohlcv_data, monkeypatch) -> None:
     ds = _build_dataset(sample_ohlcv_data)
-    expr = compile_expression("vwap()")
+    expr = compile_expression("sma(20) > sma(50) and rsi(14) > 50")
     plan = expr._ensure_plan()
     backend = IncrementalRustBackend()
 
@@ -88,7 +88,7 @@ def test_evaluate_uses_execute_plan_for_vwap_root(sample_ohlcv_data, monkeypatch
 
     def fake_execute_plan_payload(payload):  # noqa: ANN001
         called["count"] += 1
-        return {int(plan.graph.root_id): [1.0] * len(sample_ohlcv_data["timestamps"])}
+        return {int(plan.graph.root_id): [False] * len(sample_ohlcv_data["timestamps"])}
 
     monkeypatch.setattr(
         "laakhay.ta.expr.execution.backends.incremental_rust.ta_py.execute_plan_payload",

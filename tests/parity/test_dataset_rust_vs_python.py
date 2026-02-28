@@ -51,6 +51,18 @@ def test_rust_backend_result_parity_on_rust_owned_dataset(sample_ohlcv_data) -> 
     assert_dict_parity(py_res, rust_res)
 
 
+def test_rust_backend_boolean_graph_parity(sample_ohlcv_data) -> None:
+    ds = _build_dataset(sample_ohlcv_data)
+    plan = compile_expression("sma(20) > sma(50) and rsi(14) > 50")._ensure_plan()
+
+    py_res = BatchBackend().evaluate(plan, ds)
+    rust_res = IncrementalRustBackend().evaluate(plan, ds)
+
+    assert isinstance(py_res, dict)
+    assert isinstance(rust_res, dict)
+    assert_dict_parity(py_res, rust_res)
+
+
 def test_execute_plan_output_order_is_deterministic(sample_ohlcv_data) -> None:
     ds = _build_dataset(sample_ohlcv_data)
     requests = [
