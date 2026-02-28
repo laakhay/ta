@@ -153,6 +153,60 @@ const P_PCT_5: IndicatorParamMeta = IndicatorParamMeta {
     min: Some(0.0),
     max: None,
 };
+const P_SOURCE_STR: IndicatorParamMeta = IndicatorParamMeta {
+    name: "source",
+    kind: IndicatorParamKind::String,
+    required: false,
+    default: None,
+    description: "Source field override",
+    min: None,
+    max: None,
+};
+const P_A_SERIES: IndicatorParamMeta = IndicatorParamMeta {
+    name: "a",
+    kind: IndicatorParamKind::String,
+    required: false,
+    default: None,
+    description: "Primary series input",
+    min: None,
+    max: None,
+};
+const P_B_SERIES: IndicatorParamMeta = IndicatorParamMeta {
+    name: "b",
+    kind: IndicatorParamKind::String,
+    required: false,
+    default: None,
+    description: "Secondary series input",
+    min: None,
+    max: None,
+};
+const P_PRICE_SERIES: IndicatorParamMeta = IndicatorParamMeta {
+    name: "price",
+    kind: IndicatorParamKind::String,
+    required: false,
+    default: None,
+    description: "Price series input",
+    min: None,
+    max: None,
+};
+const P_UPPER_SERIES: IndicatorParamMeta = IndicatorParamMeta {
+    name: "upper",
+    kind: IndicatorParamKind::String,
+    required: false,
+    default: None,
+    description: "Upper bound input",
+    min: None,
+    max: None,
+};
+const P_LOWER_SERIES: IndicatorParamMeta = IndicatorParamMeta {
+    name: "lower",
+    kind: IndicatorParamKind::String,
+    required: false,
+    default: None,
+    description: "Lower bound input",
+    min: None,
+    max: None,
+};
 
 const P_MULTIPLIER_3: IndicatorParamMeta = IndicatorParamMeta {
     name: "multiplier",
@@ -161,6 +215,33 @@ const P_MULTIPLIER_3: IndicatorParamMeta = IndicatorParamMeta {
     default: Some("3.0"),
     description: "Channel multiplier",
     min: Some(0.0),
+    max: None,
+};
+const P_MULTIPLIER_2: IndicatorParamMeta = IndicatorParamMeta {
+    name: "multiplier",
+    kind: IndicatorParamKind::Float,
+    required: false,
+    default: Some("2.0"),
+    description: "Channel multiplier",
+    min: Some(0.0),
+    max: None,
+};
+const P_EMA_PERIOD_20: IndicatorParamMeta = IndicatorParamMeta {
+    name: "ema_period",
+    kind: IndicatorParamKind::Integer,
+    required: false,
+    default: Some("20"),
+    description: "EMA period",
+    min: Some(1.0),
+    max: None,
+};
+const P_ATR_PERIOD_10: IndicatorParamMeta = IndicatorParamMeta {
+    name: "atr_period",
+    kind: IndicatorParamKind::Integer,
+    required: false,
+    default: Some("10"),
+    description: "ATR period",
+    min: Some(1.0),
     max: None,
 };
 
@@ -341,7 +422,7 @@ const SEM_CLOSE_NO_LOOKBACK: IndicatorSemanticsMeta = IndicatorSemanticsMeta {
 
 const SEM_CLOSE_PAIR: IndicatorSemanticsMeta = IndicatorSemanticsMeta {
     required_fields: &["close"],
-    optional_fields: &["close_b"],
+    optional_fields: &[],
     lookback_params: &[],
     default_lookback: Some(2),
     warmup_policy: "none",
@@ -534,7 +615,7 @@ const CATALOG: &[IndicatorMeta] = &[
         category: "event",
         aliases: &[],
         param_aliases: &[],
-        params: &[],
+        params: &[P_A_SERIES, P_B_SERIES],
         outputs: &[IndicatorOutputMeta {
             name: "result",
             kind: "signal",
@@ -549,7 +630,7 @@ const CATALOG: &[IndicatorMeta] = &[
         category: "event",
         aliases: &[],
         param_aliases: &[],
-        params: &[],
+        params: &[P_A_SERIES, P_B_SERIES],
         outputs: &[IndicatorOutputMeta {
             name: "result",
             kind: "signal",
@@ -564,7 +645,7 @@ const CATALOG: &[IndicatorMeta] = &[
         category: "event",
         aliases: &[],
         param_aliases: &[],
-        params: &[],
+        params: &[P_A_SERIES, P_B_SERIES],
         outputs: &[IndicatorOutputMeta {
             name: "result",
             kind: "signal",
@@ -587,14 +668,14 @@ const CATALOG: &[IndicatorMeta] = &[
                 description: "Upper channel",
             },
             IndicatorOutputMeta {
-                name: "middle",
-                kind: "band_middle",
-                description: "Middle channel",
-            },
-            IndicatorOutputMeta {
                 name: "lower",
                 kind: "band_lower",
                 description: "Lower channel",
+            },
+            IndicatorOutputMeta {
+                name: "middle",
+                kind: "band_middle",
+                description: "Middle channel",
             },
         ],
         semantics: IndicatorSemanticsMeta {
@@ -642,7 +723,7 @@ const CATALOG: &[IndicatorMeta] = &[
         category: "trend",
         aliases: &["rolling_ema"],
         param_aliases: &[PARAM_ALIAS_LOOKBACK_PERIOD],
-        params: &[P_PERIOD_20],
+        params: &[P_PERIOD_20, P_SOURCE_STR],
         outputs: &[IndicatorOutputMeta {
             name: "result",
             kind: "line",
@@ -657,7 +738,7 @@ const CATALOG: &[IndicatorMeta] = &[
         category: "event",
         aliases: &[],
         param_aliases: &[],
-        params: &[],
+        params: &[P_PRICE_SERIES, P_UPPER_SERIES, P_LOWER_SERIES],
         outputs: &[IndicatorOutputMeta {
             name: "result",
             kind: "signal",
@@ -678,7 +759,7 @@ const CATALOG: &[IndicatorMeta] = &[
         category: "event",
         aliases: &[],
         param_aliases: &[],
-        params: &[],
+        params: &[P_PRICE_SERIES, P_UPPER_SERIES, P_LOWER_SERIES],
         outputs: &[IndicatorOutputMeta {
             name: "result",
             kind: "signal",
@@ -699,7 +780,7 @@ const CATALOG: &[IndicatorMeta] = &[
         category: "event",
         aliases: &[],
         param_aliases: &[],
-        params: &[],
+        params: &[P_A_SERIES],
         outputs: &[IndicatorOutputMeta {
             name: "result",
             kind: "signal",
@@ -714,7 +795,7 @@ const CATALOG: &[IndicatorMeta] = &[
         category: "event",
         aliases: &[],
         param_aliases: &[],
-        params: &[P_PCT_5],
+        params: &[P_A_SERIES, P_PCT_5],
         outputs: &[IndicatorOutputMeta {
             name: "result",
             kind: "signal",
@@ -760,6 +841,21 @@ const CATALOG: &[IndicatorMeta] = &[
         runtime_binding: "fisher",
     },
     IndicatorMeta {
+        id: "hma",
+        display_name: "Hull Moving Average",
+        category: "trend",
+        aliases: &[],
+        param_aliases: &[PARAM_ALIAS_LOOKBACK_PERIOD],
+        params: &[P_PERIOD_14],
+        outputs: &[IndicatorOutputMeta {
+            name: "result",
+            kind: "line",
+            description: "HMA value",
+        }],
+        semantics: SEM_CLOSE_PERIOD,
+        runtime_binding: "hma",
+    },
+    IndicatorMeta {
         id: "ichimoku",
         display_name: "Ichimoku Cloud",
         category: "trend",
@@ -802,7 +898,7 @@ const CATALOG: &[IndicatorMeta] = &[
         category: "event",
         aliases: &[],
         param_aliases: &[],
-        params: &[],
+        params: &[P_PRICE_SERIES, P_UPPER_SERIES, P_LOWER_SERIES],
         outputs: &[IndicatorOutputMeta {
             name: "result",
             kind: "signal",
@@ -823,7 +919,7 @@ const CATALOG: &[IndicatorMeta] = &[
         category: "volatility",
         aliases: &[],
         param_aliases: &[],
-        params: &[P_PERIOD_20, P_PERIOD_14, P_STD_DEV_2],
+        params: &[P_EMA_PERIOD_20, P_ATR_PERIOD_10, P_MULTIPLIER_2],
         outputs: &[
             IndicatorOutputMeta {
                 name: "upper",
@@ -893,6 +989,27 @@ const CATALOG: &[IndicatorMeta] = &[
         runtime_binding: "macd",
     },
     IndicatorMeta {
+        id: "mfi",
+        display_name: "Money Flow Index",
+        category: "momentum",
+        aliases: &[],
+        param_aliases: &[PARAM_ALIAS_LOOKBACK_PERIOD],
+        params: &[P_PERIOD_14],
+        outputs: &[IndicatorOutputMeta {
+            name: "result",
+            kind: "line",
+            description: "MFI value",
+        }],
+        semantics: IndicatorSemanticsMeta {
+            required_fields: &["high", "low", "close", "volume"],
+            optional_fields: &[],
+            lookback_params: &["period"],
+            default_lookback: None,
+            warmup_policy: "window",
+        },
+        runtime_binding: "mfi",
+    },
+    IndicatorMeta {
         id: "obv",
         display_name: "On Balance Volume",
         category: "volume",
@@ -919,7 +1036,7 @@ const CATALOG: &[IndicatorMeta] = &[
         category: "event",
         aliases: &["out_channel"],
         param_aliases: &[],
-        params: &[],
+        params: &[P_PRICE_SERIES, P_UPPER_SERIES, P_LOWER_SERIES],
         outputs: &[IndicatorOutputMeta {
             name: "result",
             kind: "signal",
@@ -962,7 +1079,7 @@ const CATALOG: &[IndicatorMeta] = &[
         category: "event",
         aliases: &[],
         param_aliases: &[],
-        params: &[],
+        params: &[P_A_SERIES],
         outputs: &[IndicatorOutputMeta {
             name: "result",
             kind: "signal",
@@ -977,7 +1094,7 @@ const CATALOG: &[IndicatorMeta] = &[
         category: "event",
         aliases: &[],
         param_aliases: &[],
-        params: &[P_PCT_5],
+        params: &[P_A_SERIES, P_PCT_5],
         outputs: &[IndicatorOutputMeta {
             name: "result",
             kind: "signal",
@@ -1022,7 +1139,7 @@ const CATALOG: &[IndicatorMeta] = &[
         category: "trend",
         aliases: &["rolling_mean", "mean"],
         param_aliases: &[PARAM_ALIAS_LOOKBACK_PERIOD],
-        params: &[P_PERIOD_20],
+        params: &[P_PERIOD_20, P_SOURCE_STR],
         outputs: &[IndicatorOutputMeta {
             name: "result",
             kind: "line",
@@ -1173,7 +1290,7 @@ const CATALOG: &[IndicatorMeta] = &[
         category: "trend",
         aliases: &["rolling_wma"],
         param_aliases: &[PARAM_ALIAS_LOOKBACK_PERIOD],
-        params: &[P_PERIOD_14],
+        params: &[P_PERIOD_14, P_SOURCE_STR],
         outputs: &[IndicatorOutputMeta {
             name: "result",
             kind: "line",
