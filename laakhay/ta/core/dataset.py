@@ -139,7 +139,7 @@ class Dataset:
         """Add a series to the dataset."""
         key = DatasetKey(symbol=symbol, timeframe=timeframe, source=source)
         self._series[key] = series
-        self._append_to_rust(key, series)
+        self._rebuild_rust_dataset()
         self._context_cache.clear()
 
     def add(self, symbol: Symbol, timeframe: str, source: str, series: OHLCV | Series[Any]) -> None:
@@ -180,6 +180,15 @@ class Dataset:
             timestamps,
             _to_f64_list(series.values),
         )
+
+    def _rebuild_rust_dataset(self) -> None:
+        try:
+            self._ta_py.dataset_drop(self._rust_dataset_id)
+        except Exception:
+            pass
+        self._rust_dataset_id = int(self._ta_py.dataset_create())
+        for key in sorted(self._series.keys(), key=lambda k: (str(k.symbol), k.timeframe, k.source)):
+            self._append_to_rust(key, self._series[key])
 
     def __del__(self) -> None:
         dataset_id = getattr(self, "_rust_dataset_id", None)
