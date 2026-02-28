@@ -152,8 +152,6 @@ class IndicatorSchema:
     parameters: dict[str, ParamSchema] = field(default_factory=lambda: dict[str, ParamSchema]())
     outputs: dict[str, OutputSchema] = field(default_factory=lambda: dict[str, OutputSchema]())
     aliases: list[str] = field(default_factory=lambda: list[str]())
-    metadata: IndicatorMetadata = field(default_factory=lambda: IndicatorMetadata())
-    output_metadata: dict[str, dict[str, Any]] = field(default_factory=dict)
     parameter_aliases: dict[str, str] = field(default_factory=dict)  # alias -> canonical_name
 
     def to_dict(self) -> dict[str, Any]:
@@ -179,8 +177,6 @@ class IndicatorSchema:
                 for name, output in self.outputs.items()
             },
             "aliases": self.aliases,
-            "metadata": self.metadata.to_dict(),
-            "output_metadata": self.output_metadata,
             "parameter_aliases": self.parameter_aliases,
         }
 
@@ -231,44 +227,7 @@ class IndicatorSchema:
             parameters=parameters,
             outputs=outputs,
             aliases=data.get("aliases", []),
-            metadata=IndicatorMetadata.from_dict(data.get("metadata", {})),
-            output_metadata=data.get("output_metadata", {}),
             parameter_aliases=data.get("parameter_aliases", {}),
-        )
-
-
-@dataclass(frozen=True)
-class IndicatorMetadata:
-    """Additional metadata used by planners/requirements."""
-
-    required_fields: tuple[str, ...] = ()
-    optional_fields: tuple[str, ...] = ()
-    lookback_params: tuple[str, ...] = ()
-    default_lookback: int | None = None
-    input_field: str | None = None  # Default input field (e.g., 'close', 'volume')
-    input_series_param: str | None = None  # Parameter name that can override input (e.g., 'input_series')
-
-    def to_dict(self) -> dict[str, Any]:
-        return {
-            "required_fields": list(self.required_fields),
-            "optional_fields": list(self.optional_fields),
-            "lookback_params": list(self.lookback_params),
-            "default_lookback": self.default_lookback,
-            "input_field": self.input_field,
-            "input_series_param": self.input_series_param,
-        }
-
-    @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> IndicatorMetadata:
-        if not data:
-            return cls()
-        return cls(
-            required_fields=tuple(data.get("required_fields", ())),
-            optional_fields=tuple(data.get("optional_fields", ())),
-            lookback_params=tuple(data.get("lookback_params", ())),
-            default_lookback=data.get("default_lookback"),
-            input_field=data.get("input_field"),
-            input_series_param=data.get("input_series_param"),
         )
 
 
@@ -291,35 +250,12 @@ def indicator_spec_to_schema(spec: IndicatorSpec) -> IndicatorSchema:
         )
 
     outputs: dict[str, OutputSchema] = {}
-    output_metadata: dict[str, dict[str, Any]] = {}
     for name, out in spec.outputs.items():
         outputs[name] = OutputSchema(
             name=out.name,
             type=out.type,
             description=out.description,
         )
-        meta: dict[str, Any] = {"type": out.type.__name__.lower(), "role": out.role}
-        if out.polarity is not None:
-            meta["polarity"] = out.polarity
-        meta.update(out.extra)
-        output_metadata[name] = meta
-
-    # Merge semantics with input slots for metadata
-    meta = spec.semantics
-    input_field = meta.input_field
-    input_series_param = meta.input_series_param
-    if spec.inputs and not input_field:
-        first = spec.inputs[0]
-        input_field = first.default_field
-        input_series_param = input_series_param or first.name
-    metadata = IndicatorMetadata(
-        required_fields=meta.required_fields,
-        optional_fields=meta.optional_fields,
-        lookback_params=meta.lookback_params,
-        default_lookback=meta.default_lookback,
-        input_field=input_field,
-        input_series_param=input_series_param,
-    )
 
     return IndicatorSchema(
         name=spec.name,
@@ -327,8 +263,6 @@ def indicator_spec_to_schema(spec: IndicatorSpec) -> IndicatorSchema:
         parameters=parameters,
         outputs=outputs,
         aliases=list(spec.aliases),
-        metadata=metadata,
-        output_metadata=output_metadata,
         parameter_aliases=dict(spec.param_aliases),
     )
 
@@ -350,37 +284,11 @@ def schema_to_indicator_spec(schema: IndicatorSchema) -> IndicatorSpec:
 
     outputs: dict[str, OutputSpec] = {}
     for name, out in schema.outputs.items():
-        meta = schema.output_metadata.get(name, {})
-        extra = {k: v for k, v in meta.items() if k not in ("role", "polarity", "type")}
         outputs[name] = OutputSpec(
             name=out.name,
             type=out.type,
             description=out.description,
-            role=str(meta.get("role", "line")),
-            polarity=meta.get("polarity"),
-            extra=extra,
-        )
-
-    semantics = SemanticsSpec(
-        required_fields=schema.metadata.required_fields,
-        optional_fields=schema.metadata.optional_fields,
-        lookback_params=schema.metadata.lookback_params,
-        default_lookback=schema.metadata.default_lookback,
-        input_field=schema.metadata.input_field,
-        input_series_param=schema.metadata.input_series_param,
-    )
-
-    inputs: tuple[InputSlotSpec, ...] = ()
-    if schema.metadata.input_field or schema.metadata.input_series_param:
-        slot_name = schema.metadata.input_series_param or "input_series"
-        inputs = (
-            InputSlotSpec(
-                name=slot_name,
-                description="Input series override",
-                required=False,
-                default_source="ohlcv",
-                default_field=schema.metadata.input_field,
-            ),
+            role="line",
         )
 
     runtime_binding = RuntimeBindingSpec(kernel_id=schema.name)
@@ -388,10 +296,10 @@ def schema_to_indicator_spec(schema: IndicatorSchema) -> IndicatorSpec:
     return IndicatorSpec(
         name=schema.name,
         description=schema.description,
-        inputs=inputs,
+        inputs=(),
         params=params,
         outputs=outputs,
-        semantics=semantics,
+        semantics=SemanticsSpec(),
         runtime_binding=runtime_binding,
         constraints=(),
         aliases=tuple(schema.aliases),

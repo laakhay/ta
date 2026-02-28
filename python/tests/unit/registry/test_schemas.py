@@ -4,7 +4,6 @@ import pytest
 
 from laakhay.ta.registry import (
     ConstraintSpec,
-    IndicatorMetadata,
     IndicatorSchema,
     IndicatorSpec,
     InputSlotSpec,
@@ -142,7 +141,6 @@ class TestIndicatorSchema:
         assert len(schema.parameters) == 1
         assert len(schema.outputs) == 1
         assert schema.aliases == ["simple_ma", "moving_average"]
-        assert isinstance(schema.metadata, IndicatorMetadata)
 
     def test_indicator_schema_minimal(self) -> None:
         """Test indicator schema with minimal fields."""
@@ -164,7 +162,6 @@ class TestIndicatorSchema:
             description="Relative Strength Index",
             parameters={"period": param},
             outputs={"rsi": output},
-            output_metadata={"rsi": {"type": "price", "role": "oscillator"}},
         )
 
         result = schema.to_dict()
@@ -176,9 +173,6 @@ class TestIndicatorSchema:
         assert result["parameters"]["period"]["required"] is True
         assert "rsi" in result["outputs"]
         assert result["outputs"]["rsi"]["type"] == "float"
-        assert "metadata" in result
-        assert result["metadata"]["required_fields"] == []
-        assert result["output_metadata"]["rsi"]["role"] == "oscillator"
 
     def test_indicator_schema_from_dict(self) -> None:
         """Test schema deserialization from dictionary."""
@@ -194,13 +188,6 @@ class TestIndicatorSchema:
             },
             "outputs": {"sma": {"type": "float", "description": "SMA values"}},
             "aliases": ["simple_ma"],
-            "metadata": {
-                "required_fields": [],
-                "optional_fields": [],
-                "lookback_params": [],
-                "default_lookback": None,
-            },
-            "output_metadata": {"sma": {"type": "price", "role": "level"}},
         }
 
         schema = IndicatorSchema.from_dict(data)
@@ -214,8 +201,6 @@ class TestIndicatorSchema:
         assert "sma" in schema.outputs
         assert schema.outputs["sma"].type == float
         assert schema.aliases == ["simple_ma"]
-        assert isinstance(schema.metadata, IndicatorMetadata)
-        assert schema.output_metadata["sma"]["role"] == "level"
 
     def test_indicator_schema_round_trip(self) -> None:
         """Test schema serialization round-trip."""
@@ -235,7 +220,6 @@ class TestIndicatorSchema:
             parameters={"fast": param},
             outputs={"macd": output},
             aliases=["macd_line"],
-            output_metadata={"macd": {"type": "float", "role": "line"}},
         )
 
         # Round-trip through dict
@@ -247,8 +231,6 @@ class TestIndicatorSchema:
         assert len(restored.parameters) == len(original.parameters)
         assert len(restored.outputs) == len(original.outputs)
         assert restored.aliases == original.aliases
-        assert isinstance(restored.metadata, IndicatorMetadata)
-        assert restored.output_metadata == {"macd": {"type": "float", "role": "line"}}
 
     def test_indicator_schema_from_dict_validation_errors(self) -> None:
         """Test schema deserialization validation errors."""
@@ -489,9 +471,6 @@ class TestIndicatorSpecConversion:
         assert "period" in schema.parameters
         assert schema.parameters["period"].type == int
         assert "result" in schema.outputs
-        assert schema.metadata.required_fields == ("close",)
-        assert schema.metadata.input_field == "close"
-        assert schema.output_metadata["result"]["role"] == "line"
         assert schema.aliases == ["simple_ma"]
         assert schema.parameter_aliases == {"lookback": "period"}
 
@@ -503,13 +482,6 @@ class TestIndicatorSpecConversion:
                 "period": ParamSchema(name="period", type=int, default=14, required=False),
             },
             outputs={"rsi": OutputSchema(name="rsi", type=float, description="RSI values")},
-            metadata=IndicatorMetadata(
-                required_fields=("close",),
-                lookback_params=("period",),
-                input_field="close",
-                input_series_param="input_series",
-            ),
-            output_metadata={"rsi": {"role": "oscillator", "polarity": None}},
             aliases=["rsi_14"],
             parameter_aliases={"lookback": "period"},
         )
@@ -517,8 +489,8 @@ class TestIndicatorSpecConversion:
 
         assert spec.name == "rsi"
         assert spec.params["period"].type == int
-        assert spec.outputs["rsi"].role == "oscillator"
-        assert spec.semantics.required_fields == ("close",)
+        assert spec.outputs["rsi"].role == "line"
+        assert spec.semantics.required_fields == ()
         assert spec.runtime_binding.kernel_id == "rsi"
         assert "rsi_14" in spec.aliases
         assert spec.param_aliases["lookback"] == "period"
@@ -527,11 +499,10 @@ class TestIndicatorSpecConversion:
         schema = IndicatorSchema(
             name="swing",
             outputs={"swing_high": OutputSchema(name="swing_high", type=float)},
-            output_metadata={"swing_high": {"role": "level", "polarity": "high"}},
         )
         spec = schema_to_indicator_spec(schema)
-        assert spec.outputs["swing_high"].polarity == "high"
-        assert spec.outputs["swing_high"].role == "level"
+        assert spec.outputs["swing_high"].polarity is None
+        assert spec.outputs["swing_high"].role == "line"
 
     def test_spec_to_schema_round_trip(self) -> None:
         """Round-trip: spec -> schema -> spec preserves key fields."""
@@ -559,6 +530,6 @@ class TestIndicatorSpecConversion:
         assert back.name == orig.name
         assert set(back.params.keys()) == set(orig.params.keys())
         assert set(back.outputs.keys()) == set(orig.outputs.keys())
-        assert back.semantics.required_fields == orig.semantics.required_fields
+        assert back.semantics.required_fields == ()
         assert back.outputs["macd"].role == "line"
-        assert back.outputs["histogram"].role == "histogram"
+        assert back.outputs["histogram"].role == "line"

@@ -5,13 +5,11 @@ from __future__ import annotations
 import inspect
 import threading
 from collections.abc import Callable
-from functools import lru_cache
 from typing import Any, Union
 
 from ..core.series import Series
 from .models import IndicatorHandle, SeriesContext
 from .schemas import (
-    IndicatorMetadata,
     IndicatorSchema,
     IndicatorSpec,
     OutputSchema,
@@ -19,16 +17,6 @@ from .schemas import (
     indicator_spec_to_schema,
     schema_to_indicator_spec,
 )
-
-
-@lru_cache(maxsize=512)
-def _rust_indicator_metadata(name: str) -> dict[str, Any] | None:
-    try:
-        import ta_py
-
-        return ta_py.indicator_meta(name)
-    except Exception:
-        return None
 
 
 class Registry:
@@ -256,9 +244,7 @@ class Registry:
             description=description.strip(),
             parameters=parameters,  # type: ignore[arg-type]
             outputs=outputs,
-            metadata=self._infer_metadata(name),
             aliases=aliases or [],
-            output_metadata=output_metadata or {},
             parameter_aliases=parameter_aliases,
         )
 
@@ -325,28 +311,6 @@ class Registry:
                 return base_type  # type: ignore[return-value]
 
         return Any  # type: ignore[return-value]
-
-    def _infer_metadata(self, name: str) -> IndicatorMetadata:
-        rust_meta = _rust_indicator_metadata(name.lower())
-        if rust_meta is not None:
-            semantics = rust_meta.get("semantics", {}) or {}
-            required_fields = tuple(str(v) for v in semantics.get("required_fields", ()))
-            optional_fields = tuple(str(v) for v in semantics.get("optional_fields", ()))
-            lookback_params = tuple(str(v) for v in semantics.get("lookback_params", ()))
-            default_lookback = semantics.get("default_lookback")
-            return IndicatorMetadata(
-                required_fields=required_fields or ("close",),
-                optional_fields=optional_fields,
-                lookback_params=lookback_params,
-                default_lookback=(int(default_lookback) if isinstance(default_lookback, int | float) else None),
-            )
-
-        return IndicatorMetadata(
-            required_fields=("close",),
-            optional_fields=(),
-            lookback_params=(),
-            default_lookback=1,
-        )
 
     def _build_output_schema(self, func: Callable[..., Any]) -> dict[str, OutputSchema]:
         """Build output schema based on function return type annotation."""
