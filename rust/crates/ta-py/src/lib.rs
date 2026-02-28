@@ -6,7 +6,9 @@ use pyo3::prelude::*;
 use pyo3::types::{PyDict, PyList};
 use ta_engine::dataset::{self, DatasetPartitionKey, DatasetRegistryError};
 use ta_engine::dataset_ops::DatasetOpsError;
-use ta_engine::incremental::backend::{self, ExecutePlanError, IncrementalBackend, KernelStepRequest};
+use ta_engine::incremental::backend::{
+    self, ExecutePlanError, ExecutePlanPayload, IncrementalBackend, KernelStepRequest,
+};
 use ta_engine::incremental::contracts::{IncrementalValue, RuntimeSnapshot};
 use ta_engine::incremental::kernel_registry::KernelId;
 
@@ -698,16 +700,16 @@ fn execute_plan(
     requests: &Bound<'_, PyList>,
 ) -> PyResult<PyObject> {
     let parsed_requests = parse_requests(requests)?;
-    let out = backend::execute_plan(
+    let payload = ExecutePlanPayload {
         dataset_id,
-        &DatasetPartitionKey {
+        partition_key: DatasetPartitionKey {
             symbol,
             timeframe,
             source,
         },
-        &parsed_requests,
-    )
-    .map_err(map_execute_plan_error)?;
+        requests: parsed_requests,
+    };
+    let out = backend::execute_plan_payload(&payload).map_err(map_execute_plan_error)?;
     incremental_series_map_to_pydict(py, &out)
 }
 
@@ -739,16 +741,16 @@ fn execute_plan_payload(py: Python<'_>, payload: &Bound<'_, PyDict>) -> PyResult
         .downcast_into::<PyList>()?;
 
     let parsed_requests = parse_requests(&requests)?;
-    let out = backend::execute_plan(
+    let payload = ExecutePlanPayload {
         dataset_id,
-        &DatasetPartitionKey {
+        partition_key: DatasetPartitionKey {
             symbol,
             timeframe,
             source,
         },
-        &parsed_requests,
-    )
-    .map_err(map_execute_plan_error)?;
+        requests: parsed_requests,
+    };
+    let out = backend::execute_plan_payload(&payload).map_err(map_execute_plan_error)?;
     incremental_series_map_to_pydict(py, &out)
 }
 

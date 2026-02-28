@@ -16,6 +16,13 @@ pub struct KernelStepRequest {
     pub kwargs: BTreeMap<String, IncrementalValue>,
 }
 
+#[derive(Debug, Clone)]
+pub struct ExecutePlanPayload {
+    pub dataset_id: DatasetId,
+    pub partition_key: DatasetPartitionKey,
+    pub requests: Vec<KernelStepRequest>,
+}
+
 #[derive(Debug, Clone, Default)]
 pub struct IncrementalBackend {
     store: RuntimeStateStore,
@@ -171,6 +178,12 @@ pub fn execute_plan(
     }
 
     Ok(out)
+}
+
+pub fn execute_plan_payload(
+    payload: &ExecutePlanPayload,
+) -> Result<BTreeMap<u32, Vec<IncrementalValue>>, ExecutePlanError> {
+    execute_plan(payload.dataset_id, &payload.partition_key, &payload.requests)
 }
 
 fn encode_kernel_state(state: &KernelRuntimeState) -> BTreeMap<String, IncrementalValue> {
