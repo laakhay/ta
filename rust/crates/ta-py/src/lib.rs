@@ -3,7 +3,10 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Mutex, OnceLock};
 
 use pyo3::prelude::*;
-use pyo3::types::{PyDict, PyList};
+use pyo3::types::{PyAny, PyDict, PyList};
+use ta_engine::contracts::{
+    RustExecutionGraph, RustExecutionPartition, RustExecutionPayload, RustExecutionRequest,
+};
 use ta_engine::dataset::{self, DatasetPartitionKey, DatasetRegistryError};
 use ta_engine::dataset_ops::DatasetOpsError;
 use ta_engine::incremental::backend::{
@@ -742,17 +745,63 @@ fn execute_plan_payload(py: Python<'_>, payload: &Bound<'_, PyDict>) -> PyResult
         .ok_or_else(|| pyo3::exceptions::PyKeyError::new_err("missing requests"))?
         .downcast_into::<PyList>()?;
 
-    let parsed_requests = parse_requests(&requests)?;
-    let payload = ExecutePlanPayload {
+    let graph = payload
+        .get_item("graph")?
+        .ok_or_else(|| pyo3::exceptions::PyKeyError::new_err("missing graph"))?
+        .downcast_into::<PyDict>()?;
+    let root_id: u32 = graph
+        .get_item("root_id")?
+        .ok_or_else(|| pyo3::exceptions::PyKeyError::new_err("missing graph.root_id"))?
+        .extract()?;
+    let node_order: Vec<u32> = graph
+        .get_item("node_order")?
+        .ok_or_else(|| pyo3::exceptions::PyKeyError::new_err("missing graph.node_order"))?
+        .extract()?;
+    let nodes_dict = graph
+        .get_item("nodes")?
+        .ok_or_else(|| pyo3::exceptions::PyKeyError::new_err("missing graph.nodes"))?
+        .downcast_into::<PyDict>()?;
+    let edges_dict = graph
+        .get_item("edges")?
+        .ok_or_else(|| pyo3::exceptions::PyKeyError::new_err("missing graph.edges"))?
+        .downcast_into::<PyDict>()?;
+
+    let mut nodes = BTreeMap::new();
+    for (k, v) in nodes_dict.iter() {
+        let node_id = extract_node_id(&k)?;
+        let details = v.downcast::<PyDict>()?;
+        let mut map = BTreeMap::new();
+        for (dk, dv) in details.iter() {
+            map.insert(dk.extract::<String>()?, format!("{:?}", dv));
+        }
+        nodes.insert(node_id, map);
+    }
+
+    let mut edges = BTreeMap::new();
+    for (k, v) in edges_dict.iter() {
+        let node_id = extract_node_id(&k)?;
+        let child_ids: Vec<u32> = v.extract()?;
+        edges.insert(node_id, child_ids);
+    }
+
+    let contract_payload = RustExecutionPayload {
         dataset_id,
-        partition_key: DatasetPartitionKey {
+        partition: RustExecutionPartition {
             symbol,
             timeframe,
             source,
         },
-        requests: parsed_requests,
+        graph: RustExecutionGraph {
+            root_id,
+            node_order,
+            nodes,
+            edges,
+        },
+        requests: parse_contract_requests(&requests)?,
     };
-    let out = backend::execute_plan_payload(&payload).map_err(map_execute_plan_error)?;
+    let parsed_payload =
+        backend::parse_execute_plan_payload(&contract_payload).map_err(map_execute_plan_error)?;
+    let out = backend::execute_plan_payload(&parsed_payload).map_err(map_execute_plan_error)?;
     incremental_series_map_to_pydict(py, &out)
 }
 
@@ -791,6 +840,36 @@ fn parse_requests(requests: &Bound<'_, PyList>) -> PyResult<Vec<KernelStepReques
     Ok(out)
 }
 
+fn parse_contract_requests(requests: &Bound<'_, PyList>) -> PyResult<Vec<RustExecutionRequest>> {
+    let mut out = Vec::with_capacity(requests.len());
+    for item in requests.iter() {
+        let d = item.downcast::<PyDict>()?;
+        let node_id: u32 = d
+            .get_item("node_id")?
+            .ok_or_else(|| pyo3::exceptions::PyKeyError::new_err("missing node_id"))?
+            .extract()?;
+        let kernel_id: String = d
+            .get_item("kernel_id")?
+            .ok_or_else(|| pyo3::exceptions::PyKeyError::new_err("missing kernel_id"))?
+            .extract()?;
+        let input_field: String = d
+            .get_item("input_field")?
+            .ok_or_else(|| pyo3::exceptions::PyKeyError::new_err("missing input_field"))?
+            .extract()?;
+        let kwargs_dict = d
+            .get_item("kwargs")?
+            .ok_or_else(|| pyo3::exceptions::PyKeyError::new_err("missing kwargs"))?
+            .downcast_into::<PyDict>()?;
+        out.push(RustExecutionRequest {
+            node_id,
+            kernel_id,
+            input_field,
+            kwargs: parse_tick(&kwargs_dict)?,
+        });
+    }
+    Ok(out)
+}
+
 fn parse_events(events: &Bound<'_, PyList>) -> PyResult<Vec<BTreeMap<String, IncrementalValue>>> {
     let mut out = Vec::with_capacity(events.len());
     for item in events.iter() {
@@ -816,6 +895,20 @@ fn parse_tick(tick: &Bound<'_, PyDict>) -> PyResult<BTreeMap<String, Incremental
         out.insert(key, value);
     }
     Ok(out)
+}
+
+fn extract_node_id(value: &Bound<'_, PyAny>) -> PyResult<u32> {
+    if let Ok(id) = value.extract::<u32>() {
+        return Ok(id);
+    }
+    if let Ok(text) = value.extract::<String>() {
+        return text.parse::<u32>().map_err(|_| {
+            pyo3::exceptions::PyValueError::new_err(format!("invalid node id: {text}"))
+        });
+    }
+    Err(pyo3::exceptions::PyValueError::new_err(
+        "invalid node id type",
+    ))
 }
 
 fn incremental_map_to_pydict(
@@ -871,6 +964,12 @@ fn map_execute_plan_error(err: ExecutePlanError) -> PyErr {
         } => pyo3::exceptions::PyValueError::new_err(format!(
             "ohlcv columns missing for symbol={symbol} timeframe={timeframe} source={data_source}"
         )),
+        ExecutePlanError::InvalidPayload(message) => {
+            pyo3::exceptions::PyValueError::new_err(format!("invalid execute payload: {message}"))
+        }
+        ExecutePlanError::UnsupportedKernelId(kernel_id) => {
+            pyo3::exceptions::PyValueError::new_err(format!("unsupported kernel_id in payload: {kernel_id}"))
+        }
     }
 }
 
