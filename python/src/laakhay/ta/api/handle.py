@@ -5,6 +5,7 @@ from __future__ import annotations
 from decimal import Decimal
 from typing import Any
 
+from ..catalog.rust_catalog import get_rust_indicator_meta
 from ..core import Dataset, Series
 from ..core.types import Price
 from ..expr.algebra import Expression, as_expression
@@ -59,12 +60,19 @@ class IndicatorHandle:
         self._schema = self._get_schema()
 
     def _get_schema(self) -> dict[str, Any]:
-        registry_schema = self._registry_handle.schema
+        try:
+            rust_meta = get_rust_indicator_meta(self.name)
+        except Exception:
+            rust_meta = {}
+        output_metadata = {
+            str(output.get("name", "result")): {"role": str(output.get("kind", "line"))}
+            for output in rust_meta.get("outputs", ())
+        }
         return {
             "name": self.name,
             "params": self.params,
             "description": getattr(self._registry_handle.func, "__doc__", "No description available"),
-            "output_metadata": getattr(registry_schema, "output_metadata", {}),
+            "output_metadata": output_metadata,
         }
 
     def __call__(self, dataset: Dataset | Series[Price]) -> Series[Price]:

@@ -201,7 +201,7 @@ class ExpressionParser:
         input_expr: CanonicalExpression | None = None
 
         # Supports nested expressions if indicator has input slot (from spec)
-        supports_nested = bool(descriptor.indicator_spec.inputs or descriptor.schema.metadata.input_series_param)
+        supports_nested = bool(descriptor.indicator_spec.inputs)
 
         # First arg: deterministic conversion (no fallback guessing)
         # Order: expression types → expression; Name in DEFAULT_SOURCE_FIELDS → SourceRefNode;
