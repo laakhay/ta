@@ -5,7 +5,7 @@ from __future__ import annotations
 import keyword
 from typing import Any
 
-from ...registry.registry import get_global_registry
+from ...catalog import list_catalog_metadata
 from ..semantics.source_schema import SOURCE_DEFS
 from .types import PlanResult
 
@@ -24,64 +24,31 @@ def generate_capability_manifest() -> dict[str, Any]:
     Returns:
         Dictionary with capability information for frontend/backend consumption.
     """
-    from ...catalog import describe_indicator
-
-    registry = get_global_registry()
-
-    # Get all registered indicators including aliases
+    rust_catalog = list_catalog_metadata()
     indicators = []
-    all_names = registry.list_all_names()
-
-    for name in all_names:
-        handle = registry.get(name)
-        if handle:
-            # Determine if this is an alias by comparing name with handle.name
-            is_alias = name != handle.name
+    for canonical_id, meta in rust_catalog.items():
+        aliases = [str(alias) for alias in meta.get("aliases", ())]
+        names = [canonical_id, *aliases]
+        for name in names:
+            is_alias = name != canonical_id
             if is_alias and keyword.iskeyword(name):
-                # Skip aliases that are Python keywords (e.g. "in") because they
-                # cannot be called in expression text syntax.
                 continue
-
-            # Use CatalogBuilder logic to get rich metadata
-            try:
-                descriptor = describe_indicator(handle.name)
-                category = descriptor.category
-                description = descriptor.description
-                params = descriptor.get_parameter_specs()
-                outputs = [o.name for o in descriptor.outputs]
-            except Exception:
-                # Fallback: derive from IndicatorSpec (canonical source)
-                spec = handle.indicator_spec
-                category = "custom"
-                description = spec.description or name
-                params = {
-                    p_name: {
-                        "name": p.name,
-                        "param_type": p.type.__name__ if p.type else "unknown",
-                        "required": p.required,
-                        "default_value": p.default,
-                    }
-                    for p_name, p in spec.params.items()
-                    if p_name.lower() not in ("ctx", "context")
-                }
-                outputs = list(spec.outputs.keys()) if spec.outputs else []
-
             indicators.append(
                 {
                     "name": name,
-                    "description": description,
-                    "category": category,
+                    "description": str(meta.get("display_name", canonical_id)),
+                    "category": str(meta.get("category", "custom")),
                     "is_alias": is_alias,
-                    "target": handle.name if is_alias else None,
+                    "target": canonical_id if is_alias else None,
                     "parameters": {
-                        p_name: {
-                            "type": p_data.get("param_type") or p_data.get("type", "unknown"),
-                            "required": p_data.get("required", False),
-                            "default": p_data.get("public_default") or p_data.get("default_value"),
+                        str(p.get("name", "")): {
+                            "type": str(p.get("kind", "unknown")),
+                            "required": bool(p.get("required", False)),
+                            "default": p.get("default"),
                         }
-                        for p_name, p_data in params.items()
+                        for p in meta.get("params", ())
                     },
-                    "outputs": outputs,
+                    "outputs": [str(o.get("name", "")) for o in meta.get("outputs", ())],
                 }
             )
 
