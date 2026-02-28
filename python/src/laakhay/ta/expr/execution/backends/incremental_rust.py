@@ -151,7 +151,7 @@ class IncrementalRustBackend(ExecutionBackend):
             "enter",
             "exit",
         }
-        allowed_binary = {"add", "sub", "mul", "div"}
+        allowed_binary = {"gt", "lt", "eq", "and", "or", "add", "sub", "mul", "div"}
         seen_call = False
         for graph_node in plan.graph.nodes.values():
             node = graph_node.node
@@ -229,21 +229,25 @@ class IncrementalRustBackend(ExecutionBackend):
 
         normalized_values: list[Any] = []
         for value in root_values:
+            if isinstance(value, bool):
+                normalized_values.append(value)
+                continue
             if value is None:
                 normalized_values.append(None)
                 continue
             number = float(value)
             normalized_values.append(None if math.isnan(number) else number)
-        if warmup > 0:
-            for i in range(min(warmup, len(normalized_values))):
-                normalized_values[i] = None
         values = tuple(normalized_values)
+        availability_mask = [v is not None for v in values]
+        if warmup > 0:
+            for i in range(min(warmup, len(availability_mask))):
+                availability_mask[i] = False
         series = Series[Any](
             timestamps=series_obj.timestamps,
             values=values,
             symbol=selected_symbol,
             timeframe=selected_timeframe,
-            availability_mask=tuple(v is not None for v in values),
+            availability_mask=tuple(availability_mask),
         )
         output_source = "default" if selected_source in {"ohlcv", "default"} else selected_source
         return {(selected_symbol, selected_timeframe, output_source): series}
