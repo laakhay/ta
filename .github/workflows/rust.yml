@@ -36,7 +36,7 @@ jobs:
         run: uv python install 3.12
 
       - name: Maturin build smoke
-        run: uv run --python 3.12 --with maturin maturin build --manifest-path rust/crates/ta-py/Cargo.toml --release
+        run: uv run --python 3.12 --with maturin maturin build --manifest-path crates/ta-py/Cargo.toml --release
 
       - name: Rust incremental bindings smoke
-        run: uv run --python 3.12 --with pytest python -m pytest tests/parity/test_rust_incremental_bindings_smoke.py -q
+        run: cd python && uv run --python 3.12 --with pytest python -m pytest tests/parity/test_rust_incremental_bindings_smoke.py -q

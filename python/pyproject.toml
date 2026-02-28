@@ -6,7 +6,7 @@ build-backend = "maturin"
 name = "laakhay-ta"
 version = "0.1.0b0"
 description = "Rust-first Technical Analysis Library by Laakhay"
-readme = "README.md"
+readme = "../README.md"
 requires-python = ">=3.12"
 license = { text = "MIT" }
 authors = [{ name = "Laakhay Corporation", email = "laakhay.corp@gmail.com" }]
@@ -30,7 +30,7 @@ dev = [
 ]
 
 [tool.maturin]
-manifest-path = "rust/crates/ta-py/Cargo.toml"
+manifest-path = "../crates/ta-py/Cargo.toml"
 module-name = "ta_py"
 bindings = "pyo3"
 
@@ -39,7 +39,7 @@ testpaths = ["tests"]
 python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
-pythonpath = ["."]
+pythonpath = ["src", "."]
 addopts = [
   "--strict-markers",
   "--tb=short",
