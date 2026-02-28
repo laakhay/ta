@@ -124,12 +124,7 @@ pub fn rolling_median(values: &[f64], period: usize) -> Vec<f64> {
             let start = i + 1 - period;
             let mut window: Vec<f64> = values[start..=i].to_vec();
             window.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
-            out[i] = if period % 2 == 1 {
-                window[period / 2]
-            } else {
-                let hi = period / 2;
-                (window[hi - 1] + window[hi]) / 2.0
-            };
+            out[i] = window[period / 2];
         }
     }
 
