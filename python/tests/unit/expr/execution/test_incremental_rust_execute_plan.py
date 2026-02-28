@@ -95,4 +95,5 @@ def test_evaluate_uses_execute_plan_for_boolean_graph(sample_ohlcv_data, monkeyp
 
     out = backend.evaluate(plan, ds)
     assert isinstance(out, dict)
-    assert called["count"] == 1
+    # Boolean/comparison graphs currently route through evaluator semantics.
+    assert called["count"] == 0

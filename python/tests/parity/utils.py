@@ -11,7 +11,7 @@ def assert_series_parity(s1: Series[Any], s2: Series[Any], tolerance: float = 1e
     assert s1.symbol == s2.symbol, f"Symbol mismatch: {s1.symbol} != {s2.symbol}"
     assert s1.timeframe == s2.timeframe, f"Timeframe mismatch: {s1.timeframe} != {s2.timeframe}"
     if len(s1.timestamps) != len(s2.timestamps):
-        # BatchBackend sometimes drops leading None warmup values.
+        # Evaluator/Rust outputs can differ on leading warmup null shape.
         # IncrementalBackend always computes a tick for every point.
         # Align by slicing the front of the longer series.
         if len(s1.timestamps) > len(s2.timestamps):

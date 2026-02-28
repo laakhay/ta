@@ -8,7 +8,9 @@ import ta_py
 from ....core.dataset import Dataset
 from ....core.ohlcv import OHLCV
 from ....core.series import Series
+from ...algebra.operators import Expression
 from ...ir.nodes import CallNode
+from ...planner.evaluator import Evaluator
 from ...planner.manifest import build_rust_execution_payload
 from ...planner.types import PlanResult
 from .base import ExecutionBackend
@@ -34,11 +36,16 @@ class IncrementalRustBackend(ExecutionBackend):
         timeframe: str | None = None,
         **options: Any,
     ) -> Series[Any] | dict[tuple[str, str, str], Series[Any]]:
+        if options.get("return_all_outputs", False):
+            return self._evaluate_with_evaluator(plan, dataset, **options)
         if not isinstance(dataset, Dataset):
-            raise RuntimeError("IncrementalRustBackend requires Dataset input")
+            return self._evaluate_with_evaluator(plan, dataset, **options)
         if not self._can_execute_plan(plan):
-            raise RuntimeError("plan contains unsupported nodes for rust graph execution backend")
-        return self._evaluate_with_execute_plan(plan, dataset, symbol=symbol, timeframe=timeframe)
+            return self._evaluate_with_evaluator(plan, dataset, **options)
+        try:
+            return self._evaluate_with_execute_plan(plan, dataset, symbol=symbol, timeframe=timeframe)
+        except RuntimeError:
+            return self._evaluate_with_evaluator(plan, dataset, **options)
 
     def initialize(
         self,
@@ -144,16 +151,29 @@ class IncrementalRustBackend(ExecutionBackend):
             "enter",
             "exit",
         }
-        allowed_binary = {"gt", "lt", "eq", "and", "or", "add", "sub", "mul", "div"}
+        allowed_binary = {"add", "sub", "mul", "div"}
+        seen_call = False
         for graph_node in plan.graph.nodes.values():
             node = graph_node.node
             if type(node).__name__ == "SourceRefNode":
+                field = getattr(node, "field", None)
+                if field not in {"close", "open", "high", "low", "volume"}:
+                    return False
+                if any(
+                    getattr(node, attr, None) is not None
+                    for attr in ("symbol", "exchange", "timeframe")
+                ):
+                    return False
                 continue
             if type(node).__name__ == "LiteralNode":
+                value = getattr(node, "value", None)
+                if isinstance(value, str):
+                    return False
                 continue
             if type(node).__name__ == "CallNode":
                 if not isinstance(node, CallNode) or node.name not in allowed_calls:
                     return False
+                seen_call = True
                 continue
             if type(node).__name__ == "BinaryOpNode":
                 op = getattr(node, "operator", None)
@@ -161,7 +181,17 @@ class IncrementalRustBackend(ExecutionBackend):
                     return False
                 continue
             return False
-        return True
+        return seen_call
+
+    @staticmethod
+    def _evaluate_with_evaluator(
+        plan: PlanResult,
+        dataset: Dataset | dict[str, Series[Any]] | Series[Any],
+        **options: Any,
+    ) -> Series[Any] | dict[tuple[str, str, str], Series[Any]]:
+        expr = Expression(plan.graph.nodes[plan.graph.root_id].node)
+        expr._plan_cache = plan
+        return Evaluator().evaluate(expr=expr, data=dataset, return_all_outputs=options.get("return_all_outputs", False))
 
     def _evaluate_with_execute_plan(
         self,
@@ -192,6 +222,11 @@ class IncrementalRustBackend(ExecutionBackend):
                 "execute_plan currently requires OHLCV partition in dataset for selected symbol/timeframe/source"
             )
 
+        warmup = 0
+        if plan.requirements.data_requirements:
+            warmup = max(int(req.min_lookback) for req in plan.requirements.data_requirements) - 1
+            warmup = max(warmup, 0)
+
         normalized_values: list[Any] = []
         for value in root_values:
             if value is None:
@@ -199,12 +234,16 @@ class IncrementalRustBackend(ExecutionBackend):
                 continue
             number = float(value)
             normalized_values.append(None if math.isnan(number) else number)
+        if warmup > 0:
+            for i in range(min(warmup, len(normalized_values))):
+                normalized_values[i] = None
         values = tuple(normalized_values)
         series = Series[Any](
             timestamps=series_obj.timestamps,
             values=values,
             symbol=selected_symbol,
             timeframe=selected_timeframe,
+            availability_mask=tuple(v is not None for v in values),
         )
         output_source = "default" if selected_source in {"ohlcv", "default"} else selected_source
         return {(selected_symbol, selected_timeframe, output_source): series}

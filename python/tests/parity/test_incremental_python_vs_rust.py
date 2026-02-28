@@ -7,8 +7,8 @@ import pytest
 
 from laakhay.ta.core.dataset import Dataset
 from laakhay.ta.expr.dsl import compile_expression
-from laakhay.ta.expr.execution.backends.batch import BatchBackend
 from laakhay.ta.expr.execution.backends.incremental_rust import IncrementalRustBackend
+from laakhay.ta.expr.planner.evaluator import Evaluator
 
 from .utils import assert_dict_parity, assert_series_parity
 
@@ -51,9 +51,10 @@ def _create_tick(ds: Dataset, idx: int) -> dict[str, Any]:
 
 @pytest.mark.parametrize("expr_text", ["rsi(close, 14)", "sma(close, 14)"])
 def test_incremental_rust_vs_batch_evaluate_parity(sample_dataset: Dataset, expr_text: str) -> None:
-    plan = compile_expression(expr_text)._ensure_plan()
+    expr = compile_expression(expr_text)
+    plan = expr._ensure_plan()
 
-    py_res = BatchBackend().evaluate(plan, sample_dataset)
+    py_res = Evaluator().evaluate(expr, sample_dataset)
     rust_res = IncrementalRustBackend().evaluate(plan, sample_dataset)
 
     if isinstance(py_res, dict):

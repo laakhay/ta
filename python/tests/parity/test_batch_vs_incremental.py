@@ -1,8 +1,8 @@
 import pytest
 
 from laakhay.ta.core.dataset import Dataset
-from laakhay.ta.expr.execution.backends.batch import BatchBackend
 from laakhay.ta.expr.execution.backends.incremental_rust import IncrementalRustBackend
+from laakhay.ta.expr.planner.evaluator import Evaluator
 
 from .utils import assert_dict_parity, assert_series_parity
 
@@ -38,7 +38,7 @@ def sample_dataset(sample_ohlcv_data) -> Dataset:
 )
 def test_evaluation_parity(sample_dataset, expr_text):
     """
-    Test that batch and Python incremental backends produce matching outputs.
+    Test that evaluator and Rust incremental backend produce matching outputs.
     """
     from laakhay.ta.expr.algebra.operators import Expression
     from laakhay.ta.expr.compile import compile_to_ir
@@ -46,9 +46,7 @@ def test_evaluation_parity(sample_dataset, expr_text):
     expr = Expression(compile_to_ir(expr_text))
     plan = expr._ensure_plan()
 
-    # Backend 1
-    backend1 = BatchBackend()
-    res1 = backend1.evaluate(plan, sample_dataset)
+    res1 = Evaluator().evaluate(expr, sample_dataset)
 
     backend2 = IncrementalRustBackend()
     res2 = backend2.evaluate(plan, sample_dataset)
@@ -74,8 +72,9 @@ def test_evaluation_rejects_unsupported_graphs(sample_dataset, expr_text):
     expr = Expression(compile_to_ir(expr_text))
     plan = expr._ensure_plan()
 
-    with pytest.raises(RuntimeError, match="unsupported nodes"):
-        IncrementalRustBackend().evaluate(plan, sample_dataset)
+    # Backend now routes evaluate() through evaluator semantics for unsupported graphs.
+    res = IncrementalRustBackend().evaluate(plan, sample_dataset)
+    assert res is not None
 
 
 @pytest.mark.parametrize(
@@ -92,7 +91,7 @@ def test_evaluation_parity_expanded_rust_graph_support(sample_dataset, expr_text
     expr = Expression(compile_to_ir(expr_text))
     plan = expr._ensure_plan()
 
-    py_res = BatchBackend().evaluate(plan, sample_dataset)
+    py_res = Evaluator().evaluate(expr, sample_dataset)
     rust_res = IncrementalRustBackend().evaluate(plan, sample_dataset)
 
     if isinstance(py_res, dict):

@@ -7,8 +7,8 @@ import ta_py
 from laakhay.ta.core.dataset import Dataset
 from laakhay.ta.core.ohlcv import OHLCV
 from laakhay.ta.expr.dsl import compile_expression
-from laakhay.ta.expr.execution.backends.batch import BatchBackend
 from laakhay.ta.expr.execution.backends.incremental_rust import IncrementalRustBackend
+from laakhay.ta.expr.planner.evaluator import Evaluator
 
 from .utils import assert_dict_parity
 
@@ -41,9 +41,10 @@ def test_rust_dataset_info_matches_python_surface(sample_ohlcv_data) -> None:
 
 def test_rust_backend_result_parity_on_rust_owned_dataset(sample_ohlcv_data) -> None:
     ds = _build_dataset(sample_ohlcv_data)
-    plan = compile_expression("rsi(close, 14)")._ensure_plan()
+    expr = compile_expression("rsi(close, 14)")
+    plan = expr._ensure_plan()
 
-    py_res = BatchBackend().evaluate(plan, ds)
+    py_res = Evaluator().evaluate(expr, ds)
     rust_res = IncrementalRustBackend().evaluate(plan, ds)
 
     assert isinstance(py_res, dict)
@@ -53,9 +54,10 @@ def test_rust_backend_result_parity_on_rust_owned_dataset(sample_ohlcv_data) -> 
 
 def test_rust_backend_boolean_graph_parity(sample_ohlcv_data) -> None:
     ds = _build_dataset(sample_ohlcv_data)
-    plan = compile_expression("sma(20) > sma(50) and rsi(14) > 50")._ensure_plan()
+    expr = compile_expression("sma(20) > sma(50) and rsi(14) > 50")
+    plan = expr._ensure_plan()
 
-    py_res = BatchBackend().evaluate(plan, ds)
+    py_res = Evaluator().evaluate(expr, ds)
     rust_res = IncrementalRustBackend().evaluate(plan, ds)
 
     assert isinstance(py_res, dict)
