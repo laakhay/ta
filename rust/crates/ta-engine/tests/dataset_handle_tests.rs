@@ -10,7 +10,9 @@ fn dataset_handle_lifecycle_roundtrip() {
 
     assert!(dataset_exists(id));
     assert_eq!(dataset_count(), before + 1);
-    assert_eq!(get_dataset(id).expect("dataset should exist").id, id);
+    let snapshot = get_dataset(id).expect("dataset should exist");
+    assert_eq!(snapshot.id, id);
+    assert_eq!(snapshot.partitions.len(), 0);
 
     drop_dataset(id).expect("drop should succeed");
     assert!(!dataset_exists(id));
