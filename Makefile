@@ -5,7 +5,7 @@ UV ?= uv
 UV_PYTHON ?= 3.12
 UV_RUN := $(UV) run --python $(UV_PYTHON)
 RUST_WORKSPACE ?= .
-PYTHON_DIR ?= .
+PYTHON_DIR ?= python/src
 MATURIN_MANIFEST ?= crates/ta-py/Cargo.toml
 
 install: install-dev ## Install dependencies (dev mode)
@@ -25,16 +25,16 @@ test-cov-xml: ## Run tests with coverage (XML report for CI)
 	$(UV_RUN) --with pytest --with pytest-cov python -m pytest tests/unit/ --cov=laakhay.ta --cov-report=term-missing --cov-report=xml -v
 
 lint: ## Run ruff linter to check code quality
-	$(UV_RUN) --with ruff ruff check laakhay/ tests/
+	$(UV_RUN) --with ruff ruff check $(PYTHON_DIR)/laakhay/ tests/
 
 lint-fix: ## Run ruff linter and auto-fix issues
-	$(UV_RUN) --with ruff ruff check --fix laakhay/ tests/
+	$(UV_RUN) --with ruff ruff check --fix $(PYTHON_DIR)/laakhay/ tests/
 
 format: ## Format code with ruff formatter
-	$(UV_RUN) --with ruff ruff format laakhay/ tests/
+	$(UV_RUN) --with ruff ruff format $(PYTHON_DIR)/laakhay/ tests/
 
 format-check: ## Check if code is formatted correctly
-	$(UV_RUN) --with ruff ruff format --check laakhay/ tests/
+	$(UV_RUN) --with ruff ruff format --check $(PYTHON_DIR)/laakhay/ tests/
 
 check: lint format-check ## Run all checks (lint + format check)
 
