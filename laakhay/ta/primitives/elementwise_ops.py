@@ -1,7 +1,10 @@
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Any
+
+import ta_py
 
 from ..core import Series
 from ..core.series import Series as CoreSeries
@@ -32,6 +35,18 @@ from .kernels.math import (
 )
 from .math_ops import _build_like, _dec, _empty_like
 from .select import _select, _select_field
+
+
+def _series_to_epoch_millis(src: Series[Price]) -> list[int]:
+    return [int(ts.timestamp() * 1000) for ts in src.timestamps]
+
+
+def _epoch_millis_to_timestamps(values: list[int]) -> list[datetime]:
+    return [datetime.fromtimestamp(v / 1000, tz=UTC) for v in values]
+
+
+def _f64_to_decimals(values: list[float]) -> list[Decimal]:
+    return [Decimal("NaN") if str(v) == "nan" else Decimal(str(v)) for v in values]
 
 
 def _zip_binary_series(a: Series[Price], b: Series[Price]) -> Series[Any]:
@@ -337,21 +352,20 @@ def downsample(
                 result["volume"] = v
             return result
         result_tf = target_timeframe or c.timeframe
-        new_ts = [c.timestamps[min(i + factor - 1, n - 1)] for i in range(0, n, factor)]
-
-        def _bucket(seq):
-            return [seq[i : i + factor] for i in range(0, n, factor)]
-
-        ob = _bucket(o.values)
-        hb = _bucket(h.values)
-        lb = _bucket(l.values)
-        cb = _bucket(c.values)
-        vb = _bucket(v.values) if v is not None else None
-        o_vals = [_dec(b[0]) for b in ob]
-        h_vals = [max(_dec(x) for x in b) for b in hb]
-        l_vals = [min(_dec(x) for x in b) for b in lb]
-        c_vals = [_dec(b[-1]) for b in cb]
-        v_vals = [sum(_dec(x) for x in b) for b in vb] if vb is not None else None
+        ts_epoch = _series_to_epoch_millis(c)
+        out_ts_epoch, o_vals_raw = ta_py.series_downsample(ts_epoch, [float(x) for x in o.values], factor, "first")
+        _, h_vals_raw = ta_py.series_downsample(ts_epoch, [float(x) for x in h.values], factor, "max")
+        _, l_vals_raw = ta_py.series_downsample(ts_epoch, [float(x) for x in l.values], factor, "min")
+        _, c_vals_raw = ta_py.series_downsample(ts_epoch, [float(x) for x in c.values], factor, "last")
+        new_ts = _epoch_millis_to_timestamps(out_ts_epoch)
+        o_vals = _f64_to_decimals(o_vals_raw)
+        h_vals = _f64_to_decimals(h_vals_raw)
+        l_vals = _f64_to_decimals(l_vals_raw)
+        c_vals = _f64_to_decimals(c_vals_raw)
+        v_vals = None
+        if v is not None:
+            _, v_vals_raw = ta_py.series_downsample(ts_epoch, [float(x) for x in v.values], factor, "sum")
+            v_vals = _f64_to_decimals(v_vals_raw)
         o_ser = _build_like(o, new_ts, o_vals)
         h_ser = _build_like(h, new_ts, h_vals)
         l_ser = _build_like(l, new_ts, l_vals)
@@ -403,19 +417,13 @@ def downsample(
     n = len(src)
     if n == 0:
         return _empty_like(src)
-    buckets = [src.values[i : i + factor] for i in range(0, n, factor)]
-    ts_buckets = [src.timestamps[min(i + factor - 1, n - 1)] for i in range(0, n, factor)]
-    out_vals: list[Decimal] = []
-    for b in buckets:
-        if agg == "last":
-            out_vals.append(_dec(b[-1]))
-        elif agg == "mean":
-            out_vals.append(sum(_dec(v) for v in b) / Decimal(len(b)))
-        elif agg == "sum":
-            out_vals.append(sum(_dec(v) for v in b))
-        else:
-            raise ValueError("Unsupported agg for downsample: {agg}")
-    res = _build_like(src, ts_buckets, out_vals)
+    out_ts_epoch, out_vals_raw = ta_py.series_downsample(
+        _series_to_epoch_millis(src),
+        [float(v) for v in src.values],
+        factor,
+        agg,
+    )
+    res = _build_like(src, _epoch_millis_to_timestamps(out_ts_epoch), _f64_to_decimals(out_vals_raw))
     result_tf = target_timeframe or src.timeframe
     return CoreSeries[Price](
         timestamps=res.timestamps,
@@ -448,16 +456,12 @@ def upsample(ctx: SeriesContext, *, factor: int = 2, method: str = "ffill") -> S
     n = len(src)
     if n == 0:
         return _empty_like(src)
-    new_ts = []
-    new_vals: list[Decimal] = []
-    for i in range(n):
-        new_ts.append(src.timestamps[i])
-        new_vals.append(_dec(src.values[i]))
-        if i < n - 1:
-            for _ in range(factor - 1):
-                new_ts.append(src.timestamps[i])
-                new_vals.append(_dec(src.values[i]))
-    res = _build_like(src, new_ts, new_vals)
+    out_ts_epoch, out_vals_raw = ta_py.series_upsample_ffill(
+        _series_to_epoch_millis(src),
+        [float(v) for v in src.values],
+        factor,
+    )
+    res = _build_like(src, _epoch_millis_to_timestamps(out_ts_epoch), _f64_to_decimals(out_vals_raw))
     return CoreSeries[Price](
         timestamps=res.timestamps,
         values=res.values,
@@ -483,41 +487,13 @@ def sync_timeframe(ctx: SeriesContext, reference: Series[Price], *, fill: str = 
     ref_ts = list(reference.timestamps)
     if not ref_ts:
         return _empty_like(src)
-    src_map = {ts: _dec(v) for ts, v in zip(src.timestamps, src.values, strict=True)}
-    ts_list = list(src.timestamps)
-    val_list = [src_map[ts] for ts in ts_list]
-    out_vals: list[Decimal] = []
-    if fill == "ffill":
-        last: Decimal | None = None
-        for ts in ref_ts:
-            if ts in src_map:
-                last = src_map[ts]
-                out_vals.append(last)
-            else:
-                if last is None:
-                    last = val_list[0] if val_list else Decimal(0)
-                out_vals.append(last)
-    elif fill == "linear":
-        from bisect import bisect_left
-
-        for ts in ref_ts:
-            if ts in src_map:
-                out_vals.append(src_map[ts])
-            else:
-                i = bisect_left(ts_list, ts)
-                if i == 0:
-                    out_vals.append(val_list[0])
-                elif i >= len(ts_list):
-                    out_vals.append(val_list[-1])
-                else:
-                    t0, t1 = ts_list[i - 1], ts_list[i]
-                    v0, v1 = val_list[i - 1], val_list[i]
-                    total = (t1 - t0).total_seconds()
-                    w = (ts - t0).total_seconds() / total if total != 0 else 0.0
-                    out_vals.append(v0 + (v1 - v0) * Decimal(str(w)))
-    else:
-        raise ValueError("sync_timeframe fill must be 'ffill' or 'linear'")
-    res = _build_like(src, ref_ts, out_vals)
+    out_vals_raw = ta_py.series_sync_timeframe(
+        _series_to_epoch_millis(src),
+        [float(v) for v in src.values],
+        _series_to_epoch_millis(reference),
+        fill,
+    )
+    res = _build_like(src, ref_ts, _f64_to_decimals(out_vals_raw))
     return CoreSeries[Price](
         timestamps=res.timestamps,
         values=res.values,
