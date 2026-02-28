@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from decimal import Decimal
+import ta_py
 
 from ...core import Series
 from ...core.types import Price
@@ -12,8 +12,10 @@ from ...registry.schemas import (
     IndicatorSpec,
     OutputSpec,
     ParamSpec,
+    RuntimeBindingSpec,
     SemanticsSpec,
 )
+from .._utils import results_to_series
 
 ROC_SPEC = IndicatorSpec(
     name="roc",
@@ -24,6 +26,7 @@ ROC_SPEC = IndicatorSpec(
         required_fields=("close",),
         lookback_params=("period",),
     ),
+    runtime_binding=RuntimeBindingSpec(kernel_id="roc"),
 )
 
 
@@ -37,8 +40,5 @@ def roc(ctx: SeriesContext, period: int = 12) -> Series[Price]:
     if period <= 0:
         raise ValueError("ROC period must be positive")
 
-    c = ctx.close
-    c_prev = c.shift(period)
-
-    # Division by zero where c_prev is zero is handled by Series __truediv__
-    return ((c - c_prev) / c_prev) * Decimal("100")
+    out = ta_py.roc([float(v) for v in ctx.close.values], period)
+    return results_to_series(out, ctx.close, value_class=Price)

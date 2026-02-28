@@ -2,19 +2,20 @@
 
 from __future__ import annotations
 
-from decimal import Decimal
+import ta_py
 
 from ...core import Series
 from ...core.types import Price
-from ...primitives.rolling_ops import rolling_max, rolling_min
 from ...registry.models import SeriesContext
 from ...registry.registry import register
 from ...registry.schemas import (
     IndicatorSpec,
     OutputSpec,
     ParamSpec,
+    RuntimeBindingSpec,
     SemanticsSpec,
 )
+from .._utils import results_to_series
 
 DONCHIAN_SPEC = IndicatorSpec(
     name="donchian",
@@ -29,6 +30,7 @@ DONCHIAN_SPEC = IndicatorSpec(
         required_fields=("high", "low"),
         lookback_params=("period",),
     ),
+    runtime_binding=RuntimeBindingSpec(kernel_id="donchian"),
 )
 
 
@@ -40,8 +42,13 @@ def donchian(ctx: SeriesContext, period: int = 20) -> tuple[Series[Price], Serie
     if period <= 0:
         raise ValueError("Donchian period must be positive")
 
-    upper = rolling_max(ctx, period, field="high")
-    lower = rolling_min(ctx, period, field="low")
-    middle = (upper + lower) / Decimal(2)
-
-    return upper, lower, middle
+    upper_vals, lower_vals, middle_vals = ta_py.donchian(
+        [float(v) for v in ctx.high.values],
+        [float(v) for v in ctx.low.values],
+        period,
+    )
+    return (
+        results_to_series(upper_vals, ctx.high, value_class=Price),
+        results_to_series(lower_vals, ctx.high, value_class=Price),
+        results_to_series(middle_vals, ctx.high, value_class=Price),
+    )

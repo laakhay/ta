@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from decimal import Decimal
+import ta_py
 
 from ...core import Series
 from ...core.types import Price
@@ -12,10 +12,10 @@ from ...registry.schemas import (
     IndicatorSpec,
     OutputSpec,
     ParamSpec,
+    RuntimeBindingSpec,
     SemanticsSpec,
 )
-from ..trend.ema import ema
-from ..volatility.atr import atr
+from .._utils import results_to_series
 
 KELTNER_SPEC = IndicatorSpec(
     name="keltner",
@@ -34,6 +34,7 @@ KELTNER_SPEC = IndicatorSpec(
         required_fields=("high", "low", "close"),
         lookback_params=("ema_period", "atr_period"),
     ),
+    runtime_binding=RuntimeBindingSpec(kernel_id="keltner"),
 )
 
 
@@ -51,16 +52,16 @@ def keltner(
     if ema_period <= 0 or atr_period <= 0:
         raise ValueError("Keltner periods must be positive")
 
-    middle = ema(ctx, ema_period)
-    v_atr = atr(ctx, atr_period)
-
-    # ATR is calculated over high/low/close.
-    # The middle line EMA is also calculated.
-    # We need to ensure they are aligned if they have different start points.
-    # However, both use standard library primitives which should handle alignment.
-
-    offset = v_atr * Decimal(str(multiplier))
-    upper = middle + offset
-    lower = middle - offset
-
-    return upper, middle, lower
+    upper_vals, middle_vals, lower_vals = ta_py.keltner(
+        [float(v) for v in ctx.high.values],
+        [float(v) for v in ctx.low.values],
+        [float(v) for v in ctx.close.values],
+        ema_period,
+        atr_period,
+        multiplier,
+    )
+    return (
+        results_to_series(upper_vals, ctx.close, value_class=Price),
+        results_to_series(middle_vals, ctx.close, value_class=Price),
+        results_to_series(lower_vals, ctx.close, value_class=Price),
+    )

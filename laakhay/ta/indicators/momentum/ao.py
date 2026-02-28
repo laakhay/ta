@@ -2,18 +2,20 @@
 
 from __future__ import annotations
 
+import ta_py
+
 from ...core import Series
 from ...core.types import Price
-from ...primitives.select import _select_field
 from ...registry.models import SeriesContext
 from ...registry.registry import register
 from ...registry.schemas import (
     IndicatorSpec,
     OutputSpec,
     ParamSpec,
+    RuntimeBindingSpec,
     SemanticsSpec,
 )
-from ..trend.sma import sma
+from .._utils import results_to_series
 
 AO_SPEC = IndicatorSpec(
     name="ao",
@@ -27,6 +29,7 @@ AO_SPEC = IndicatorSpec(
         required_fields=("high", "low"),
         lookback_params=("fast_period", "slow_period"),
     ),
+    runtime_binding=RuntimeBindingSpec(kernel_id="ao"),
 )
 
 
@@ -39,11 +42,10 @@ def ao(ctx: SeriesContext, fast_period: int = 5, slow_period: int = 34) -> Serie
     """
     if fast_period <= 0 or slow_period <= 0:
         raise ValueError("Periods must be positive")
-
-    mp = _select_field(ctx, "median_price")
-    new_ctx = SeriesContext(price=mp)
-
-    fast_sma = sma(new_ctx, period=fast_period)
-    slow_sma = sma(new_ctx, period=slow_period)
-
-    return fast_sma - slow_sma
+    out = ta_py.ao(
+        [float(v) for v in ctx.high.values],
+        [float(v) for v in ctx.low.values],
+        fast_period,
+        slow_period,
+    )
+    return results_to_series(out, ctx.high, value_class=Price)

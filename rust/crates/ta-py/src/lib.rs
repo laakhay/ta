@@ -13,6 +13,8 @@ static SNAPSHOT_ID: AtomicU64 = AtomicU64::new(1);
 static BACKENDS: OnceLock<Mutex<HashMap<u64, IncrementalBackend>>> = OnceLock::new();
 static SNAPSHOTS: OnceLock<Mutex<HashMap<u64, RuntimeSnapshot>>> = OnceLock::new();
 
+type IchimokuTuple = (Vec<f64>, Vec<f64>, Vec<f64>, Vec<f64>, Vec<f64>);
+
 fn backends() -> &'static Mutex<HashMap<u64, IncrementalBackend>> {
     BACKENDS.get_or_init(|| Mutex::new(HashMap::new()))
 }
@@ -24,6 +26,25 @@ fn snapshots() -> &'static Mutex<HashMap<u64, RuntimeSnapshot>> {
 #[pyfunction]
 fn engine_version() -> &'static str {
     ta_engine::engine_version()
+}
+
+#[pyfunction]
+fn indicator_catalog(py: Python<'_>) -> PyResult<PyObject> {
+    let py_list = PyList::empty(py);
+    for meta in ta_engine::metadata::indicator_catalog() {
+        py_list.append(indicator_meta_to_pydict(py, meta)?)?;
+    }
+    Ok(py_list.into_any().unbind())
+}
+
+#[pyfunction]
+fn indicator_meta(py: Python<'_>, id: String) -> PyResult<PyObject> {
+    let meta = ta_engine::metadata::find_indicator_meta(&id).ok_or_else(|| {
+        pyo3::exceptions::PyKeyError::new_err(format!(
+            "indicator metadata not found for id/alias '{id}'"
+        ))
+    })?;
+    indicator_meta_to_pydict(py, meta)
 }
 
 fn validate_period(period: usize) -> PyResult<()> {
@@ -90,6 +111,70 @@ fn rsi(values: Vec<f64>, period: usize) -> PyResult<Vec<f64>> {
 }
 
 #[pyfunction]
+fn roc(values: Vec<f64>, period: usize) -> PyResult<Vec<f64>> {
+    validate_period(period)?;
+    Ok(ta_engine::momentum::roc(&values, period))
+}
+
+#[pyfunction]
+fn cmo(values: Vec<f64>, period: usize) -> PyResult<Vec<f64>> {
+    validate_period(period)?;
+    Ok(ta_engine::momentum::cmo(&values, period))
+}
+
+#[pyfunction]
+fn ao(high: Vec<f64>, low: Vec<f64>, fast_period: usize, slow_period: usize) -> PyResult<Vec<f64>> {
+    validate_period(fast_period)?;
+    validate_period(slow_period)?;
+    Ok(ta_engine::momentum::ao(
+        &high,
+        &low,
+        fast_period,
+        slow_period,
+    ))
+}
+
+#[pyfunction]
+fn coppock(
+    values: Vec<f64>,
+    wma_period: usize,
+    fast_roc: usize,
+    slow_roc: usize,
+) -> PyResult<Vec<f64>> {
+    validate_period(wma_period)?;
+    validate_period(fast_roc)?;
+    validate_period(slow_roc)?;
+    Ok(ta_engine::momentum::coppock(
+        &values, wma_period, fast_roc, slow_roc,
+    ))
+}
+
+#[pyfunction]
+fn mfi(
+    high: Vec<f64>,
+    low: Vec<f64>,
+    close: Vec<f64>,
+    volume: Vec<f64>,
+    period: usize,
+) -> PyResult<Vec<f64>> {
+    validate_period(period)?;
+    Ok(ta_engine::momentum::mfi(
+        &high, &low, &close, &volume, period,
+    ))
+}
+
+#[pyfunction]
+fn vortex(
+    high: Vec<f64>,
+    low: Vec<f64>,
+    close: Vec<f64>,
+    period: usize,
+) -> PyResult<(Vec<f64>, Vec<f64>)> {
+    validate_period(period)?;
+    Ok(ta_engine::momentum::vortex(&high, &low, &close, period))
+}
+
+#[pyfunction]
 fn atr(high: Vec<f64>, low: Vec<f64>, close: Vec<f64>, period: usize) -> PyResult<Vec<f64>> {
     validate_period(period)?;
     Ok(ta_engine::volatility::atr(&high, &low, &close, period))
@@ -152,6 +237,96 @@ fn bbands(
 }
 
 #[pyfunction]
+fn donchian(
+    high: Vec<f64>,
+    low: Vec<f64>,
+    period: usize,
+) -> PyResult<(Vec<f64>, Vec<f64>, Vec<f64>)> {
+    validate_period(period)?;
+    Ok(ta_engine::volatility::donchian(&high, &low, period))
+}
+
+#[pyfunction]
+fn keltner(
+    high: Vec<f64>,
+    low: Vec<f64>,
+    close: Vec<f64>,
+    ema_period: usize,
+    atr_period: usize,
+    multiplier: f64,
+) -> PyResult<(Vec<f64>, Vec<f64>, Vec<f64>)> {
+    validate_period(ema_period)?;
+    validate_period(atr_period)?;
+    Ok(ta_engine::volatility::keltner(
+        &high, &low, &close, ema_period, atr_period, multiplier,
+    ))
+}
+
+#[pyfunction]
+fn ichimoku(
+    high: Vec<f64>,
+    low: Vec<f64>,
+    close: Vec<f64>,
+    tenkan_period: usize,
+    kijun_period: usize,
+    span_b_period: usize,
+    displacement: usize,
+) -> PyResult<IchimokuTuple> {
+    validate_period(tenkan_period)?;
+    validate_period(kijun_period)?;
+    validate_period(span_b_period)?;
+    validate_period(displacement)?;
+    Ok(ta_engine::trend::ichimoku(
+        &high,
+        &low,
+        &close,
+        tenkan_period,
+        kijun_period,
+        span_b_period,
+        displacement,
+    ))
+}
+
+#[pyfunction]
+fn fisher(high: Vec<f64>, low: Vec<f64>, period: usize) -> PyResult<(Vec<f64>, Vec<f64>)> {
+    validate_period(period)?;
+    Ok(ta_engine::trend::fisher(&high, &low, period))
+}
+
+#[pyfunction]
+fn psar(
+    high: Vec<f64>,
+    low: Vec<f64>,
+    close: Vec<f64>,
+    af_start: f64,
+    af_increment: f64,
+    af_max: f64,
+) -> PyResult<(Vec<f64>, Vec<f64>)> {
+    Ok(ta_engine::trend::psar(
+        &high,
+        &low,
+        &close,
+        af_start,
+        af_increment,
+        af_max,
+    ))
+}
+
+#[pyfunction]
+fn supertrend(
+    high: Vec<f64>,
+    low: Vec<f64>,
+    close: Vec<f64>,
+    period: usize,
+    multiplier: f64,
+) -> PyResult<(Vec<f64>, Vec<f64>)> {
+    validate_period(period)?;
+    Ok(ta_engine::trend::supertrend(
+        &high, &low, &close, period, multiplier,
+    ))
+}
+
+#[pyfunction]
 fn adx(
     high: Vec<f64>,
     low: Vec<f64>,
@@ -185,6 +360,78 @@ fn cci(high: Vec<f64>, low: Vec<f64>, close: Vec<f64>, period: usize) -> PyResul
 }
 
 #[pyfunction]
+fn elder_ray(
+    high: Vec<f64>,
+    low: Vec<f64>,
+    close: Vec<f64>,
+    period: usize,
+) -> PyResult<(Vec<f64>, Vec<f64>)> {
+    validate_period(period)?;
+    Ok(ta_engine::trend::elder_ray(&high, &low, &close, period))
+}
+
+#[pyfunction]
+fn williams_r(high: Vec<f64>, low: Vec<f64>, close: Vec<f64>, period: usize) -> PyResult<Vec<f64>> {
+    validate_period(period)?;
+    Ok(ta_engine::momentum::williams_r(&high, &low, &close, period))
+}
+
+#[pyfunction]
+fn crossup(a: Vec<f64>, b: Vec<f64>) -> PyResult<Vec<bool>> {
+    Ok(ta_engine::events::crossup(&a, &b))
+}
+
+#[pyfunction]
+fn crossdown(a: Vec<f64>, b: Vec<f64>) -> PyResult<Vec<bool>> {
+    Ok(ta_engine::events::crossdown(&a, &b))
+}
+
+#[pyfunction]
+fn cross(a: Vec<f64>, b: Vec<f64>) -> PyResult<Vec<bool>> {
+    Ok(ta_engine::events::cross(&a, &b))
+}
+
+#[pyfunction]
+fn rising(a: Vec<f64>) -> PyResult<Vec<bool>> {
+    Ok(ta_engine::events::rising(&a))
+}
+
+#[pyfunction]
+fn falling(a: Vec<f64>) -> PyResult<Vec<bool>> {
+    Ok(ta_engine::events::falling(&a))
+}
+
+#[pyfunction]
+fn rising_pct(a: Vec<f64>, pct: f64) -> PyResult<Vec<bool>> {
+    Ok(ta_engine::events::rising_pct(&a, pct))
+}
+
+#[pyfunction]
+fn falling_pct(a: Vec<f64>, pct: f64) -> PyResult<Vec<bool>> {
+    Ok(ta_engine::events::falling_pct(&a, pct))
+}
+
+#[pyfunction]
+fn in_channel(price: Vec<f64>, upper: Vec<f64>, lower: Vec<f64>) -> PyResult<Vec<bool>> {
+    Ok(ta_engine::events::in_channel(&price, &upper, &lower))
+}
+
+#[pyfunction]
+fn out_channel(price: Vec<f64>, upper: Vec<f64>, lower: Vec<f64>) -> PyResult<Vec<bool>> {
+    Ok(ta_engine::events::out_channel(&price, &upper, &lower))
+}
+
+#[pyfunction]
+fn enter_channel(price: Vec<f64>, upper: Vec<f64>, lower: Vec<f64>) -> PyResult<Vec<bool>> {
+    Ok(ta_engine::events::enter_channel(&price, &upper, &lower))
+}
+
+#[pyfunction]
+fn exit_channel(price: Vec<f64>, upper: Vec<f64>, lower: Vec<f64>) -> PyResult<Vec<bool>> {
+    Ok(ta_engine::events::exit_channel(&price, &upper, &lower))
+}
+
+#[pyfunction]
 fn vwap(high: Vec<f64>, low: Vec<f64>, close: Vec<f64>, volume: Vec<f64>) -> PyResult<Vec<f64>> {
     Ok(ta_engine::volume::vwap(&high, &low, &close, &volume))
 }
@@ -197,6 +444,30 @@ fn klinger_vf(
     volume: Vec<f64>,
 ) -> PyResult<Vec<f64>> {
     Ok(ta_engine::volume::klinger_vf(&high, &low, &close, &volume))
+}
+
+#[pyfunction]
+fn klinger(
+    high: Vec<f64>,
+    low: Vec<f64>,
+    close: Vec<f64>,
+    volume: Vec<f64>,
+    fast_period: usize,
+    slow_period: usize,
+    signal_period: usize,
+) -> PyResult<(Vec<f64>, Vec<f64>)> {
+    validate_period(fast_period)?;
+    validate_period(slow_period)?;
+    validate_period(signal_period)?;
+    Ok(ta_engine::volume::klinger(
+        &high,
+        &low,
+        &close,
+        &volume,
+        fast_period,
+        slow_period,
+        signal_period,
+    ))
 }
 
 #[pyfunction]
@@ -381,9 +652,88 @@ fn incremental_map_to_pydict(
     Ok(d.into_any().unbind())
 }
 
+fn indicator_meta_to_pydict(
+    py: Python<'_>,
+    meta: &ta_engine::metadata::IndicatorMeta,
+) -> PyResult<PyObject> {
+    let d = PyDict::new(py);
+    d.set_item("id", meta.id)?;
+    d.set_item("display_name", meta.display_name)?;
+    d.set_item("category", meta.category)?;
+    d.set_item("runtime_binding", meta.runtime_binding)?;
+
+    let aliases = PyList::empty(py);
+    for alias in meta.aliases {
+        aliases.append(alias)?;
+    }
+    d.set_item("aliases", aliases)?;
+
+    let param_aliases = PyDict::new(py);
+    for alias in meta.param_aliases {
+        param_aliases.set_item(alias.alias, alias.target)?;
+    }
+    d.set_item("param_aliases", param_aliases)?;
+
+    let params = PyList::empty(py);
+    for param in meta.params {
+        let p = PyDict::new(py);
+        p.set_item("name", param.name)?;
+        let kind = match param.kind {
+            ta_engine::metadata::IndicatorParamKind::Integer => "int",
+            ta_engine::metadata::IndicatorParamKind::Float => "float",
+            ta_engine::metadata::IndicatorParamKind::Boolean => "bool",
+            ta_engine::metadata::IndicatorParamKind::String => "string",
+        };
+        p.set_item("kind", kind)?;
+        p.set_item("required", param.required)?;
+        p.set_item("default", param.default)?;
+        p.set_item("description", param.description)?;
+        p.set_item("min", param.min)?;
+        p.set_item("max", param.max)?;
+        params.append(p)?;
+    }
+    d.set_item("params", params)?;
+
+    let outputs = PyList::empty(py);
+    for output in meta.outputs {
+        let o = PyDict::new(py);
+        o.set_item("name", output.name)?;
+        o.set_item("kind", output.kind)?;
+        o.set_item("description", output.description)?;
+        outputs.append(o)?;
+    }
+    d.set_item("outputs", outputs)?;
+
+    let semantics = PyDict::new(py);
+    let required_fields = PyList::empty(py);
+    for field in meta.semantics.required_fields {
+        required_fields.append(field)?;
+    }
+    semantics.set_item("required_fields", required_fields)?;
+
+    let optional_fields = PyList::empty(py);
+    for field in meta.semantics.optional_fields {
+        optional_fields.append(field)?;
+    }
+    semantics.set_item("optional_fields", optional_fields)?;
+
+    let lookback_params = PyList::empty(py);
+    for param in meta.semantics.lookback_params {
+        lookback_params.append(param)?;
+    }
+    semantics.set_item("lookback_params", lookback_params)?;
+    semantics.set_item("default_lookback", meta.semantics.default_lookback)?;
+    semantics.set_item("warmup_policy", meta.semantics.warmup_policy)?;
+    d.set_item("semantics", semantics)?;
+
+    Ok(d.into_any().unbind())
+}
+
 #[pymodule]
 fn ta_py(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(engine_version, m)?)?;
+    m.add_function(wrap_pyfunction!(indicator_catalog, m)?)?;
+    m.add_function(wrap_pyfunction!(indicator_meta, m)?)?;
     m.add_function(wrap_pyfunction!(rolling_sum, m)?)?;
     m.add_function(wrap_pyfunction!(rolling_mean, m)?)?;
     m.add_function(wrap_pyfunction!(rolling_std, m)?)?;
@@ -393,17 +743,43 @@ fn ta_py(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(rolling_rma, m)?)?;
     m.add_function(wrap_pyfunction!(rolling_wma, m)?)?;
     m.add_function(wrap_pyfunction!(rsi, m)?)?;
+    m.add_function(wrap_pyfunction!(roc, m)?)?;
+    m.add_function(wrap_pyfunction!(cmo, m)?)?;
+    m.add_function(wrap_pyfunction!(ao, m)?)?;
+    m.add_function(wrap_pyfunction!(coppock, m)?)?;
+    m.add_function(wrap_pyfunction!(mfi, m)?)?;
+    m.add_function(wrap_pyfunction!(vortex, m)?)?;
     m.add_function(wrap_pyfunction!(atr, m)?)?;
     m.add_function(wrap_pyfunction!(atr_from_tr, m)?)?;
     m.add_function(wrap_pyfunction!(stochastic_kd, m)?)?;
     m.add_function(wrap_pyfunction!(macd, m)?)?;
     m.add_function(wrap_pyfunction!(bbands, m)?)?;
+    m.add_function(wrap_pyfunction!(donchian, m)?)?;
+    m.add_function(wrap_pyfunction!(keltner, m)?)?;
+    m.add_function(wrap_pyfunction!(ichimoku, m)?)?;
+    m.add_function(wrap_pyfunction!(fisher, m)?)?;
+    m.add_function(wrap_pyfunction!(psar, m)?)?;
+    m.add_function(wrap_pyfunction!(supertrend, m)?)?;
     m.add_function(wrap_pyfunction!(adx, m)?)?;
     m.add_function(wrap_pyfunction!(swing_points_raw, m)?)?;
     m.add_function(wrap_pyfunction!(cci, m)?)?;
+    m.add_function(wrap_pyfunction!(williams_r, m)?)?;
+    m.add_function(wrap_pyfunction!(elder_ray, m)?)?;
+    m.add_function(wrap_pyfunction!(crossup, m)?)?;
+    m.add_function(wrap_pyfunction!(crossdown, m)?)?;
+    m.add_function(wrap_pyfunction!(cross, m)?)?;
+    m.add_function(wrap_pyfunction!(rising, m)?)?;
+    m.add_function(wrap_pyfunction!(falling, m)?)?;
+    m.add_function(wrap_pyfunction!(rising_pct, m)?)?;
+    m.add_function(wrap_pyfunction!(falling_pct, m)?)?;
+    m.add_function(wrap_pyfunction!(in_channel, m)?)?;
+    m.add_function(wrap_pyfunction!(out_channel, m)?)?;
+    m.add_function(wrap_pyfunction!(enter_channel, m)?)?;
+    m.add_function(wrap_pyfunction!(exit_channel, m)?)?;
     m.add_function(wrap_pyfunction!(vwap, m)?)?;
     m.add_function(wrap_pyfunction!(obv, m)?)?;
     m.add_function(wrap_pyfunction!(klinger_vf, m)?)?;
+    m.add_function(wrap_pyfunction!(klinger, m)?)?;
     m.add_function(wrap_pyfunction!(cmf, m)?)?;
     m.add_function(wrap_pyfunction!(incremental_initialize, m)?)?;
     m.add_function(wrap_pyfunction!(incremental_step, m)?)?;

@@ -2,14 +2,8 @@
 
 from __future__ import annotations
 
-import math
-
-import ta_py
-
 from ...core import Series
-from ...core.series import Series as CoreSeries
 from ...core.types import Price
-from ...primitives.elementwise_ops import true_range
 from ...registry.models import SeriesContext
 from ...registry.registry import register
 from ...registry.schemas import (
@@ -55,6 +49,7 @@ def atr(ctx: SeriesContext, period: int = 14) -> Series[Price]:
         raise ValueError("All series must have the same length")
 
     import ta_py
+
     from .._utils import results_to_series
 
     out = ta_py.atr(

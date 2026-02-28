@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from ...core import Series
-from ...primitives.rolling_ops import rolling_ema
 from ...registry.schemas import (
     IndicatorSpec,
     OutputSpec,
@@ -63,6 +62,7 @@ def macd(
         return empty, empty, empty
 
     import ta_py
+
     from .._utils import results_to_series
 
     macd_val, signal_val, hist_val = ta_py.macd(

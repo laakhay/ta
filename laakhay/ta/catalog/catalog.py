@@ -11,6 +11,7 @@ from ..api.namespace import ensure_namespace_registered
 from ..registry import list_indicators
 from ..registry.models import IndicatorHandle
 from ..registry.registry import get_global_registry
+from .rust_catalog import list_rust_catalog, rust_catalog_available
 from .type_parser import TypeParser
 
 # Tuple alias overrides for multi-output indicators
@@ -271,6 +272,63 @@ def list_catalog() -> dict[str, IndicatorDescriptor]:
     """
     builder = CatalogBuilder()
     return builder.build_catalog()
+
+
+def list_catalog_metadata(source: str = "auto") -> dict[str, dict[str, Any]]:
+    """Return normalized metadata with explicit source marker.
+
+    Args:
+        source: one of "auto", "rust", or "python".
+    """
+    selected = source.lower().strip()
+    if selected not in {"auto", "rust", "python"}:
+        raise ValueError("source must be one of: auto, rust, python")
+
+    if selected in {"auto", "rust"} and rust_catalog_available():
+        return list_rust_catalog()
+    if selected == "rust":
+        raise RuntimeError("Rust catalog requested but ta_py metadata endpoints are unavailable")
+
+    catalog = list_catalog()
+    out: dict[str, dict[str, Any]] = {}
+    for name, descriptor in catalog.items():
+        out[name] = {
+            "id": name,
+            "display_name": descriptor.name,
+            "category": descriptor.category,
+            "runtime_binding": "",
+            "aliases": tuple(descriptor.handle.aliases),
+            "param_aliases": dict(descriptor.handle.schema.parameter_aliases),
+            "params": tuple(
+                {
+                    "name": param.name,
+                    "kind": param.param_type,
+                    "required": param.required,
+                    "default": param.default_value,
+                    "description": param.description,
+                    "min": None,
+                    "max": None,
+                }
+                for param in descriptor.parameters
+            ),
+            "outputs": tuple(
+                {
+                    "name": output.name,
+                    "kind": output.kind,
+                    "description": output.description or "",
+                }
+                for output in descriptor.outputs
+            ),
+            "semantics": {
+                "required_fields": tuple(descriptor.handle.schema.metadata.required_fields),
+                "optional_fields": tuple(descriptor.handle.schema.metadata.optional_fields),
+                "lookback_params": tuple(descriptor.handle.schema.metadata.lookback_params),
+                "default_lookback": descriptor.handle.schema.metadata.default_lookback,
+                "warmup_policy": "",
+            },
+            "source": "python",
+        }
+    return dict(sorted(out.items(), key=lambda kv: kv[0]))
 
 
 def describe_indicator(name: str) -> IndicatorDescriptor:

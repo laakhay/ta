@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from ...core import Series
-from ...primitives.rolling_ops import rolling_mean, rolling_std
 from ...registry.schemas import (
     IndicatorSpec,
     OutputSpec,
@@ -73,6 +72,7 @@ def bbands(
         return empty, empty, empty
 
     import ta_py
+
     from .._utils import results_to_series
 
     upper, middle, lower = ta_py.bbands([float(v) for v in close.values], period, std_dev)

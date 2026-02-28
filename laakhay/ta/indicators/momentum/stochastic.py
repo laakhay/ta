@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import math
-
 import ta_py
 
 from ...core import Series

@@ -6,6 +6,8 @@ from dataclasses import dataclass
 from decimal import Decimal
 from typing import Dict, Literal
 
+import ta_py
+
 from ...core import Series
 from ...core.series import Series as CoreSeries
 from ...core.types import Price
@@ -53,8 +55,6 @@ class _ConfirmedPivot:
     price: Decimal
 
 
-import ta_py
-
 def _compute_swings(
     high: Series[Price],
     low: Series[Price],
@@ -73,25 +73,23 @@ def _compute_swings(
     lo_vals = [float(v) for v in low.values]
 
     # Call Rust kernel
-    res_high, res_low = ta_py.swing_points_raw(
-        hi_vals, lo_vals, left, right, allow_equal_extremes
-    )
+    res_high, res_low = ta_py.swing_points_raw(hi_vals, lo_vals, left, right, allow_equal_extremes)
 
     confirmed_high = []
     confirmed_low = []
-    
+
     for i in range(n):
         pivot_idx = i - right
         if pivot_idx < 0:
             continue
         if res_high[i]:
-            confirmed_high.append(_ConfirmedPivot(
-                pivot_idx=pivot_idx, confirmed_idx=i, price=Decimal(str(hi_vals[pivot_idx]))
-            ))
+            confirmed_high.append(
+                _ConfirmedPivot(pivot_idx=pivot_idx, confirmed_idx=i, price=Decimal(str(hi_vals[pivot_idx])))
+            )
         if res_low[i]:
-            confirmed_low.append(_ConfirmedPivot(
-                pivot_idx=pivot_idx, confirmed_idx=i, price=Decimal(str(lo_vals[pivot_idx]))
-            ))
+            confirmed_low.append(
+                _ConfirmedPivot(pivot_idx=pivot_idx, confirmed_idx=i, price=Decimal(str(lo_vals[pivot_idx])))
+            )
 
     mask_eval = tuple(idx >= (left + right) for idx in range(n))
 
