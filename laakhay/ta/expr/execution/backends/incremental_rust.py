@@ -34,12 +34,11 @@ class IncrementalRustBackend(ExecutionBackend):
         timeframe: str | None = None,
         **options: Any,
     ) -> Series[Any] | dict[tuple[str, str, str], Series[Any]]:
-        if isinstance(dataset, Dataset) and self._can_execute_plan(plan):
-            return self._evaluate_with_execute_plan(plan, dataset, symbol=symbol, timeframe=timeframe)
-
-        from .batch import BatchBackend
-
-        return BatchBackend().evaluate(plan, dataset, symbol, timeframe, **options)
+        if not isinstance(dataset, Dataset):
+            raise RuntimeError("IncrementalRustBackend requires Dataset input")
+        if not self._can_execute_plan(plan):
+            raise RuntimeError("plan contains unsupported nodes for rust graph execution backend")
+        return self._evaluate_with_execute_plan(plan, dataset, symbol=symbol, timeframe=timeframe)
 
     def initialize(
         self,
@@ -138,8 +137,6 @@ class IncrementalRustBackend(ExecutionBackend):
         symbol: str | None,
         timeframe: str | None,
     ) -> dict[tuple[str, str, str], Series[Any]]:
-        requests = self._build_requests(plan)
-
         selected_symbol, selected_timeframe, selected_source = self._resolve_partition(dataset, symbol, timeframe)
         payload = build_rust_execution_payload(
             plan,
@@ -147,7 +144,7 @@ class IncrementalRustBackend(ExecutionBackend):
             symbol=selected_symbol,
             timeframe=selected_timeframe,
             source=selected_source,
-            requests=requests,
+            requests=[],
         )
         outputs = ta_py.execute_plan_payload(payload)
 
@@ -185,11 +182,6 @@ class IncrementalRustBackend(ExecutionBackend):
             explicit = dataset.series(symbol, timeframe, "ohlcv")
             if isinstance(explicit, OHLCV):
                 return symbol, timeframe, "ohlcv"
-
-            fallback = dataset.series(symbol, timeframe, "default")
-            if isinstance(fallback, OHLCV):
-                return symbol, timeframe, "default"
-
             raise RuntimeError(f"dataset does not contain OHLCV source for symbol={symbol} timeframe={timeframe}")
 
         for key in dataset.keys:

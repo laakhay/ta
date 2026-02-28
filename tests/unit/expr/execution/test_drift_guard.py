@@ -69,7 +69,7 @@ def test_expression_run_vs_evaluate_plan_parity(sample_dataset, expr_text):
     "expr_text",
     [
         "sma(close, 14)",
-        "close * 2",
+        "rsi(close, 14)",
     ],
 )
 def test_batch_vs_incremental_backend_parity(sample_dataset, expr_text):
@@ -84,6 +84,14 @@ def test_batch_vs_incremental_backend_parity(sample_dataset, expr_text):
         assert_dict_parity(batch_res, rust_incr_res)
     else:
         assert_series_parity(batch_res, rust_incr_res)
+
+
+def test_incremental_backend_rejects_unsupported_graph(sample_dataset):
+    expr = compile_expression("close * 2")
+    plan = expr._ensure_plan()
+
+    with pytest.raises(RuntimeError, match="unsupported nodes"):
+        IncrementalRustBackend().evaluate(plan, sample_dataset)
 
 
 def test_evaluator_direct_vs_run_parity(sample_dataset):
