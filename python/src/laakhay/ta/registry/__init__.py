@@ -14,7 +14,6 @@ from .registry import (
 )
 from .schemas import (
     ConstraintSpec,
-    IndicatorMetadata,
     IndicatorSchema,
     IndicatorSpec,
     InputSlotSpec,
@@ -34,7 +33,6 @@ __all__ = [
     "ParamSchema",
     "OutputSchema",
     "IndicatorSchema",
-    "IndicatorMetadata",
     "InputSlotSpec",
     "ParamSpec",
     "OutputSpec",

@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
+from functools import lru_cache
 from typing import Any
 
-from ...registry.registry import get_global_registry
+from ...catalog.rust_catalog import get_rust_indicator_meta
 from ..ir.nodes import (
     AggregateNode,
     BinaryOpNode,
@@ -22,7 +23,7 @@ class IndicatorAnalyzer:
     """Collect indicators from expressions and compute lookback requirements."""
 
     def __init__(self) -> None:
-        self._registry = get_global_registry()
+        pass
 
     def collect(self, expression: CanonicalExpression) -> list[CallNode]:
         nodes: list[CallNode] = []
@@ -64,12 +65,11 @@ class IndicatorAnalyzer:
         return max_trim
 
     def _indicator_lookback(self, indicator: CallNode) -> int:
-        handle = self._registry.get(indicator.name)
-        if handle is None:
-            return 0
-        metadata = handle.schema.metadata
-        lookback = metadata.default_lookback or 0
-        for param_name in metadata.lookback_params:
+        meta = _indicator_meta(indicator.name)
+        semantics = meta.get("semantics", {}) or {}
+        default_lookback = semantics.get("default_lookback")
+        lookback = int(default_lookback) if isinstance(default_lookback, int | float) else 0
+        for param_name in semantics.get("lookback_params", ()):
             value = indicator.kwargs.get(param_name)
             # handle cases where the param might be an argument, simplifying here to just check literals
             if getattr(value, "type_tag", None) == "scalar_number":
@@ -86,6 +86,14 @@ class IndicatorAnalyzer:
         if lookback == 0:
             lookback = self._infer_from_params(indicator.kwargs) or self._infer_from_args(indicator.args)
         return lookback
+
+
+@lru_cache(maxsize=512)
+def _indicator_meta(indicator_name: str) -> dict[str, Any]:
+    try:
+        return get_rust_indicator_meta(indicator_name)
+    except Exception:
+        return {}
 
     def _infer_from_params(self, params: dict[str, Any]) -> int:
         for _key, value in params.items():

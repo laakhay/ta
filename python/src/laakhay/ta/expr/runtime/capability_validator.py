@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from ...catalog import list_catalog_metadata
 from ..planner.manifest import generate_capability_manifest
 from ..planner.types import PlanResult, SignalRequirements
 
@@ -145,13 +146,16 @@ class CapabilityValidator:
         Returns:
             Tuple of (is_compatible, reason_if_not)
         """
-        # Get indicator metadata
-        from ...registry.registry import get_global_registry
-
-        registry = get_global_registry()
-        handle = registry.get(indicator)
-        if not handle:
-            return False, f"Indicator '{indicator}' not found in registry"
+        rust_catalog = list_catalog_metadata()
+        indicator_key = indicator.lower()
+        known_ids = set(rust_catalog.keys())
+        alias_to_id = {
+            str(alias).lower(): canonical_id
+            for canonical_id, meta in rust_catalog.items()
+            for alias in meta.get("aliases", ())
+        }
+        if indicator_key not in known_ids and indicator_key not in alias_to_id:
+            return False, f"Indicator '{indicator}' not found in Rust catalog"
 
         # Check if source is supported
         is_supported, error = self.check_source_support(source, field)

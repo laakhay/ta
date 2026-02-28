@@ -4,10 +4,11 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from decimal import Decimal
+from functools import lru_cache
 from typing import Any
 
+from ...catalog.rust_catalog import get_rust_indicator_meta
 from ...core import Series
-from ...registry.registry import get_global_registry
 from ..ir.nodes import BinaryOpNode, CallNode, ExprNode, LiteralNode, SourceRefNode, UnaryOpNode
 
 _OSCILLATOR_INDICATORS = {
@@ -101,7 +102,6 @@ def build_indicator_emissions(
 ) -> list[IndicatorEmission]:
     """Build indicator emissions from planned graph nodes and evaluated outputs."""
     emissions: list[IndicatorEmission] = []
-    registry = get_global_registry()
 
     for node_id, node_data in graph_nodes.items():
         node = node_data.node
@@ -115,12 +115,11 @@ def build_indicator_emissions(
         input_node = getattr(node, "args", [])
         input_node = input_node[0] if input_node else None
         binding = _resolve_input_binding(indicator_name, raw_params, input_node)
+        rust_meta = _indicator_meta(indicator_name)
         outputs = _normalize_outputs(
             value=node_outputs[node_id],
             indicator_name=indicator_name,
-            output_metadata=(
-                registry.get(indicator_name).schema.output_metadata if registry.get(indicator_name) else {}
-            ),
+            output_metadata=_output_metadata_from_rust(rust_meta),
         )
         input_expr = _serialize_expression_node(input_node) if input_node is not None else None
 
@@ -128,9 +127,7 @@ def build_indicator_emissions(
             render = _build_render_hints(
                 indicator_name=indicator_name,
                 output_name=output_name,
-                output_metadata=(
-                    registry.get(indicator_name).schema.output_metadata if registry.get(indicator_name) else {}
-                ),
+                output_metadata=_output_metadata_from_rust(rust_meta),
                 binding=binding,
             )
             emissions.append(
@@ -244,17 +241,32 @@ def _resolve_input_binding(
             return IndicatorInputBinding(source="ohlcv", field=("close" if val == "price" else val))
         return IndicatorInputBinding(source="ohlcv", field=val)
 
-    handle = get_global_registry().get(indicator_name)
-    if handle is not None:
-        metadata = handle.schema.metadata
-        if metadata.input_field:
-            field = metadata.input_field.lower()
-            return IndicatorInputBinding(source="ohlcv", field=("close" if field == "price" else field))
-        if metadata.required_fields:
-            field = str(metadata.required_fields[0]).lower()
-            return IndicatorInputBinding(source="ohlcv", field=("close" if field == "price" else field))
+    rust_meta = _indicator_meta(indicator_name)
+    semantics = rust_meta.get("semantics", {}) or {}
+    required_fields = semantics.get("required_fields", []) or []
+    if required_fields:
+        field = str(required_fields[0]).lower()
+        return IndicatorInputBinding(source="ohlcv", field=("close" if field == "price" else field))
 
     return IndicatorInputBinding(source="ohlcv", field="close")
+
+
+@lru_cache(maxsize=512)
+def _indicator_meta(indicator_name: str) -> dict[str, Any]:
+    try:
+        return get_rust_indicator_meta(indicator_name)
+    except Exception:
+        return {}
+
+
+def _output_metadata_from_rust(meta: dict[str, Any]) -> dict[str, dict[str, Any]]:
+    outputs = meta.get("outputs", ()) or ()
+    out: dict[str, dict[str, Any]] = {}
+    for output in outputs:
+        name = str(output.get("name", "result"))
+        role = str(output.get("kind", "line"))
+        out[name] = {"role": role}
+    return out
 
 
 def _resolve_binding_from_expression(node: ExprNode) -> IndicatorInputBinding | None:

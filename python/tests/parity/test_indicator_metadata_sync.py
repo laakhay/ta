@@ -12,7 +12,6 @@ def _pick_shared_fields(meta: dict) -> dict:
         "id": meta["id"],
         "params": param_names,
         "outputs": tuple(o.get("name") for o in meta.get("outputs", ())),
-        "required_fields": tuple(meta.get("semantics", {}).get("required_fields", ())),
     }
 
 
@@ -22,7 +21,6 @@ def _pick_python_descriptor_fields(indicator_id: str) -> dict:
         "id": indicator_id,
         "params": tuple(param.name for param in descriptor.parameters if param.name != "return_mode"),
         "outputs": tuple(output.name for output in descriptor.outputs),
-        "required_fields": tuple(descriptor.handle.schema.metadata.required_fields),
     }
 
 
@@ -42,4 +40,4 @@ def test_rust_python_registry_parity_for_public_ids() -> None:
         if rust_view != py_view:
             mismatches.append(indicator_id)
 
-    assert not mismatches, f"Rust metadata mismatches against Python registry for public ids: {mismatches}"
+    assert not mismatches, f"Rust metadata mismatches against Python descriptor surface for ids: {mismatches}"
