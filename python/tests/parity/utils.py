@@ -2,7 +2,6 @@ import math
 from decimal import Decimal
 from typing import Any
 
-from laakhay.ta.core.dataset import Dataset
 from laakhay.ta.core.series import Series
 
 
@@ -59,30 +58,3 @@ def assert_series_parity(s1: Series[Any], s2: Series[Any], tolerance: float = 1e
             assert diff <= tolerance, f"Numeric mismatch at index {i}: {v1} != {v2} (diff: {diff})"
         else:
             assert nv1 == nv2, f"Value mismatch at index {i}: {nv1} != {nv2}"
-
-
-def assert_dict_parity(
-    d1: dict[tuple[str, str, str], Series[Any]], d2: dict[tuple[str, str, str], Series[Any]], tolerance: float = 1e-9
-) -> None:
-    """Assert two dictionary outputs are identical."""
-    assert set(d1.keys()) == set(d2.keys()), f"Key mismatch in dicts: {d1.keys()} != {d2.keys()}"
-
-    for key in d1.keys():
-        try:
-            assert_series_parity(d1[key], d2[key], tolerance)
-        except AssertionError as e:
-            raise AssertionError(f"Mismatch at key {key}: {str(e)}") from e
-
-
-def assert_dataset_parity(ds1: Dataset, ds2: Dataset, tolerance: float = 1e-9) -> None:
-    """Assert two dataset outputs are identical."""
-    assert set(ds1.keys) == set(ds2.keys), f"Dataset keys mismatch: {ds1.keys} != {ds2.keys}"
-    for key in ds1.keys:
-        series1 = ds1.series(key.symbol, key.timeframe, key.source)
-        series2 = ds2.series(key.symbol, key.timeframe, key.source)
-        if hasattr(series1, "to_series"):
-            for field in ["open", "high", "low", "close", "volume"]:
-                # Basic check for OHLCV
-                assert_series_parity(series1.to_series(field), series2.to_series(field), tolerance)
-        else:
-            assert_series_parity(series1, series2, tolerance)
