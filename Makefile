@@ -4,13 +4,15 @@ PY ?= python3
 UV ?= uv
 UV_PYTHON ?= 3.12
 UV_RUN := $(UV) run --python $(UV_PYTHON)
-RUST_DIR := rust
+RUST_WORKSPACE ?= rust
+PYTHON_DIR ?= .
+MATURIN_MANIFEST ?= $(RUST_WORKSPACE)/crates/ta-py/Cargo.toml
 
 install: install-dev ## Install dependencies (dev mode)
 
 install-dev: ## Install dependencies (dev mode)
 	$(UV) sync --extra dev
-	$(UV_RUN) --with maturin maturin develop --manifest-path rust/crates/ta-py/Cargo.toml
+	$(UV_RUN) --with maturin maturin develop --manifest-path $(MATURIN_MANIFEST)
 	$(UV) pip install -e . --no-build-isolation
 
 test: ## Run tests (without coverage)
@@ -41,19 +43,21 @@ fix: lint-fix format ## Auto-fix all fixable issues (lint + format)
 ci: lint format-check test ## Run CI checks (lint + format + test)
 
 build: ## Build the package
-	$(UV_RUN) --with maturin maturin build --manifest-path rust/crates/ta-py/Cargo.toml --release
+	$(UV_RUN) --with maturin maturin build --manifest-path $(MATURIN_MANIFEST) --release
 
 rust-check: ## Run cargo check for Rust workspace
-	cargo check --workspace --manifest-path $(RUST_DIR)/Cargo.toml
+	cargo check --workspace --manifest-path $(RUST_WORKSPACE)/Cargo.toml
 
 rust-test: ## Run cargo tests for Rust workspace
-	cargo test --workspace --manifest-path $(RUST_DIR)/Cargo.toml
+	cargo test --workspace --manifest-path $(RUST_WORKSPACE)/Cargo.toml
 
 rust-fmt: ## Check Rust formatting
-	cargo fmt --all --check --manifest-path $(RUST_DIR)/Cargo.toml
+	cargo fmt --all --check --manifest-path $(RUST_WORKSPACE)/Cargo.toml
 
 rust-lint: ## Run clippy for Rust workspace
-	cargo clippy --workspace --manifest-path $(RUST_DIR)/Cargo.toml --all-targets -- -D warnings
+	cargo clippy --workspace --manifest-path $(RUST_WORKSPACE)/Cargo.toml --all-targets -- -D warnings
+
+ci-quick: rust-fmt rust-lint lint ## Fast local CI guard
 
 help: ## Show this help
 	@awk 'BEGIN {FS=":.*##"} /^[a-zA-Z_-]+:.*?##/ {printf "\033[36m%-12s\033[0m %s\n", $$1, $$2}' $(MAKEFILE_LIST)
