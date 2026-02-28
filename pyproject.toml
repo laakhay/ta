@@ -30,7 +30,7 @@ dev = [
 ]
 
 [tool.maturin]
-manifest-path = "rust/crates/ta-py/Cargo.toml"
+manifest-path = "crates/ta-py/Cargo.toml"
 module-name = "ta_py"
 bindings = "pyo3"
 

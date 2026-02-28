@@ -10,7 +10,7 @@ uv.lock
 dist/
 *.tar.gz
 *.whl
-rust/target/
+target/
 
 # IDE
 .vscode/

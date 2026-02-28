@@ -4,9 +4,9 @@ PY ?= python3
 UV ?= uv
 UV_PYTHON ?= 3.12
 UV_RUN := $(UV) run --python $(UV_PYTHON)
-RUST_WORKSPACE ?= rust
+RUST_WORKSPACE ?= .
 PYTHON_DIR ?= .
-MATURIN_MANIFEST ?= $(RUST_WORKSPACE)/crates/ta-py/Cargo.toml
+MATURIN_MANIFEST ?= crates/ta-py/Cargo.toml
 
 install: install-dev ## Install dependencies (dev mode)
 
