@@ -799,7 +799,8 @@ fn execute_plan_payload(py: Python<'_>, payload: &Bound<'_, PyDict>) -> PyResult
         },
         requests: parse_contract_requests(&requests)?,
     };
-    let out = backend::execute_plan_graph_payload(&contract_payload).map_err(map_execute_plan_error)?;
+    let out =
+        backend::execute_plan_graph_payload(&contract_payload).map_err(map_execute_plan_error)?;
     incremental_series_map_to_pydict(py, &out)
 }
 

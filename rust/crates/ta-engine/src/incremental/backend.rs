@@ -239,7 +239,9 @@ pub fn parse_execute_plan_payload(
 pub fn execute_plan_graph_payload(
     payload: &RustExecutionPayload,
 ) -> Result<BTreeMap<u32, Vec<IncrementalValue>>, ExecutePlanError> {
-    payload.validate().map_err(ExecutePlanError::InvalidPayload)?;
+    payload
+        .validate()
+        .map_err(ExecutePlanError::InvalidPayload)?;
     let record = dataset::get_dataset(payload.dataset_id)?;
     let partition_key = DatasetPartitionKey {
         symbol: payload.partition.symbol.clone(),
@@ -265,15 +267,18 @@ pub fn execute_plan_graph_payload(
     let mut outputs: BTreeMap<u32, Vec<IncrementalValue>> = BTreeMap::new();
 
     for node_id in &payload.graph.node_order {
-        let meta = payload
+        let meta = payload.graph.nodes.get(node_id).ok_or_else(|| {
+            ExecutePlanError::InvalidPayload(format!("missing node metadata for id {node_id}"))
+        })?;
+        let kind = meta.get("kind").ok_or_else(|| {
+            ExecutePlanError::InvalidPayload(format!("missing node kind for id {node_id}"))
+        })?;
+        let child_ids = payload
             .graph
-            .nodes
+            .edges
             .get(node_id)
-            .ok_or_else(|| ExecutePlanError::InvalidPayload(format!("missing node metadata for id {node_id}")))?;
-        let kind = meta
-            .get("kind")
-            .ok_or_else(|| ExecutePlanError::InvalidPayload(format!("missing node kind for id {node_id}")))?;
-        let child_ids = payload.graph.edges.get(node_id).cloned().unwrap_or_default();
+            .cloned()
+            .unwrap_or_default();
 
         let series = match kind.as_str() {
             "source_ref" => {
@@ -315,7 +320,10 @@ pub fn execute_plan_graph_payload(
                 }
             }
             "literal" => {
-                let value_str = meta.get("value").cloned().unwrap_or_else(|| "0".to_string());
+                let value_str = meta
+                    .get("value")
+                    .cloned()
+                    .unwrap_or_else(|| "0".to_string());
                 let value = value_str.parse::<f64>().unwrap_or(0.0);
                 vec![IncrementalValue::Number(value); rows]
             }
