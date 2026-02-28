@@ -74,3 +74,46 @@ fn outputs_have_names_and_descriptions() {
         }
     }
 }
+
+#[test]
+fn runtime_binding_and_semantics_fields_are_present() {
+    for indicator in indicator_catalog() {
+        assert!(
+            !indicator.runtime_binding.trim().is_empty(),
+            "indicator '{}' must define runtime_binding",
+            indicator.id
+        );
+        assert!(
+            !indicator.semantics.warmup_policy.trim().is_empty(),
+            "indicator '{}' must define warmup_policy",
+            indicator.id
+        );
+        if indicator.semantics.default_lookback.is_none() {
+            assert!(
+                !indicator.semantics.lookback_params.is_empty(),
+                "indicator '{}' must define lookback_params when default_lookback is None",
+                indicator.id
+            );
+        }
+    }
+}
+
+#[test]
+fn parameter_aliases_reference_existing_params() {
+    for indicator in indicator_catalog() {
+        let mut param_names = HashSet::new();
+        for param in indicator.params {
+            param_names.insert(param.name.to_ascii_lowercase());
+        }
+        for alias in indicator.param_aliases {
+            let target = alias.target.to_ascii_lowercase();
+            assert!(
+                param_names.contains(&target),
+                "indicator '{}' has alias '{}' -> '{}' but target param does not exist",
+                indicator.id,
+                alias.alias,
+                alias.target
+            );
+        }
+    }
+}
