@@ -219,6 +219,7 @@ fn dispatch_call_node(
 ) -> Result<Vec<IncrementalValue>, ExecutePlanError> {
     let normalized = name.trim().to_ascii_lowercase();
     let name = normalized.as_str();
+    let selected_output = meta.get("output").map(|v| v.as_str());
     let close = child_series
         .first()
         .cloned()
@@ -256,9 +257,33 @@ fn dispatch_call_node(
             let period = get_usize(meta, "period", "arg_0", 12);
             to_num(crate::momentum::roc(&close, period))
         }
+        "coppock" => {
+            let wma_period = get_usize(meta, "wma_period", "arg_0", 10);
+            let fast_roc = get_usize(meta, "fast_roc", "arg_1", 11);
+            let slow_roc = get_usize(meta, "slow_roc", "arg_2", 14);
+            to_num(crate::momentum::coppock(&close, wma_period, fast_roc, slow_roc))
+        }
         "cmo" => {
             let period = get_usize(meta, "period", "arg_0", 14);
             to_num(crate::momentum::cmo(&close, period))
+        }
+        "mfi" => {
+            let period = get_usize(meta, "period", "arg_0", 14);
+            to_num(crate::momentum::mfi(
+                &ohlcv.high,
+                &ohlcv.low,
+                &ohlcv.close,
+                &ohlcv.volume,
+                period,
+            ))
+        }
+        "vortex" => {
+            let period = get_usize(meta, "period", "arg_0", 14);
+            let (plus, minus) = crate::momentum::vortex(&ohlcv.high, &ohlcv.low, &ohlcv.close, period);
+            match selected_output {
+                Some("minus") => to_num(minus),
+                _ => to_num(plus),
+            }
         }
         "bbands" | "bb_upper" | "bb_lower" => {
             let period = get_usize(meta, "period", "arg_0", 20);
@@ -318,8 +343,71 @@ fn dispatch_call_node(
             let fast = get_usize(meta, "fast_period", "arg_0", 12);
             let slow = get_usize(meta, "slow_period", "arg_1", 26);
             let signal = get_usize(meta, "signal_period", "arg_2", 9);
-            let (macd, _, _) = crate::trend::macd(&close, fast, slow, signal);
-            to_num(macd)
+            let (macd, signal_line, histogram) = crate::trend::macd(&close, fast, slow, signal);
+            match selected_output {
+                Some("signal") => to_num(signal_line),
+                Some("histogram") => to_num(histogram),
+                _ => to_num(macd),
+            }
+        }
+        "elder_ray" => {
+            let period = get_usize(meta, "period", "arg_0", 13);
+            let (bull, bear) = crate::trend::elder_ray(&ohlcv.high, &ohlcv.low, &ohlcv.close, period);
+            match selected_output {
+                Some("bear") => to_num(bear),
+                _ => to_num(bull),
+            }
+        }
+        "fisher" => {
+            let period = get_usize(meta, "period", "arg_0", 9);
+            let (fisher, signal) = crate::trend::fisher(&ohlcv.high, &ohlcv.low, period);
+            match selected_output {
+                Some("signal") => to_num(signal),
+                _ => to_num(fisher),
+            }
+        }
+        "ichimoku" => {
+            let tenkan_period = get_usize(meta, "tenkan_period", "arg_0", 9);
+            let kijun_period = get_usize(meta, "kijun_period", "arg_1", 26);
+            let span_b_period = get_usize(meta, "span_b_period", "arg_2", 52);
+            let displacement = get_usize(meta, "displacement", "arg_3", 26);
+            let (tenkan, kijun, span_a, span_b, chikou) = crate::trend::ichimoku(
+                &ohlcv.high,
+                &ohlcv.low,
+                &ohlcv.close,
+                tenkan_period,
+                kijun_period,
+                span_b_period,
+                displacement,
+            );
+            match selected_output {
+                Some("kijun_sen") => to_num(kijun),
+                Some("senkou_span_a") => to_num(span_a),
+                Some("senkou_span_b") => to_num(span_b),
+                Some("chikou_span") => to_num(chikou),
+                _ => to_num(tenkan),
+            }
+        }
+        "psar" => {
+            let af_start = get_f64(meta, "af_start", "arg_0", 0.02);
+            let af_increment = get_f64(meta, "af_increment", "arg_1", 0.02);
+            let af_max = get_f64(meta, "af_max", "arg_2", 0.2);
+            let (sar, direction) =
+                crate::trend::psar(&ohlcv.high, &ohlcv.low, &ohlcv.close, af_start, af_increment, af_max);
+            match selected_output {
+                Some("direction") => to_num(direction),
+                _ => to_num(sar),
+            }
+        }
+        "supertrend" => {
+            let period = get_usize(meta, "period", "arg_0", 10);
+            let multiplier = get_f64(meta, "multiplier", "arg_1", 3.0);
+            let (supertrend, direction) =
+                crate::trend::supertrend(&ohlcv.high, &ohlcv.low, &ohlcv.close, period, multiplier);
+            match selected_output {
+                Some("direction") => to_num(direction),
+                _ => to_num(supertrend),
+            }
         }
         "crossup" => to_bool(crate::events::crossup(&close, &second)),
         "crossdown" => to_bool(crate::events::crossdown(&close, &second)),
