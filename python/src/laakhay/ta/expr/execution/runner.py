@@ -23,5 +23,42 @@ def evaluate_plan(
     - If `backend` is provided, it is used directly (useful for stateful stream loops).
     - Otherwise, backend is resolved from `mode` / environment.
     """
-    exec_backend = backend or resolve_backend(mode)
-    return exec_backend.evaluate(plan, data, **options)
+    if backend is not None:
+        return backend.evaluate(plan, data, **options)
+
+    class _PlannedExpr:
+        def __init__(self, planned: PlanResult) -> None:
+            self._plan = planned
+
+        def _ensure_plan(self) -> PlanResult:
+            return self._plan
+
+    if not isinstance(data, Dataset):
+        from ..planner.evaluator import Evaluator
+
+        return Evaluator().evaluate(
+            _PlannedExpr(plan),
+            data,
+            return_all_outputs=bool(options.get("return_all_outputs", False)),
+        )
+
+    if data.is_empty:
+        from ..planner.evaluator import Evaluator
+
+        return Evaluator().evaluate(
+            _PlannedExpr(plan),
+            data,
+            return_all_outputs=bool(options.get("return_all_outputs", False)),
+        )
+
+    exec_backend = resolve_backend(mode)
+    try:
+        return exec_backend.evaluate(plan, data, **options)
+    except RuntimeError:
+        from ..planner.evaluator import Evaluator
+
+        return Evaluator().evaluate(
+            _PlannedExpr(plan),
+            data,
+            return_all_outputs=bool(options.get("return_all_outputs", False)),
+        )
