@@ -2,13 +2,10 @@
 
 from __future__ import annotations
 
-from decimal import Decimal
+import ta_py
 
 from ...core import Series
 from ...core.types import Price
-from ...primitives.elementwise_ops import absolute_value
-from ...primitives.rolling_ops import rolling_mean
-from ...primitives.select import select
 from ...registry.models import SeriesContext
 from ...registry.registry import register
 from ...registry.schemas import (
@@ -17,6 +14,7 @@ from ...registry.schemas import (
     ParamSpec,
     SemanticsSpec,
 )
+from .._utils import results_to_series
 
 CCI_SPEC = IndicatorSpec(
     name="cci",
@@ -40,37 +38,10 @@ def cci(ctx: SeriesContext, period: int = 20) -> Series[Price]:
     if period <= 0:
         raise ValueError("CCI period must be positive")
 
-    tp = select(ctx, "typical_price")
-    sma = rolling_mean(ctx, period, field="typical_price")
+    h = [float(v) for v in ctx.high.values]
+    l = [float(v) for v in ctx.low.values]
+    c = [float(v) for v in ctx.close.values]
 
-    # Mean Deviation: sum(abs(tp - sma)) / period
-    diff = tp - sma
-    abs_diff = absolute_value(SeriesContext(close=diff))
+    out_vals = ta_py.cci(h, l, c, period)
 
-    # We can use rolling_mean on abs_diff to get mean deviation
-    # But rolling_mean expects a SeriesContext.
-    # Let's create a temporary context.
-    md_ctx = SeriesContext(close=abs_diff)
-    mean_deviation = rolling_mean(md_ctx, period)
-
-    # CCI Calculation
-    # Note: 0.015 is the constant used by Lambert to ensure 70-80% of values are between -100 and +100
-    denom = mean_deviation * Decimal("0.015")
-
-    # Avoid division by zero
-    # We'll use a small epsilon or just let it handle it via Series __truediv__
-    # If mean_deviation is 0, CCI is effectively 0 (or undefined)
-    # Safe division for CCI
-    res_values = []
-    num_vals = (tp - sma).values
-    den_vals = denom.values
-    for i in range(len(num_vals)):
-        d = Decimal(str(den_vals[i]))
-        if d == 0:
-            res_values.append(Decimal(0))
-        else:
-            res_values.append(Decimal(str(num_vals[i])) / d)
-
-    return Series[Price](
-        timestamps=tp.timestamps, values=tuple(Price(v) for v in res_values), symbol=tp.symbol, timeframe=tp.timeframe
-    )
+    return results_to_series(out_vals, ctx.close)

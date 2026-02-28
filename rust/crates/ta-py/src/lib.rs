@@ -90,6 +90,12 @@ fn rsi(values: Vec<f64>, period: usize) -> PyResult<Vec<f64>> {
 }
 
 #[pyfunction]
+fn atr(high: Vec<f64>, low: Vec<f64>, close: Vec<f64>, period: usize) -> PyResult<Vec<f64>> {
+    validate_period(period)?;
+    Ok(ta_engine::volatility::atr(&high, &low, &close, period))
+}
+
+#[pyfunction]
 fn atr_from_tr(values: Vec<f64>, period: usize) -> PyResult<Vec<f64>> {
     validate_period(period)?;
     Ok(ta_engine::volatility::atr_from_tr(&values, period))
@@ -102,17 +108,85 @@ fn stochastic_kd(
     close: Vec<f64>,
     k_period: usize,
     d_period: usize,
+    smooth: usize,
 ) -> PyResult<(Vec<f64>, Vec<f64>)> {
     validate_period(k_period)?;
     validate_period(d_period)?;
+    validate_period(smooth)?;
     Ok(ta_engine::momentum::stochastic_kd(
-        &high, &low, &close, k_period, d_period,
+        &high, &low, &close, k_period, d_period, smooth,
     ))
 }
 
 #[pyfunction]
 fn obv(close: Vec<f64>, volume: Vec<f64>) -> PyResult<Vec<f64>> {
     Ok(ta_engine::volume::obv(&close, &volume))
+}
+
+#[pyfunction]
+fn macd(
+    values: Vec<f64>,
+    fast_period: usize,
+    slow_period: usize,
+    signal_period: usize,
+) -> PyResult<(Vec<f64>, Vec<f64>, Vec<f64>)> {
+    validate_period(fast_period)?;
+    validate_period(slow_period)?;
+    validate_period(signal_period)?;
+    Ok(ta_engine::trend::macd(
+        &values,
+        fast_period,
+        slow_period,
+        signal_period,
+    ))
+}
+
+#[pyfunction]
+fn bbands(
+    values: Vec<f64>,
+    period: usize,
+    std_dev: f64,
+) -> PyResult<(Vec<f64>, Vec<f64>, Vec<f64>)> {
+    validate_period(period)?;
+    Ok(ta_engine::volatility::bbands(&values, period, std_dev))
+}
+
+#[pyfunction]
+fn adx(
+    high: Vec<f64>,
+    low: Vec<f64>,
+    close: Vec<f64>,
+    period: usize,
+) -> PyResult<(Vec<f64>, Vec<f64>, Vec<f64>)> {
+    validate_period(period)?;
+    Ok(ta_engine::trend::adx(&high, &low, &close, period))
+}
+
+#[pyfunction]
+fn swing_points_raw(
+    high: Vec<f64>,
+    low: Vec<f64>,
+    left: usize,
+    right: usize,
+    allow_equal_extremes: bool,
+) -> PyResult<(Vec<bool>, Vec<bool>)> {
+    Ok(ta_engine::trend::swing_points_raw(
+        &high,
+        &low,
+        left,
+        right,
+        allow_equal_extremes,
+    ))
+}
+
+#[pyfunction]
+fn cci(high: Vec<f64>, low: Vec<f64>, close: Vec<f64>, period: usize) -> PyResult<Vec<f64>> {
+    Ok(ta_engine::momentum::cci(&high, &low, &close, period))
+}
+
+#[pyfunction]
+fn vwap(high: Vec<f64>, low: Vec<f64>, close: Vec<f64>, volume: Vec<f64>) -> PyResult<Vec<f64>> {
+    Ok(ta_engine::volume::vwap(&high, &low, &close, &volume))
 }
 
 #[pyfunction]
@@ -319,8 +393,15 @@ fn ta_py(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(rolling_rma, m)?)?;
     m.add_function(wrap_pyfunction!(rolling_wma, m)?)?;
     m.add_function(wrap_pyfunction!(rsi, m)?)?;
+    m.add_function(wrap_pyfunction!(atr, m)?)?;
     m.add_function(wrap_pyfunction!(atr_from_tr, m)?)?;
     m.add_function(wrap_pyfunction!(stochastic_kd, m)?)?;
+    m.add_function(wrap_pyfunction!(macd, m)?)?;
+    m.add_function(wrap_pyfunction!(bbands, m)?)?;
+    m.add_function(wrap_pyfunction!(adx, m)?)?;
+    m.add_function(wrap_pyfunction!(swing_points_raw, m)?)?;
+    m.add_function(wrap_pyfunction!(cci, m)?)?;
+    m.add_function(wrap_pyfunction!(vwap, m)?)?;
     m.add_function(wrap_pyfunction!(obv, m)?)?;
     m.add_function(wrap_pyfunction!(klinger_vf, m)?)?;
     m.add_function(wrap_pyfunction!(cmf, m)?)?;

@@ -72,16 +72,16 @@ def bbands(
         empty = close.__class__(timestamps=(), values=(), symbol=close.symbol, timeframe=close.timeframe)
         return empty, empty, empty
 
-    # Calculate middle band and standard deviation
-    middle_band = rolling_mean(ctx, period)  # type: ignore
-    std_deviation = rolling_std(ctx, period)  # type: ignore
+    import ta_py
+    from .._utils import results_to_series
 
-    # Calculate upper and lower bands using direct Series math since we already evaluated
-    # the primitive rolling_mean and rolling_std components.
-    upper_band = middle_band + (std_deviation * std_dev)
-    lower_band = middle_band - (std_deviation * std_dev)
+    upper, middle, lower = ta_py.bbands([float(v) for v in close.values], period, std_dev)
 
-    return upper_band, middle_band, lower_band  # type: ignore
+    upper_series = results_to_series(upper, close, value_class=Price)
+    mid_series = results_to_series(middle, close, value_class=Price)
+    lower_series = results_to_series(lower, close, value_class=Price)
+
+    return upper_series, mid_series, lower_series
 
 
 BB_UPPER_SPEC = IndicatorSpec(

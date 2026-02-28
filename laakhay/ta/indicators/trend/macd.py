@@ -62,16 +62,18 @@ def macd(
         empty = close.__class__(timestamps=(), values=(), symbol=close.symbol, timeframe=close.timeframe)
         return empty, empty, empty
 
-    # Calculate EMAs using rolling_ema primitive
-    fast_ema = rolling_ema(ctx, fast_period)
-    slow_ema = rolling_ema(ctx, slow_period)
+    import ta_py
+    from .._utils import results_to_series
 
-    macd_line = fast_ema - slow_ema
+    macd_val, signal_val, hist_val = ta_py.macd(
+        [float(v) for v in close.values],
+        fast_period,
+        slow_period,
+        signal_period,
+    )
 
-    # Calculate signal line (EMA of MACD line)
-    macd_ctx = SeriesContext(close=macd_line)
-    signal_line = rolling_ema(macd_ctx, signal_period)
-
-    histogram = macd_line - signal_line
+    macd_line = results_to_series(macd_val, close, value_class=Price)
+    signal_line = results_to_series(signal_val, close, value_class=Price)
+    histogram = results_to_series(hist_val, close, value_class=Price)
 
     return macd_line, signal_line, histogram

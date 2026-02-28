@@ -190,6 +190,62 @@ fn encode_kernel_state(state: &KernelRuntimeState) -> BTreeMap<String, Increment
                 ),
             );
         }
+        KernelRuntimeState::Vwap {
+            highs,
+            lows,
+            closes,
+            volumes,
+        } => {
+            blob.insert(
+                "kind".to_string(),
+                IncrementalValue::Text("vwap".to_string()),
+            );
+            blob.insert(
+                "highs".to_string(),
+                IncrementalValue::Text(
+                    highs
+                        .iter()
+                        .map(|v| v.to_string())
+                        .collect::<Vec<_>>()
+                        .join(","),
+                ),
+            );
+            blob.insert(
+                "lows".to_string(),
+                IncrementalValue::Text(
+                    lows.iter()
+                        .map(|v| v.to_string())
+                        .collect::<Vec<_>>()
+                        .join(","),
+                ),
+            );
+            blob.insert(
+                "closes".to_string(),
+                IncrementalValue::Text(
+                    closes
+                        .iter()
+                        .map(|v| v.to_string())
+                        .collect::<Vec<_>>()
+                        .join(","),
+                ),
+            );
+            blob.insert(
+                "volumes".to_string(),
+                IncrementalValue::Text(
+                    volumes
+                        .iter()
+                        .map(|v| v.to_string())
+                        .collect::<Vec<_>>()
+                        .join(","),
+                ),
+            );
+        }
+        KernelRuntimeState::Generic { kernel_id: _ } => {
+            blob.insert(
+                "kind".to_string(),
+                IncrementalValue::Text("generic".to_string()),
+            );
+        }
     }
     blob
 }
@@ -218,6 +274,15 @@ fn decode_kernel_state(blob: &BTreeMap<String, IncrementalValue>) -> Option<Kern
             k_period: get_num(blob, "k_period").unwrap_or(14.0) as usize,
             highs: get_csv_nums(blob, "highs"),
             lows: get_csv_nums(blob, "lows"),
+        }),
+        "vwap" => Some(KernelRuntimeState::Vwap {
+            highs: get_csv_nums(blob, "highs"),
+            lows: get_csv_nums(blob, "lows"),
+            closes: get_csv_nums(blob, "closes"),
+            volumes: get_csv_nums(blob, "volumes"),
+        }),
+        "generic" => Some(KernelRuntimeState::Generic {
+            kernel_id: KernelId::Rsi, // Fallback placeholder
         }),
         _ => None,
     }

@@ -88,12 +88,7 @@ def rsi(ctx: SeriesContext, period: int = 14) -> Series[Price]:
             timeframe=close_series.timeframe if close_series is not None else None,
         )
 
+    from .._utils import results_to_series
+
     out = ta_py.rsi([float(v) for v in close_series.values], period)
-    mask = tuple(not math.isnan(v) for v in out)
-    return CoreSeries[Price](
-        timestamps=close_series.timestamps,
-        values=tuple(Price("NaN") if math.isnan(v) else Price(str(v)) for v in out),
-        symbol=close_series.symbol,
-        timeframe=close_series.timeframe,
-        availability_mask=mask,
-    )
+    return results_to_series(out, close_series, value_class=Price)

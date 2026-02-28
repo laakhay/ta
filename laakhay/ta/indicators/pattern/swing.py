@@ -53,6 +53,8 @@ class _ConfirmedPivot:
     price: Decimal
 
 
+import ta_py
+
 def _compute_swings(
     high: Series[Price],
     low: Series[Price],
@@ -67,64 +69,36 @@ def _compute_swings(
         empty_pivots: tuple[_ConfirmedPivot, ...] = tuple()
         return _SwingSeries(empty_flags, empty_flags, empty_flags, empty_pivots, empty_pivots)
 
-    hi_vals = tuple(Decimal(v) for v in high.values)
-    lo_vals = tuple(Decimal(v) for v in low.values)
+    hi_vals = [float(v) for v in high.values]
+    lo_vals = [float(v) for v in low.values]
 
-    raw_high = [False] * n
-    raw_low = [False] * n
-    flags_high = [False] * n  # confirmed/visible swings (no-lookahead)
-    flags_low = [False] * n  # confirmed/visible swings (no-lookahead)
-    have_confirmed_high = False
+    # Call Rust kernel
+    res_high, res_low = ta_py.swing_points_raw(
+        hi_vals, lo_vals, left, right, allow_equal_extremes
+    )
 
-    window = left + right
-    mask_eval = [idx >= window for idx in range(n)]
-    if n <= window:
-        # Not enough observations to confirm any swing
-        empty_pivots = tuple()
-        return _SwingSeries(tuple(flags_high), tuple(flags_low), tuple(mask_eval), empty_pivots, empty_pivots)
-
-    for idx in range(left, n - right):
-        window_start = idx - left
-        window_end = idx + right + 1  # inclusive of idx + right
-
-        hi_window = hi_vals[window_start:window_end]
-        lo_window = lo_vals[window_start:window_end]
-
-        cur_high = hi_vals[idx]
-        cur_low = lo_vals[idx]
-
-        high_is_extreme = cur_high == max(hi_window)
-        high_is_unique = hi_window.count(cur_high) == 1
-        if high_is_extreme and (allow_equal_extremes or high_is_unique):
-            raw_high[idx] = True
-            have_confirmed_high = True
-
-        low_is_extreme = cur_low == min(lo_window)
-        low_is_unique = lo_window.count(cur_low) == 1
-        if have_confirmed_high and low_is_extreme and (allow_equal_extremes or low_is_unique):
-            raw_low[idx] = True
-
-    confirmed_high: list[_ConfirmedPivot] = []
-    confirmed_low: list[_ConfirmedPivot] = []
-    for pivot_idx in range(n):
-        confirmed_idx = pivot_idx + right
-        if confirmed_idx >= n:
+    confirmed_high = []
+    confirmed_low = []
+    
+    for i in range(n):
+        pivot_idx = i - right
+        if pivot_idx < 0:
             continue
-        if raw_high[pivot_idx]:
-            flags_high[confirmed_idx] = True
-            confirmed_high.append(
-                _ConfirmedPivot(pivot_idx=pivot_idx, confirmed_idx=confirmed_idx, price=hi_vals[pivot_idx])
-            )
-        if raw_low[pivot_idx]:
-            flags_low[confirmed_idx] = True
-            confirmed_low.append(
-                _ConfirmedPivot(pivot_idx=pivot_idx, confirmed_idx=confirmed_idx, price=lo_vals[pivot_idx])
-            )
+        if res_high[i]:
+            confirmed_high.append(_ConfirmedPivot(
+                pivot_idx=pivot_idx, confirmed_idx=i, price=Decimal(str(hi_vals[pivot_idx]))
+            ))
+        if res_low[i]:
+            confirmed_low.append(_ConfirmedPivot(
+                pivot_idx=pivot_idx, confirmed_idx=i, price=Decimal(str(lo_vals[pivot_idx]))
+            ))
+
+    mask_eval = tuple(idx >= (left + right) for idx in range(n))
 
     return _SwingSeries(
-        tuple(flags_high),
-        tuple(flags_low),
-        tuple(mask_eval),
+        tuple(res_high),
+        tuple(res_low),
+        mask_eval,
         tuple(confirmed_high),
         tuple(confirmed_low),
     )
