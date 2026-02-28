@@ -5,6 +5,8 @@ from __future__ import annotations
 from decimal import Decimal
 from typing import Any
 
+import ta_py
+
 from ...core import Series
 from ...core.series import align_series
 from ...core.types import Price
@@ -49,6 +51,15 @@ def _align_price_upper_lower(
     except ValueError:
         return None
     return price_aligned, upper_aligned, lower_aligned
+
+
+def _bool_values_to_series(values: list[bool], template: Series[Price]) -> Series[bool]:
+    return Series[bool](
+        timestamps=template.timestamps,
+        values=tuple(values),
+        symbol=template.symbol,
+        timeframe=template.timeframe,
+    )
 
 
 @register(spec=IN_CHANNEL_SPEC)
@@ -96,6 +107,14 @@ def in_channel(
     if aligned is None:
         return Series[bool](timestamps=(), values=(), symbol=price_series.symbol, timeframe=price_series.timeframe)
     price_aligned, upper_aligned, lower_aligned = aligned
+
+    if hasattr(ta_py, "in_channel"):
+        out = ta_py.in_channel(
+            [float(v) for v in price_aligned.values],
+            [float(v) for v in upper_aligned.values],
+            [float(v) for v in lower_aligned.values],
+        )
+        return _bool_values_to_series(out, price_aligned)
 
     # Check: price >= lower AND price <= upper
     def _in_chan(p, l, u):
@@ -174,6 +193,14 @@ def out(
     if aligned is None:
         return Series[bool](timestamps=(), values=(), symbol=price_series.symbol, timeframe=price_series.timeframe)
     price_aligned, upper_aligned, lower_aligned = aligned
+
+    if hasattr(ta_py, "out_channel"):
+        out_vals = ta_py.out_channel(
+            [float(v) for v in price_aligned.values],
+            [float(v) for v in upper_aligned.values],
+            [float(v) for v in lower_aligned.values],
+        )
+        return _bool_values_to_series(out_vals, price_aligned)
 
     # Check: price > upper OR price < lower
     def _out_chan(p, u, l):
@@ -266,6 +293,14 @@ def enter(
             timeframe=price_series.timeframe,
         )
     price_aligned, upper_aligned, lower_aligned = aligned
+
+    if hasattr(ta_py, "enter_channel"):
+        out_vals = ta_py.enter_channel(
+            [float(v) for v in price_aligned.values],
+            [float(v) for v in upper_aligned.values],
+            [float(v) for v in lower_aligned.values],
+        )
+        return _bool_values_to_series(out_vals, price_aligned)
 
     # Build result: first value is always False (no previous)
     result_values: list[bool] = [False]
@@ -381,6 +416,14 @@ def exit(
             timeframe=price_series.timeframe,
         )
     price_aligned, upper_aligned, lower_aligned = aligned
+
+    if hasattr(ta_py, "exit_channel"):
+        out_vals = ta_py.exit_channel(
+            [float(v) for v in price_aligned.values],
+            [float(v) for v in upper_aligned.values],
+            [float(v) for v in lower_aligned.values],
+        )
+        return _bool_values_to_series(out_vals, price_aligned)
 
     # Build result: first value is always False (no previous)
     result_values: list[bool] = [False]

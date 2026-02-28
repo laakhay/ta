@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import math
+import ta_py
 from dataclasses import dataclass
 from decimal import Decimal
 from typing import Any, Tuple
@@ -17,8 +18,10 @@ from ...registry.schemas import (
     IndicatorSpec,
     OutputSpec,
     ParamSpec,
+    RuntimeBindingSpec,
     SemanticsSpec,
 )
+from .._utils import results_to_series
 
 
 @dataclass
@@ -65,6 +68,7 @@ FISHER_SPEC = IndicatorSpec(
         required_fields=("high", "low"),
         lookback_params=("period",),
     ),
+    runtime_binding=RuntimeBindingSpec(kernel_id="fisher"),
 )
 
 
@@ -76,6 +80,18 @@ def fisher(ctx: SeriesContext, period: int = 9) -> tuple[Series[Price], Series[P
     if period <= 0:
         raise ValueError("Fisher period must be positive")
 
+    if hasattr(ta_py, "fisher"):
+        fisher_vals, signal_vals = ta_py.fisher(
+            [float(v) for v in ctx.high.values],
+            [float(v) for v in ctx.low.values],
+            period,
+        )
+        return (
+            results_to_series(fisher_vals, ctx.close, value_class=Price),
+            results_to_series(signal_vals, ctx.close, value_class=Price),
+        )
+
+    # Temporary fallback while ta_py upgrades.
     # HL2 = (high + low) / 2
     hl2 = (ctx.high + ctx.low) / Decimal("2")
 

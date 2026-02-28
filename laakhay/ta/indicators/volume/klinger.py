@@ -16,8 +16,10 @@ from ...registry.schemas import (
     IndicatorSpec,
     OutputSpec,
     ParamSpec,
+    RuntimeBindingSpec,
     SemanticsSpec,
 )
+from .._utils import results_to_series
 
 KLINGER_SPEC = IndicatorSpec(
     name="klinger",
@@ -35,6 +37,7 @@ KLINGER_SPEC = IndicatorSpec(
         required_fields=("high", "low", "close", "volume"),
         lookback_params=("fast_period", "slow_period", "signal_period"),
     ),
+    runtime_binding=RuntimeBindingSpec(kernel_id="klinger"),
 )
 
 
@@ -57,18 +60,24 @@ def klinger(
         empty = CoreSeries[Price](timestamps=(), values=(), symbol=c.symbol, timeframe=c.timeframe)
         return empty, empty
 
-    vf_vals = ta_py.klinger_vf(
-        [float(x) for x in h.values],
-        [float(x) for x in l.values],
-        [float(x) for x in c.values],
-        [float(x) for x in v.values],
-    )
-    vf_series = CoreSeries[Price](
-        timestamps=c.timestamps,
-        values=tuple(Price("NaN") if math.isnan(vf) else Price(str(vf)) for vf in vf_vals),
-        symbol=c.symbol,
-        timeframe=c.timeframe,
-    )
+    if hasattr(ta_py, "klinger"):
+        klinger_vals, signal_vals = ta_py.klinger(
+            [float(x) for x in h.values],
+            [float(x) for x in l.values],
+            [float(x) for x in c.values],
+            [float(x) for x in v.values],
+            fast_period,
+            slow_period,
+            signal_period,
+        )
+        return (
+            results_to_series(klinger_vals, c, value_class=Price),
+            results_to_series(signal_vals, c, value_class=Price),
+        )
+
+    # Temporary fallback while ta_py upgrades.
+    vf_vals = ta_py.klinger_vf([float(x) for x in h.values], [float(x) for x in l.values], [float(x) for x in c.values], [float(x) for x in v.values])
+    vf_series = CoreSeries[Price](timestamps=c.timestamps, values=tuple(Price("NaN") if math.isnan(vf) else Price(str(vf)) for vf in vf_vals), symbol=c.symbol, timeframe=c.timeframe)
 
     # Klinger = EMA(VF, fast) - EMA(VF, slow)
     ema_fast = rolling_ema(SeriesContext(close=vf_series), period=fast_period)

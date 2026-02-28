@@ -5,6 +5,8 @@ from __future__ import annotations
 from decimal import Decimal
 from typing import Any
 
+import ta_py
+
 from ...core import Series
 from ...core.series import align_series
 from ...core.types import Price
@@ -19,6 +21,15 @@ from ...registry.schemas import (
     RuntimeBindingSpec,
     SemanticsSpec,
 )
+
+
+def _bool_values_to_series(values: list[bool], template: Series[Price]) -> Series[bool]:
+    return Series[bool](
+        timestamps=template.timestamps,
+        values=tuple(values),
+        symbol=template.symbol,
+        timeframe=template.timeframe,
+    )
 
 CROSSUP_SPEC = IndicatorSpec(
     name="crossup",
@@ -86,6 +97,13 @@ def crossup(
             symbol=a_aligned.symbol,
             timeframe=a_aligned.timeframe,
         )
+
+    if hasattr(ta_py, "crossup"):
+        out = ta_py.crossup(
+            [float(v) for v in a_aligned.values],
+            [float(v) for v in b_aligned.values],
+        )
+        return _bool_values_to_series(out, a_aligned)
 
     # Build result: first value is always False (no previous to compare)
     result_values: list[bool] = [False]
@@ -176,6 +194,13 @@ def crossdown(
             timeframe=a_aligned.timeframe,
         )
 
+    if hasattr(ta_py, "crossdown"):
+        out = ta_py.crossdown(
+            [float(v) for v in a_aligned.values],
+            [float(v) for v in b_aligned.values],
+        )
+        return _bool_values_to_series(out, a_aligned)
+
     result_values: list[bool] = [False]
     result_timestamps: list = [a_aligned.timestamps[0]]
 
@@ -237,6 +262,22 @@ def cross(
         cross(sma(20), sma(50))
     """
     # Get crossup and crossdown events
+    if hasattr(ta_py, "cross"):
+        a_series = resolve_series_input(a, ctx)
+        b_series = resolve_series_input(b, ctx, reference_series=a_series)
+        if len(a_series) == 0 or len(b_series) == 0:
+            return Series[bool](timestamps=(), values=(), symbol=a_series.symbol, timeframe=a_series.timeframe)
+        try:
+            a_aligned, b_aligned = align_series(a_series, b_series, how="inner")
+        except ValueError:
+            return Series[bool](timestamps=(), values=(), symbol=a_series.symbol, timeframe=a_series.timeframe)
+        out = ta_py.cross(
+            [float(v) for v in a_aligned.values],
+            [float(v) for v in b_aligned.values],
+        )
+        return _bool_values_to_series(out, a_aligned)
+
+    # Fallback path
     up_events = crossup(ctx, a, b)
     down_events = crossdown(ctx, a, b)
 

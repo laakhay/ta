@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import ta_py
+
 from ...core import Series
 from ...core.series import Series as CoreSeries
 from ...core.types import Price
@@ -15,6 +17,7 @@ from ...registry.schemas import (
     RuntimeBindingSpec,
     SemanticsSpec,
 )
+from .._utils import results_to_series
 from ..volatility.atr import atr
 
 SUPERTREND_SPEC = IndicatorSpec(
@@ -53,6 +56,20 @@ def supertrend(ctx: SeriesContext, period: int = 10, multiplier: float = 3.0) ->
         empty = c.__class__(timestamps=(), values=(), symbol=c.symbol, timeframe=c.timeframe)
         return empty, empty
 
+    if hasattr(ta_py, "supertrend"):
+        st_vals, dir_vals = ta_py.supertrend(
+            [float(v) for v in h.values],
+            [float(v) for v in l.values],
+            [float(v) for v in c.values],
+            period,
+            multiplier,
+        )
+        return (
+            results_to_series(st_vals, c, value_class=Price),
+            results_to_series(dir_vals, c, value_class=Price),
+        )
+
+    # Temporary fallback while ta_py upgrades.
     # Calculate ATR first
     atr_series = atr(ctx, period)
 

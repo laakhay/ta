@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import ta_py
 from decimal import Decimal
 
 from ...core import Series
@@ -13,8 +14,10 @@ from ...registry.schemas import (
     IndicatorSpec,
     OutputSpec,
     ParamSpec,
+    RuntimeBindingSpec,
     SemanticsSpec,
 )
+from .._utils import results_to_series
 
 ICHIMOKU_SPEC = IndicatorSpec(
     name="ichimoku",
@@ -36,6 +39,7 @@ ICHIMOKU_SPEC = IndicatorSpec(
         required_fields=("high", "low", "close"),
         lookback_params=("tenkan_period", "kijun_period", "span_b_period"),
     ),
+    runtime_binding=RuntimeBindingSpec(kernel_id="ichimoku"),
 )
 
 
@@ -55,6 +59,25 @@ def ichimoku(
     if tenkan_period <= 0 or kijun_period <= 0 or span_b_period <= 0 or displacement <= 0:
         raise ValueError("Ichimoku periods and displacement must be positive")
 
+    if hasattr(ta_py, "ichimoku"):
+        tenkan, kijun, span_a, span_b, chikou = ta_py.ichimoku(
+            [float(v) for v in ctx.high.values],
+            [float(v) for v in ctx.low.values],
+            [float(v) for v in ctx.close.values],
+            tenkan_period,
+            kijun_period,
+            span_b_period,
+            displacement,
+        )
+        return (
+            results_to_series(tenkan, ctx.close, value_class=Price),
+            results_to_series(kijun, ctx.close, value_class=Price),
+            results_to_series(span_a, ctx.close, value_class=Price),
+            results_to_series(span_b, ctx.close, value_class=Price),
+            results_to_series(chikou, ctx.close, value_class=Price),
+        )
+
+    # Temporary fallback while ta_py upgrades.
     # 1. Tenkan-sen (Conversion Line): (9-period high + 9-period low) / 2
     tenkan_sen = (
         rolling_max(ctx, tenkan_period, field="high") + rolling_min(ctx, tenkan_period, field="low")

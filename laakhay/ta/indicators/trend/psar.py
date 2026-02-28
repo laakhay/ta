@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import ta_py
 from decimal import Decimal
 
 from ...core import Series
@@ -14,8 +15,10 @@ from ...registry.schemas import (
     IndicatorSpec,
     OutputSpec,
     ParamSpec,
+    RuntimeBindingSpec,
     SemanticsSpec,
 )
+from .._utils import results_to_series
 
 PSAR_SPEC = IndicatorSpec(
     name="psar",
@@ -33,6 +36,7 @@ PSAR_SPEC = IndicatorSpec(
         required_fields=("high", "low", "close"),
         lookback_params=("af_start", "af_increment", "af_max"),
     ),
+    runtime_binding=RuntimeBindingSpec(kernel_id="psar"),
 )
 
 
@@ -48,6 +52,21 @@ def psar(
 
     Returns (sar, direction).
     """
+    if hasattr(ta_py, "psar"):
+        sar_vals, dir_vals = ta_py.psar(
+            [float(v) for v in ctx.high.values],
+            [float(v) for v in ctx.low.values],
+            [float(v) for v in ctx.close.values],
+            af_start,
+            af_increment,
+            af_max,
+        )
+        return (
+            results_to_series(sar_vals, ctx.close, value_class=Price),
+            results_to_series(dir_vals, ctx.close, value_class=Price),
+        )
+
+    # Temporary fallback while ta_py upgrades.
     kernel = PSARKernel()
     n = len(ctx.close)
 

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import ta_py
 from decimal import Decimal
 
 from ...core import Series
@@ -16,8 +17,10 @@ from ...registry.schemas import (
     IndicatorSpec,
     OutputSpec,
     ParamSpec,
+    RuntimeBindingSpec,
     SemanticsSpec,
 )
+from .._utils import results_to_series
 
 VORTEX_SPEC = IndicatorSpec(
     name="vortex",
@@ -31,6 +34,7 @@ VORTEX_SPEC = IndicatorSpec(
         required_fields=("high", "low", "close"),
         lookback_params=("period",),
     ),
+    runtime_binding=RuntimeBindingSpec(kernel_id="vortex"),
 )
 
 
@@ -51,6 +55,19 @@ def vortex(ctx: SeriesContext, period: int = 14) -> tuple[Series[Price], Series[
         empty = CoreSeries[Price](timestamps=(), values=(), symbol=c.symbol, timeframe=c.timeframe)
         return empty, empty
 
+    if hasattr(ta_py, "vortex"):
+        plus_vals, minus_vals = ta_py.vortex(
+            [float(v) for v in h.values],
+            [float(v) for v in l.values],
+            [float(v) for v in c.values],
+            period,
+        )
+        return (
+            results_to_series(plus_vals, c, value_class=Price),
+            results_to_series(minus_vals, c, value_class=Price),
+        )
+
+    # Temporary fallback while ta_py upgrades.
     # Calculate VM+ and VM- components using kernel
     hl_vals = [(Decimal(str(h.values[i])), Decimal(str(l.values[i]))) for i in range(n)]
 

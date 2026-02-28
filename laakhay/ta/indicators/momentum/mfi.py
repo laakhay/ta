@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import ta_py
 from decimal import Decimal
 
 from ...core import Series
@@ -14,8 +15,10 @@ from ...registry.schemas import (
     IndicatorSpec,
     OutputSpec,
     ParamSpec,
+    RuntimeBindingSpec,
     SemanticsSpec,
 )
+from .._utils import results_to_series
 
 MFI_SPEC = IndicatorSpec(
     name="mfi",
@@ -26,6 +29,7 @@ MFI_SPEC = IndicatorSpec(
         required_fields=("high", "low", "close", "volume"),
         lookback_params=("period",),
     ),
+    runtime_binding=RuntimeBindingSpec(kernel_id="mfi"),
 )
 
 
@@ -37,6 +41,17 @@ def mfi(ctx: SeriesContext, period: int = 14) -> Series[Price]:
     if period <= 0:
         raise ValueError("MFI period must be positive")
 
+    if hasattr(ta_py, "mfi"):
+        out_vals = ta_py.mfi(
+            [float(v) for v in ctx.high.values],
+            [float(v) for v in ctx.low.values],
+            [float(v) for v in ctx.close.values],
+            [float(v) for v in ctx.volume.values],
+            period,
+        )
+        return results_to_series(out_vals, ctx.close, value_class=Price)
+
+    # Temporary fallback while ta_py upgrades.
     kernel = MFIKernel()
     n = len(ctx.close)
 

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import ta_py
+
 from ...core import Series
 from ...core.types import Price
 from ...primitives.rolling_ops import rolling_wma
@@ -11,8 +13,10 @@ from ...registry.schemas import (
     IndicatorSpec,
     OutputSpec,
     ParamSpec,
+    RuntimeBindingSpec,
     SemanticsSpec,
 )
+from .._utils import results_to_series
 from ..momentum.roc import roc
 
 COPPOCK_SPEC = IndicatorSpec(
@@ -28,6 +32,7 @@ COPPOCK_SPEC = IndicatorSpec(
         required_fields=("close",),
         lookback_params=("wma_period", "fast_roc", "slow_roc"),
     ),
+    runtime_binding=RuntimeBindingSpec(kernel_id="coppock"),
 )
 
 
@@ -46,6 +51,16 @@ def coppock(
     if wma_period <= 0 or fast_roc <= 0 or slow_roc <= 0:
         raise ValueError("Coppock periods must be positive")
 
+    if hasattr(ta_py, "coppock"):
+        out = ta_py.coppock(
+            [float(v) for v in ctx.close.values],
+            wma_period,
+            fast_roc,
+            slow_roc,
+        )
+        return results_to_series(out, ctx.close, value_class=Price)
+
+    # Temporary fallback while ta_py upgrades.
     roc_fast = roc(ctx, period=fast_roc)
     roc_slow = roc(ctx, period=slow_roc)
 

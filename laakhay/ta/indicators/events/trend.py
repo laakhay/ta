@@ -5,6 +5,8 @@ from __future__ import annotations
 from decimal import Decimal
 from typing import Any
 
+import ta_py
+
 from ...core import Series
 from ...core.types import Price
 from ...indicators._input_resolver import resolve_series_input
@@ -18,6 +20,15 @@ from ...registry.schemas import (
     RuntimeBindingSpec,
     SemanticsSpec,
 )
+
+
+def _bool_values_to_series(values: list[bool], template: Series[Price]) -> Series[bool]:
+    return Series[bool](
+        timestamps=template.timestamps,
+        values=tuple(values),
+        symbol=template.symbol,
+        timeframe=template.timeframe,
+    )
 
 RISING_SPEC = IndicatorSpec(
     name="rising",
@@ -67,6 +78,10 @@ def rising(
             symbol=a_series.symbol,
             timeframe=a_series.timeframe,
         )
+
+    if hasattr(ta_py, "rising"):
+        out = ta_py.rising([float(v) for v in a_series.values])
+        return _bool_values_to_series(out, a_series)
 
     # First value is always False (no previous)
     result_values: list[bool] = [False]
@@ -133,6 +148,10 @@ def falling(
             symbol=a_series.symbol,
             timeframe=a_series.timeframe,
         )
+
+    if hasattr(ta_py, "falling"):
+        out = ta_py.falling([float(v) for v in a_series.values])
+        return _bool_values_to_series(out, a_series)
 
     result_values: list[bool] = [False]
     result_timestamps: list = [a_series.timestamps[0]]
@@ -203,6 +222,10 @@ def rising_pct(
             timeframe=a_series.timeframe,
         )
 
+    if hasattr(ta_py, "rising_pct"):
+        out = ta_py.rising_pct([float(v) for v in a_series.values], float(pct))
+        return _bool_values_to_series(out, a_series)
+
     pct_decimal = Decimal(str(pct))
     multiplier = Decimal("1") + (pct_decimal / Decimal("100"))
 
@@ -272,6 +295,10 @@ def falling_pct(
             symbol=a_series.symbol,
             timeframe=a_series.timeframe,
         )
+
+    if hasattr(ta_py, "falling_pct"):
+        out = ta_py.falling_pct([float(v) for v in a_series.values], float(pct))
+        return _bool_values_to_series(out, a_series)
 
     pct_decimal = Decimal(str(pct))
     multiplier = Decimal("1") - (pct_decimal / Decimal("100"))
