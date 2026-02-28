@@ -13,9 +13,12 @@ from .schemas import (
     IndicatorSchema,
     IndicatorSpec,
     OutputSchema,
+    OutputSpec,
     ParamSchema,
+    ParamSpec,
+    RuntimeBindingSpec,
+    SemanticsSpec,
     indicator_spec_to_schema,
-    schema_to_indicator_spec,
 )
 
 
@@ -34,7 +37,6 @@ class Registry:
         name: str | None = None,
         aliases: list[str] | None = None,
         description: str | None = None,
-        output_metadata: dict[str, dict[str, Any]] | None = None,
         spec: IndicatorSpec | None = None,
     ) -> Callable[..., Any]:
         """Register an indicator function.
@@ -63,9 +65,8 @@ class Registry:
                     name,
                     description or func.__doc__ or "",
                     aliases=aliases or [],
-                    output_metadata=output_metadata or {},
                 )
-                indicator_spec = schema_to_indicator_spec(schema)
+                indicator_spec = self._build_spec_from_schema(schema)
                 aliases = aliases or []
 
             # Create handle
@@ -193,7 +194,6 @@ class Registry:
         description: str,
         *,
         aliases: list[str] | None = None,
-        output_metadata: dict[str, dict[str, Any]] | None = None,
     ) -> IndicatorSchema:
         """Build schema from function signature."""
         sig = inspect.signature(func)
@@ -368,6 +368,38 @@ class Registry:
             )
         }
 
+    def _build_spec_from_schema(self, schema: IndicatorSchema) -> IndicatorSpec:
+        params = {
+            name: ParamSpec(
+                name=param.name,
+                type=param.type,
+                default=param.default,
+                required=param.required,
+                description=param.description,
+                valid_values=param.valid_values,
+            )
+            for name, param in schema.parameters.items()
+        }
+        outputs = {
+            name: OutputSpec(
+                name=output.name,
+                type=output.type,
+                description=output.description,
+                role="line",
+            )
+            for name, output in schema.outputs.items()
+        }
+        return IndicatorSpec(
+            name=schema.name,
+            description=schema.description,
+            params=params,
+            outputs=outputs,
+            semantics=SemanticsSpec(),
+            runtime_binding=RuntimeBindingSpec(kernel_id=schema.name),
+            aliases=tuple(schema.aliases),
+            param_aliases=dict(schema.parameter_aliases),
+        )
+
 
 # Global registry instance
 _global_registry = None
@@ -391,7 +423,6 @@ def register(
     name: str | None = None,
     aliases: list[str] | None = None,
     description: str | None = None,
-    output_metadata: dict[str, dict[str, Any]] | None = None,
     spec: IndicatorSpec | None = None,
 ) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
     """Decorator to register an indicator function.
@@ -405,7 +436,6 @@ def register(
             name,
             aliases,
             description,
-            output_metadata=output_metadata,
             spec=spec,
         )
 
