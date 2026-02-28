@@ -315,7 +315,7 @@ class IncrementalRustBackend(ExecutionBackend):
             field_source = next(iter(referenced_fields))
             if any(key.source == field_source for key in dataset.keys):
                 preferred_source = field_source
-            elif not any(key.source == "ohlcv" for key in dataset.keys):
+            elif not any(key.source in {"ohlcv", "default"} for key in dataset.keys):
                 raise RuntimeError(f"dataset does not contain required source field partition: {field_source}")
 
         if symbol and timeframe:
