@@ -4,7 +4,7 @@ Status: active
 
 Library:
 - crate: `ta-ffi`
-- header: `rust/crates/ta-ffi/include/ta_engine.h`
+- header: `crates/ta-ffi/include/ta_engine.h`
 
 ABI version:
 - `ta_engine_abi_version()` returns `1`
