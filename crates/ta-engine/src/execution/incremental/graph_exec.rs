@@ -249,6 +249,10 @@ fn dispatch_call_node(
             let period = get_usize(meta, "period", "arg_0", 14);
             to_num(crate::moving_averages::wma(&close, period))
         }
+        "hma" => {
+            let period = get_usize(meta, "period", "arg_0", 14);
+            to_num(crate::moving_averages::hma(&close, period))
+        }
         "rsi" => {
             let period = get_usize(meta, "period", "arg_0", 14);
             to_num(crate::momentum::rsi(&close, period))
