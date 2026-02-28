@@ -274,61 +274,11 @@ def list_catalog() -> dict[str, IndicatorDescriptor]:
     return builder.build_catalog()
 
 
-def list_catalog_metadata(source: str = "auto") -> dict[str, dict[str, Any]]:
-    """Return normalized metadata with explicit source marker.
-
-    Args:
-        source: one of "auto", "rust", or "python".
-    """
-    selected = source.lower().strip()
-    if selected not in {"auto", "rust", "python"}:
-        raise ValueError("source must be one of: auto, rust, python")
-
-    if selected in {"auto", "rust"} and rust_catalog_available():
-        return list_rust_catalog()
-    if selected == "rust":
-        raise RuntimeError("Rust catalog requested but ta_py metadata endpoints are unavailable")
-
-    catalog = list_catalog()
-    out: dict[str, dict[str, Any]] = {}
-    for name, descriptor in catalog.items():
-        out[name] = {
-            "id": name,
-            "display_name": descriptor.name,
-            "category": descriptor.category,
-            "runtime_binding": "",
-            "aliases": tuple(descriptor.handle.aliases),
-            "param_aliases": dict(descriptor.handle.schema.parameter_aliases),
-            "params": tuple(
-                {
-                    "name": param.name,
-                    "kind": param.param_type,
-                    "required": param.required,
-                    "default": param.default_value,
-                    "description": param.description,
-                    "min": None,
-                    "max": None,
-                }
-                for param in descriptor.parameters
-            ),
-            "outputs": tuple(
-                {
-                    "name": output.name,
-                    "kind": output.kind,
-                    "description": output.description or "",
-                }
-                for output in descriptor.outputs
-            ),
-            "semantics": {
-                "required_fields": tuple(descriptor.handle.schema.metadata.required_fields),
-                "optional_fields": tuple(descriptor.handle.schema.metadata.optional_fields),
-                "lookback_params": tuple(descriptor.handle.schema.metadata.lookback_params),
-                "default_lookback": descriptor.handle.schema.metadata.default_lookback,
-                "warmup_policy": "",
-            },
-            "source": "python",
-        }
-    return dict(sorted(out.items(), key=lambda kv: kv[0]))
+def list_catalog_metadata() -> dict[str, dict[str, Any]]:
+    """Return canonical indicator metadata from Rust."""
+    if not rust_catalog_available():
+        raise RuntimeError("Rust catalog is unavailable; ta_py metadata endpoints are required")
+    return list_rust_catalog()
 
 
 def describe_indicator(name: str) -> IndicatorDescriptor:

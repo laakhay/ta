@@ -10,7 +10,7 @@ from laakhay.ta.catalog.rust_catalog import rust_catalog_available
 def test_rust_catalog_ids_are_marked_rust_backed() -> None:
     if not rust_catalog_available():
         pytest.skip("ta_py metadata endpoints are unavailable in this environment")
-    rust_catalog = list_catalog_metadata(source="rust")
+    rust_catalog = list_catalog_metadata()
     public_ids = set(list_catalog().keys())
     non_rust: list[str] = []
     for indicator_id in rust_catalog:
