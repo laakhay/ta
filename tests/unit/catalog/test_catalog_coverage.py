@@ -18,4 +18,3 @@ def test_porting_matrix_uses_known_status_values() -> None:
     allowed = {"rust_native", "rust_via_primitives", "python_compute", "blocked"}
     unknown = sorted({status for status in INDICATOR_PORT_STATUS.values() if status not in allowed})
     assert not unknown, f"Unknown port status values found: {unknown}"
-

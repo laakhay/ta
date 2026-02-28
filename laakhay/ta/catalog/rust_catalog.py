@@ -86,4 +86,3 @@ def get_rust_indicator_meta(indicator_id: str) -> dict[str, Any]:
     """Get a single Rust indicator metadata entry by id or alias."""
     ta_py = _load_ta_py()
     return _normalize_entry(ta_py.indicator_meta(indicator_id))
-

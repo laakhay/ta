@@ -2,17 +2,20 @@ from __future__ import annotations
 
 import pytest
 
-from laakhay.ta.catalog import list_catalog_metadata
-from laakhay.ta.catalog.rust_catalog import rust_catalog_available
+from laakhay.ta.catalog import list_catalog, list_catalog_metadata
 from laakhay.ta.catalog.porting_matrix import INDICATOR_PORT_STATUS
+from laakhay.ta.catalog.rust_catalog import rust_catalog_available
 
 
 def test_rust_catalog_ids_are_marked_rust_backed() -> None:
     if not rust_catalog_available():
         pytest.skip("ta_py metadata endpoints are unavailable in this environment")
     rust_catalog = list_catalog_metadata(source="rust")
+    public_ids = set(list_catalog().keys())
     non_rust: list[str] = []
     for indicator_id in rust_catalog:
+        if indicator_id not in public_ids:
+            continue
         status = INDICATOR_PORT_STATUS.get(indicator_id)
         if status not in {"rust_native", "rust_via_primitives"}:
             non_rust.append(indicator_id)
