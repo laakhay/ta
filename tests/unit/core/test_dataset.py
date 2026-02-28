@@ -133,6 +133,16 @@ class TestDatasetCore:
         assert len(ds) == 1
         assert ds.sources == {"binance"}
 
+    def test_rust_dataset_info_updates_on_append(self, sample_series_data):
+        ds = Dataset()
+        s = mk_series_from_fixture(sample_series_data, "BTCUSDT", "1h")
+        ds.add_series("BTCUSDT", "1h", s, source="close")
+        info = ds.rust_info()
+        assert ds.rust_dataset_id > 0
+        assert info["partition_count"] == 1
+        assert info["series_count"] == 1
+        assert info["series_row_count"] == len(s)
+
     def test_series_retrieval_found_and_not_found(self, sample_series_data):
         ds = Dataset()
         s = mk_series_from_fixture(sample_series_data, "BTCUSDT", "1h")

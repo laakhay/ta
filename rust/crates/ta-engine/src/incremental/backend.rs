@@ -5,6 +5,8 @@ use super::contracts::{IncrementalValue, RuntimeSnapshot};
 use super::kernel_registry::KernelId;
 use super::state::NodeRuntimeState;
 use super::store::RuntimeStateStore;
+use crate::dataset::{self, DatasetId, DatasetPartitionKey};
+use thiserror::Error;
 
 #[derive(Debug, Clone)]
 pub struct KernelStepRequest {
@@ -12,6 +14,13 @@ pub struct KernelStepRequest {
     pub kernel_id: KernelId,
     pub input_field: String,
     pub kwargs: BTreeMap<String, IncrementalValue>,
+}
+
+#[derive(Debug, Clone)]
+pub struct ExecutePlanPayload {
+    pub dataset_id: DatasetId,
+    pub partition_key: DatasetPartitionKey,
+    pub requests: Vec<KernelStepRequest>,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -99,6 +108,97 @@ impl IncrementalBackend {
             .map(|(idx, tick)| self.step(idx as u64 + 1, requests, tick))
             .collect()
     }
+}
+
+#[derive(Debug, Error, PartialEq, Eq)]
+pub enum ExecutePlanError {
+    #[error(transparent)]
+    Dataset(#[from] dataset::DatasetRegistryError),
+    #[error("dataset partition not found for symbol={symbol} timeframe={timeframe} source={data_source}")]
+    PartitionNotFound {
+        symbol: String,
+        timeframe: String,
+        data_source: String,
+    },
+    #[error(
+        "ohlcv columns missing for symbol={symbol} timeframe={timeframe} source={data_source}"
+    )]
+    MissingOhlcv {
+        symbol: String,
+        timeframe: String,
+        data_source: String,
+    },
+}
+
+pub fn execute_plan(
+    dataset_id: DatasetId,
+    partition_key: &DatasetPartitionKey,
+    requests: &[KernelStepRequest],
+) -> Result<BTreeMap<u32, Vec<IncrementalValue>>, ExecutePlanError> {
+    let record = dataset::get_dataset(dataset_id)?;
+    let partition = record.partitions.get(partition_key).ok_or_else(|| {
+        ExecutePlanError::PartitionNotFound {
+            symbol: partition_key.symbol.clone(),
+            timeframe: partition_key.timeframe.clone(),
+            data_source: partition_key.source.clone(),
+        }
+    })?;
+
+    let ohlcv = partition
+        .ohlcv
+        .as_ref()
+        .ok_or_else(|| ExecutePlanError::MissingOhlcv {
+            symbol: partition_key.symbol.clone(),
+            timeframe: partition_key.timeframe.clone(),
+            data_source: partition_key.source.clone(),
+        })?;
+
+    let mut backend = IncrementalBackend::default();
+    backend.initialize();
+
+    let mut out: BTreeMap<u32, Vec<IncrementalValue>> = BTreeMap::new();
+    for node in requests {
+        out.entry(node.node_id).or_default();
+    }
+
+    let rows = ohlcv.timestamps.len();
+    for idx in 0..rows {
+        let mut tick = BTreeMap::new();
+        tick.insert(
+            "open".to_string(),
+            IncrementalValue::Number(ohlcv.open[idx]),
+        );
+        tick.insert(
+            "high".to_string(),
+            IncrementalValue::Number(ohlcv.high[idx]),
+        );
+        tick.insert("low".to_string(), IncrementalValue::Number(ohlcv.low[idx]));
+        tick.insert(
+            "close".to_string(),
+            IncrementalValue::Number(ohlcv.close[idx]),
+        );
+        tick.insert(
+            "volume".to_string(),
+            IncrementalValue::Number(ohlcv.volume[idx]),
+        );
+
+        let step_out = backend.step((idx as u64) + 1, requests, &tick);
+        for (node_id, value) in step_out {
+            out.entry(node_id).or_default().push(value);
+        }
+    }
+
+    Ok(out)
+}
+
+pub fn execute_plan_payload(
+    payload: &ExecutePlanPayload,
+) -> Result<BTreeMap<u32, Vec<IncrementalValue>>, ExecutePlanError> {
+    execute_plan(
+        payload.dataset_id,
+        &payload.partition_key,
+        &payload.requests,
+    )
 }
 
 fn encode_kernel_state(state: &KernelRuntimeState) -> BTreeMap<String, IncrementalValue> {
