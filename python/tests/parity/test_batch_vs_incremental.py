@@ -62,9 +62,7 @@ def test_evaluation_parity(sample_dataset, expr_text):
 @pytest.mark.parametrize(
     "expr_text",
     [
-        "atr(14)",
         "(close > 10) and (close < 1000000)",
-        "sma(ema(close, 10), 5)",
         "close.change_1h",
         "close.change_pct_1h",
     ],
@@ -78,6 +76,29 @@ def test_evaluation_rejects_unsupported_graphs(sample_dataset, expr_text):
 
     with pytest.raises(RuntimeError, match="unsupported nodes"):
         IncrementalRustBackend().evaluate(plan, sample_dataset)
+
+
+@pytest.mark.parametrize(
+    "expr_text",
+    [
+        "atr(14)",
+        "sma(ema(close, 10), 5)",
+    ],
+)
+def test_evaluation_parity_expanded_rust_graph_support(sample_dataset, expr_text):
+    from laakhay.ta.expr.algebra.operators import Expression
+    from laakhay.ta.expr.compile import compile_to_ir
+
+    expr = Expression(compile_to_ir(expr_text))
+    plan = expr._ensure_plan()
+
+    py_res = BatchBackend().evaluate(plan, sample_dataset)
+    rust_res = IncrementalRustBackend().evaluate(plan, sample_dataset)
+
+    if isinstance(py_res, dict):
+        assert_dict_parity(py_res, rust_res)
+    else:
+        assert_series_parity(py_res, rust_res)
 
 
 def test_incremental_replay(sample_dataset):

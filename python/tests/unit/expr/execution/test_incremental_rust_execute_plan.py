@@ -56,14 +56,26 @@ def test_evaluate_uses_execute_plan_for_supported_root(sample_ohlcv_data, monkey
     assert len(result_series.values) == len(sample_ohlcv_data["timestamps"])
 
 
-def test_evaluate_rejects_non_supported_root(sample_ohlcv_data) -> None:
+def test_evaluate_uses_execute_plan_for_expanded_supported_root(sample_ohlcv_data, monkeypatch) -> None:
     ds = _build_dataset(sample_ohlcv_data)
     expr = compile_expression("atr(14)")
     plan = expr._ensure_plan()
     backend = IncrementalRustBackend()
 
-    with pytest.raises(RuntimeError, match="unsupported nodes"):
-        backend.evaluate(plan, ds)
+    called = {"count": 0}
+
+    def fake_execute_plan_payload(payload):  # noqa: ANN001
+        called["count"] += 1
+        return {int(plan.graph.root_id): [0.0] * len(sample_ohlcv_data["timestamps"])}
+
+    monkeypatch.setattr(
+        "laakhay.ta.expr.execution.backends.incremental_rust.ta_py.execute_plan_payload",
+        fake_execute_plan_payload,
+    )
+
+    out = backend.evaluate(plan, ds)
+    assert isinstance(out, dict)
+    assert called["count"] == 1
 
 
 def test_evaluate_uses_execute_plan_for_boolean_graph(sample_ohlcv_data, monkeypatch) -> None:

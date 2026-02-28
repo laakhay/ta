@@ -217,6 +217,8 @@ fn dispatch_call_node(
     child_series: &[Vec<f64>],
     ohlcv: &crate::dataset::OhlcvColumns,
 ) -> Result<Vec<IncrementalValue>, ExecutePlanError> {
+    let normalized = name.trim().to_ascii_lowercase();
+    let name = normalized.as_str();
     let close = child_series
         .first()
         .cloned()

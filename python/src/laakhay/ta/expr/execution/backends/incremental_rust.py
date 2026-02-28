@@ -110,7 +110,40 @@ class IncrementalRustBackend(ExecutionBackend):
 
     @staticmethod
     def _can_execute_plan(plan: PlanResult) -> bool:
-        allowed_calls = {"sma", "mean", "rolling_mean", "rsi"}
+        allowed_calls = {
+            "sma",
+            "mean",
+            "rolling_mean",
+            "ema",
+            "rolling_ema",
+            "wma",
+            "rolling_wma",
+            "rsi",
+            "roc",
+            "cmo",
+            "atr",
+            "bbands",
+            "bb_upper",
+            "bb_lower",
+            "donchian",
+            "keltner",
+            "stochastic",
+            "stoch_k",
+            "stoch_d",
+            "adx",
+            "macd",
+            "crossup",
+            "crossdown",
+            "cross",
+            "rising",
+            "falling",
+            "rising_pct",
+            "falling_pct",
+            "in_channel",
+            "out",
+            "enter",
+            "exit",
+        }
         allowed_binary = {"gt", "lt", "eq", "and", "or", "add", "sub", "mul", "div"}
         for graph_node in plan.graph.nodes.values():
             node = graph_node.node
