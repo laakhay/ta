@@ -89,7 +89,7 @@ class IncrementalRustBackend(ExecutionBackend):
             node = plan.graph.nodes[node_id].node
             if not isinstance(node, CallNode):
                 continue
-            if node.name not in {"rsi", "atr", "stochastic"}:
+            if node.name not in {"rsi", "atr", "stochastic", "vwap"}:
                 continue
 
             kwargs: dict[str, Any] = {}
@@ -110,7 +110,7 @@ class IncrementalRustBackend(ExecutionBackend):
     @staticmethod
     def _can_execute_plan(plan: PlanResult) -> bool:
         root = plan.graph.nodes[plan.graph.root_id].node
-        return isinstance(root, CallNode) and root.name in {"rsi", "atr", "stochastic"}
+        return isinstance(root, CallNode) and root.name in {"rsi", "atr", "stochastic", "vwap"}
 
     def _evaluate_with_execute_plan(
         self,

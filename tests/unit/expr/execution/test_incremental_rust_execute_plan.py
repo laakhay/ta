@@ -76,3 +76,25 @@ def test_evaluate_falls_back_to_batch_for_non_supported_root(sample_ohlcv_data, 
 
     out = backend.evaluate(plan, ds)
     assert isinstance(out, Series)
+
+
+def test_evaluate_uses_execute_plan_for_vwap_root(sample_ohlcv_data, monkeypatch) -> None:
+    ds = _build_dataset(sample_ohlcv_data)
+    expr = compile_expression("vwap()")
+    plan = expr._ensure_plan()
+    backend = IncrementalRustBackend()
+
+    called = {"count": 0}
+
+    def fake_execute_plan(dataset_id, symbol, timeframe, source, requests):  # noqa: ANN001
+        called["count"] += 1
+        return {int(plan.graph.root_id): [1.0] * len(sample_ohlcv_data["timestamps"])}
+
+    monkeypatch.setattr(
+        "laakhay.ta.expr.execution.backends.incremental_rust.ta_py.execute_plan",
+        fake_execute_plan,
+    )
+
+    out = backend.evaluate(plan, ds)
+    assert isinstance(out, dict)
+    assert called["count"] == 1
