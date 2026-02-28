@@ -78,8 +78,8 @@ def assert_dataset_parity(ds1: Dataset, ds2: Dataset, tolerance: float = 1e-9) -
     """Assert two dataset outputs are identical."""
     assert set(ds1.keys) == set(ds2.keys), f"Dataset keys mismatch: {ds1.keys} != {ds2.keys}"
     for key in ds1.keys:
-        series1 = ds1.get(key.symbol, key.timeframe, key.source)
-        series2 = ds2.get(key.symbol, key.timeframe, key.source)
+        series1 = ds1.series(key.symbol, key.timeframe, key.source)
+        series2 = ds2.series(key.symbol, key.timeframe, key.source)
         if hasattr(series1, "to_series"):
             for field in ["open", "high", "low", "close", "volume"]:
                 # Basic check for OHLCV
