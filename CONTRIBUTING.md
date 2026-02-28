@@ -4,37 +4,28 @@
 ```bash
 git clone https://github.com/laakhay/ta
 cd ta
-uv sync --extra dev
+make install-dev
 ```
 
-## Development
+## Development Workflow
 ```bash
-# Format and lint
-uv run ruff format laakhay/
-uv run ruff check --fix laakhay/
+# all checks
+make ci
 
-# Test
-uv run pytest tests/ -v
-
-# Type check (if available)
-uv run pyright laakhay/ta/
+# scoped checks
+make lint-py
+make lint-rs
+make test-py
+make test-rs
+make format-check
 ```
 
-## Adding Indicators
-```python
-# laakhay/ta/indicators/trend/my_indicator.py
-from ...core import Series
-from ...core.types import Price
-from ...registry.models import SeriesContext
-from ...registry.registry import register
+## Architecture Expectations
 
-@register("my_indicator")
-def my_indicator(ctx: SeriesContext, period: int = 20) -> Series[Price]:
-    """My custom indicator."""
-    source = ctx.price_series
-    # Implementation
-    return result
-```
+- Rust-first compute: indicator/runtime logic should be implemented in `crates/ta-engine`.
+- Python is an ergonomics layer: DSL/planner/API in `python/src/laakhay`.
+- Avoid introducing new Python compute fallbacks for indicators already supported in Rust.
+- Keep adapter crates thin (`ta-py`, `ta-ffi`, `ta-node`) and contract-focused.
 
 ## Expression System
 
@@ -46,12 +37,12 @@ The expression system supports multi-source data access, filtering, aggregation,
 - **Time-shifts**: `price.24h_ago`, `volume.change_pct_24h`
 
 When adding new features:
-- Update parser in `laakhay/ta/expr/dsl/parser.py` for new syntax
-- Add AST nodes in `laakhay/ta/expr/dsl/nodes.py`
-- Update compiler in `laakhay/ta/expr/dsl/compiler.py`
-- Add expression models in `laakhay/ta/expr/algebra/models.py`
-- Update planner in `laakhay/ta/expr/planner/planner.py` for requirement computation
-- Update manifest in `laakhay/ta/expr/planner/manifest.py` if adding new sources/fields
+- Update parser in `python/src/laakhay/ta/expr/dsl/parser.py` for new syntax
+- Add AST nodes in `python/src/laakhay/ta/expr/dsl/nodes.py`
+- Update compiler in `python/src/laakhay/ta/expr/dsl/compiler.py`
+- Add expression models in `python/src/laakhay/ta/expr/algebra/models.py`
+- Update planner in `python/src/laakhay/ta/expr/planner/planner.py` for requirement computation
+- Update manifest in `python/src/laakhay/ta/expr/planner/manifest.py` if adding new sources/fields
 
 ## Commit Format
 ```
@@ -67,10 +58,14 @@ docs: update README
 Common scopes: `indicators`, `expr`, `planner`, `core`, `data`, `registry`
 
 ## PR Requirements
-- All tests pass
-- Code formatted with ruff
-- Type hints complete
-- Tests for new features
+
+- Small, focused commits with clear intent.
+- All CI-equivalent checks pass locally:
+  - `make format-check`
+  - `make lint`
+  - `make test`
+- Tests included/updated for behavior changes.
+- For Rust indicator/runtime changes, parity coverage should be considered in Python parity tests.
 
 ## Getting Help
 - [Issues](https://github.com/laakhay/ta/issues)
