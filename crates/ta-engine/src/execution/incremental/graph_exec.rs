@@ -102,56 +102,29 @@ pub(crate) fn execute_plan_graph_payload(
                     .get("name")
                     .cloned()
                     .unwrap_or_else(|| "unknown".to_string());
-                let input = if let Some(input_id) = child_ids.first() {
-                    let child_kind = payload
-                        .graph
-                        .nodes
-                        .get(input_id)
-                        .and_then(|n| n.get("kind"))
-                        .cloned()
-                        .unwrap_or_default();
-                    if child_kind == "literal" {
-                        ohlcv.close.clone()
-                    } else {
-                        let input_values = outputs.get(input_id).ok_or_else(|| {
-                            ExecutePlanError::InvalidPayload(format!(
-                                "missing input output for node {input_id}"
-                            ))
-                        })?;
-                        to_f64_vec(input_values)
-                    }
-                } else {
-                    ohlcv.close.clone()
-                };
-                match name.as_str() {
-                    "sma" | "mean" | "rolling_mean" => {
-                        let period = meta
-                            .get("kw_period")
-                            .or_else(|| meta.get("arg_0"))
-                            .and_then(|v| v.parse::<usize>().ok())
-                            .unwrap_or(20);
-                        crate::rolling::rolling_mean(&input, period)
-                            .into_iter()
-                            .map(IncrementalValue::Number)
-                            .collect()
-                    }
-                    "rsi" => {
-                        let period = meta
-                            .get("kw_period")
-                            .or_else(|| meta.get("arg_0"))
-                            .and_then(|v| v.parse::<usize>().ok())
-                            .unwrap_or(14);
-                        crate::momentum::rsi(&input, period)
-                            .into_iter()
-                            .map(IncrementalValue::Number)
-                            .collect()
-                    }
-                    other => {
-                        return Err(ExecutePlanError::InvalidPayload(format!(
-                            "unsupported call node in graph executor: {other}"
-                        )))
-                    }
-                }
+                let child_series = child_ids
+                    .iter()
+                    .map(|input_id| {
+                        let child_kind = payload
+                            .graph
+                            .nodes
+                            .get(input_id)
+                            .and_then(|n| n.get("kind"))
+                            .cloned()
+                            .unwrap_or_default();
+                        if child_kind == "literal" {
+                            Ok(ohlcv.close.clone())
+                        } else {
+                            let input_values = outputs.get(input_id).ok_or_else(|| {
+                                ExecutePlanError::InvalidPayload(format!(
+                                    "missing input output for node {input_id}"
+                                ))
+                            })?;
+                            Ok(to_f64_vec(input_values))
+                        }
+                    })
+                    .collect::<Result<Vec<Vec<f64>>, ExecutePlanError>>()?;
+                dispatch_call_node(&name, meta, &child_series, ohlcv)?
             }
             "binary_op" => {
                 if child_ids.len() < 2 {
@@ -236,4 +209,153 @@ fn truthy(value: &IncrementalValue) -> bool {
         IncrementalValue::Number(v) => *v != 0.0 && !v.is_nan(),
         IncrementalValue::Text(v) => !v.is_empty(),
     }
+}
+
+fn dispatch_call_node(
+    name: &str,
+    meta: &BTreeMap<String, String>,
+    child_series: &[Vec<f64>],
+    ohlcv: &crate::dataset::OhlcvColumns,
+) -> Result<Vec<IncrementalValue>, ExecutePlanError> {
+    let close = child_series
+        .first()
+        .cloned()
+        .unwrap_or_else(|| ohlcv.close.clone());
+    let second = child_series
+        .get(1)
+        .cloned()
+        .unwrap_or_else(|| ohlcv.close.clone());
+    let third = child_series
+        .get(2)
+        .cloned()
+        .unwrap_or_else(|| ohlcv.close.clone());
+
+    let to_num = |values: Vec<f64>| values.into_iter().map(IncrementalValue::Number).collect();
+    let to_bool = |values: Vec<bool>| values.into_iter().map(IncrementalValue::Bool).collect();
+
+    let out = match name {
+        "sma" | "mean" | "rolling_mean" => {
+            let period = get_usize(meta, "period", "arg_0", 20);
+            to_num(crate::rolling::rolling_mean(&close, period))
+        }
+        "ema" | "rolling_ema" => {
+            let period = get_usize(meta, "period", "arg_0", 20);
+            to_num(crate::moving_averages::ema(&close, period))
+        }
+        "wma" | "rolling_wma" => {
+            let period = get_usize(meta, "period", "arg_0", 14);
+            to_num(crate::moving_averages::wma(&close, period))
+        }
+        "rsi" => {
+            let period = get_usize(meta, "period", "arg_0", 14);
+            to_num(crate::momentum::rsi(&close, period))
+        }
+        "roc" => {
+            let period = get_usize(meta, "period", "arg_0", 12);
+            to_num(crate::momentum::roc(&close, period))
+        }
+        "cmo" => {
+            let period = get_usize(meta, "period", "arg_0", 14);
+            to_num(crate::momentum::cmo(&close, period))
+        }
+        "bbands" | "bb_upper" | "bb_lower" => {
+            let period = get_usize(meta, "period", "arg_0", 20);
+            let std_dev = get_f64(meta, "std_dev", "arg_1", 2.0);
+            let (upper, _middle, lower) = crate::volatility::bbands(&close, period, std_dev);
+            match name {
+                "bb_upper" => to_num(upper),
+                "bb_lower" => to_num(lower),
+                _ => to_num(upper),
+            }
+        }
+        "atr" => {
+            let period = get_usize(meta, "period", "arg_0", 14);
+            to_num(crate::volatility::atr(
+                &ohlcv.high,
+                &ohlcv.low,
+                &ohlcv.close,
+                period,
+            ))
+        }
+        "donchian" => {
+            let period = get_usize(meta, "period", "arg_0", 20);
+            let (upper, _middle, _lower) = crate::volatility::donchian(&ohlcv.high, &ohlcv.low, period);
+            to_num(upper)
+        }
+        "keltner" => {
+            let ema_period = get_usize(meta, "ema_period", "arg_0", 20);
+            let atr_period = get_usize(meta, "atr_period", "arg_1", 10);
+            let multiplier = get_f64(meta, "multiplier", "arg_2", 2.0);
+            let (upper, _middle, _lower) = crate::volatility::keltner(
+                &ohlcv.high,
+                &ohlcv.low,
+                &ohlcv.close,
+                ema_period,
+                atr_period,
+                multiplier,
+            );
+            to_num(upper)
+        }
+        "stochastic" | "stoch_k" | "stoch_d" => {
+            let k_period = get_usize(meta, "k_period", "arg_0", 14);
+            let d_period = get_usize(meta, "d_period", "arg_1", 3);
+            let smooth = get_usize(meta, "smooth", "arg_2", 1);
+            let (k, d) =
+                crate::momentum::stochastic_kd(&ohlcv.high, &ohlcv.low, &ohlcv.close, k_period, d_period, smooth);
+            match name {
+                "stoch_d" => to_num(d),
+                _ => to_num(k),
+            }
+        }
+        "adx" => {
+            let period = get_usize(meta, "period", "arg_0", 14);
+            let (adx, _, _) = crate::trend::adx(&ohlcv.high, &ohlcv.low, &ohlcv.close, period);
+            to_num(adx)
+        }
+        "macd" => {
+            let fast = get_usize(meta, "fast_period", "arg_0", 12);
+            let slow = get_usize(meta, "slow_period", "arg_1", 26);
+            let signal = get_usize(meta, "signal_period", "arg_2", 9);
+            let (macd, _, _) = crate::trend::macd(&close, fast, slow, signal);
+            to_num(macd)
+        }
+        "crossup" => to_bool(crate::events::crossup(&close, &second)),
+        "crossdown" => to_bool(crate::events::crossdown(&close, &second)),
+        "cross" => to_bool(crate::events::cross(&close, &second)),
+        "rising" => to_bool(crate::events::rising(&close)),
+        "falling" => to_bool(crate::events::falling(&close)),
+        "rising_pct" => {
+            let pct = get_f64(meta, "pct", "arg_0", 5.0);
+            to_bool(crate::events::rising_pct(&close, pct))
+        }
+        "falling_pct" => {
+            let pct = get_f64(meta, "pct", "arg_0", 5.0);
+            to_bool(crate::events::falling_pct(&close, pct))
+        }
+        "in_channel" => to_bool(crate::events::in_channel(&close, &second, &third)),
+        "out" => to_bool(crate::events::out_channel(&close, &second, &third)),
+        "enter" => to_bool(crate::events::enter_channel(&close, &second, &third)),
+        "exit" => to_bool(crate::events::exit_channel(&close, &second, &third)),
+        other => {
+            return Err(ExecutePlanError::InvalidPayload(format!(
+                "unsupported call node in graph executor: {other}"
+            )))
+        }
+    };
+
+    Ok(out)
+}
+
+fn get_usize(meta: &BTreeMap<String, String>, kw: &str, arg: &str, default: usize) -> usize {
+    meta.get(&format!("kw_{kw}"))
+        .or_else(|| meta.get(arg))
+        .and_then(|v| v.parse::<usize>().ok())
+        .unwrap_or(default)
+}
+
+fn get_f64(meta: &BTreeMap<String, String>, kw: &str, arg: &str, default: f64) -> f64 {
+    meta.get(&format!("kw_{kw}"))
+        .or_else(|| meta.get(arg))
+        .and_then(|v| v.parse::<f64>().ok())
+        .unwrap_or(default)
 }
