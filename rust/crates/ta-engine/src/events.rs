@@ -126,4 +126,3 @@ pub fn exit_channel(price: &[f64], upper: &[f64], lower: &[f64]) -> Vec<bool> {
     }
     out
 }
-

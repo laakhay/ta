@@ -578,6 +578,10 @@ pub fn indicator_catalog() -> &'static [IndicatorMeta] {
 /// Finds indicator metadata by id or alias.
 pub fn find_indicator_meta(id: &str) -> Option<&'static IndicatorMeta> {
     indicator_catalog().iter().find(|meta| {
-        meta.id.eq_ignore_ascii_case(id) || meta.aliases.iter().any(|alias| alias.eq_ignore_ascii_case(id))
+        meta.id.eq_ignore_ascii_case(id)
+            || meta
+                .aliases
+                .iter()
+                .any(|alias| alias.eq_ignore_ascii_case(id))
     })
 }

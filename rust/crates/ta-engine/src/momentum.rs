@@ -151,8 +151,8 @@ pub fn cci(high: &[f64], low: &[f64], close: &[f64], period: usize) -> Vec<f64> 
         let start = i + 1 - period;
         let current_sma = sma[i];
 
-        for j in start..=i {
-            mean_deviation += (tp[j] - current_sma).abs();
+        for value in tp.iter().take(i + 1).skip(start) {
+            mean_deviation += (*value - current_sma).abs();
         }
         mean_deviation /= period as f64;
 
@@ -280,9 +280,8 @@ pub fn ao(high: &[f64], low: &[f64], fast_period: usize, slow_period: usize) -> 
 
 pub fn coppock(values: &[f64], wma_period: usize, fast_roc: usize, slow_roc: usize) -> Vec<f64> {
     let n = values.len();
-    let mut out = vec![f64::NAN; n];
     if n == 0 || wma_period == 0 || fast_roc == 0 || slow_roc == 0 {
-        return out;
+        return vec![f64::NAN; n];
     }
 
     let roc_fast = roc(values, fast_roc);

@@ -117,7 +117,7 @@ fn wilder_smooth_non_negative(values: &[f64], period: usize) -> Vec<f64> {
         return out;
     }
 
-    let mut sum = values[start..start + period].iter().sum::<f64>();
+    let sum = values[start..start + period].iter().sum::<f64>();
     out[start + period - 1] = sum / period as f64;
 
     for i in (start + period)..n {
@@ -149,12 +149,12 @@ pub fn swing_points_raw(
 
         let mut is_high = true;
         let mut count_high = 0;
-        for j in (i - left)..(i + right + 1) {
-            if high[j] > current_high {
+        for value in high.iter().take(i + right + 1).skip(i - left) {
+            if *value > current_high {
                 is_high = false;
                 break;
             }
-            if high[j] == current_high {
+            if *value == current_high {
                 count_high += 1;
             }
         }
@@ -166,12 +166,12 @@ pub fn swing_points_raw(
         if have_high {
             let mut is_low = true;
             let mut count_low = 0;
-            for j in (i - left)..(i + right + 1) {
-                if low[j] < current_low {
+            for value in low.iter().take(i + right + 1).skip(i - left) {
+                if *value < current_low {
                     is_low = false;
                     break;
                 }
-                if low[j] == current_low {
+                if *value == current_low {
                     count_low += 1;
                 }
             }
@@ -213,6 +213,8 @@ pub fn elder_ray(high: &[f64], low: &[f64], close: &[f64], period: usize) -> (Ve
     (bull, bear)
 }
 
+pub type IchimokuOutput = (Vec<f64>, Vec<f64>, Vec<f64>, Vec<f64>, Vec<f64>);
+
 pub fn ichimoku(
     high: &[f64],
     low: &[f64],
@@ -221,9 +223,9 @@ pub fn ichimoku(
     kijun_period: usize,
     span_b_period: usize,
     displacement: usize,
-) -> (Vec<f64>, Vec<f64>, Vec<f64>, Vec<f64>, Vec<f64>) {
+) -> IchimokuOutput {
     let n = close.len();
-    let mut empty = vec![f64::NAN; n];
+    let empty = vec![f64::NAN; n];
     if n == 0
         || high.len() != n
         || low.len() != n
@@ -322,9 +324,7 @@ pub fn fisher(high: &[f64], low: &[f64], period: usize) -> (Vec<f64>, Vec<f64>) 
         prev_fisher = f;
     }
 
-    for i in 1..n {
-        signal[i] = fisher[i - 1];
-    }
+    signal[1..n].copy_from_slice(&fisher[..(n - 1)]);
     if n > 0 {
         signal[0] = 0.0;
     }
@@ -434,12 +434,14 @@ pub fn supertrend(
             final_lower[i] = basic_lower[i];
             continue;
         }
-        final_upper[i] = if basic_upper[i] < final_upper[i - 1] || close[i - 1] > final_upper[i - 1] {
+        final_upper[i] = if basic_upper[i] < final_upper[i - 1] || close[i - 1] > final_upper[i - 1]
+        {
             basic_upper[i]
         } else {
             final_upper[i - 1]
         };
-        final_lower[i] = if basic_lower[i] > final_lower[i - 1] || close[i - 1] < final_lower[i - 1] {
+        final_lower[i] = if basic_lower[i] > final_lower[i - 1] || close[i - 1] < final_lower[i - 1]
+        {
             basic_lower[i]
         } else {
             final_lower[i - 1]

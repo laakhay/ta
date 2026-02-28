@@ -13,6 +13,8 @@ static SNAPSHOT_ID: AtomicU64 = AtomicU64::new(1);
 static BACKENDS: OnceLock<Mutex<HashMap<u64, IncrementalBackend>>> = OnceLock::new();
 static SNAPSHOTS: OnceLock<Mutex<HashMap<u64, RuntimeSnapshot>>> = OnceLock::new();
 
+type IchimokuTuple = (Vec<f64>, Vec<f64>, Vec<f64>, Vec<f64>, Vec<f64>);
+
 fn backends() -> &'static Mutex<HashMap<u64, IncrementalBackend>> {
     BACKENDS.get_or_init(|| Mutex::new(HashMap::new()))
 }
@@ -38,7 +40,9 @@ fn indicator_catalog(py: Python<'_>) -> PyResult<PyObject> {
 #[pyfunction]
 fn indicator_meta(py: Python<'_>, id: String) -> PyResult<PyObject> {
     let meta = ta_engine::metadata::find_indicator_meta(&id).ok_or_else(|| {
-        pyo3::exceptions::PyKeyError::new_err(format!("indicator metadata not found for id/alias '{id}'"))
+        pyo3::exceptions::PyKeyError::new_err(format!(
+            "indicator metadata not found for id/alias '{id}'"
+        ))
     })?;
     indicator_meta_to_pydict(py, meta)
 }
@@ -146,7 +150,13 @@ fn coppock(
 }
 
 #[pyfunction]
-fn mfi(high: Vec<f64>, low: Vec<f64>, close: Vec<f64>, volume: Vec<f64>, period: usize) -> PyResult<Vec<f64>> {
+fn mfi(
+    high: Vec<f64>,
+    low: Vec<f64>,
+    close: Vec<f64>,
+    volume: Vec<f64>,
+    period: usize,
+) -> PyResult<Vec<f64>> {
     validate_period(period)?;
     Ok(ta_engine::momentum::mfi(
         &high, &low, &close, &volume, period,
@@ -227,7 +237,11 @@ fn bbands(
 }
 
 #[pyfunction]
-fn donchian(high: Vec<f64>, low: Vec<f64>, period: usize) -> PyResult<(Vec<f64>, Vec<f64>, Vec<f64>)> {
+fn donchian(
+    high: Vec<f64>,
+    low: Vec<f64>,
+    period: usize,
+) -> PyResult<(Vec<f64>, Vec<f64>, Vec<f64>)> {
     validate_period(period)?;
     Ok(ta_engine::volatility::donchian(&high, &low, period))
 }
@@ -257,7 +271,7 @@ fn ichimoku(
     kijun_period: usize,
     span_b_period: usize,
     displacement: usize,
-) -> PyResult<(Vec<f64>, Vec<f64>, Vec<f64>, Vec<f64>, Vec<f64>)> {
+) -> PyResult<IchimokuTuple> {
     validate_period(tenkan_period)?;
     validate_period(kijun_period)?;
     validate_period(span_b_period)?;
@@ -346,7 +360,12 @@ fn cci(high: Vec<f64>, low: Vec<f64>, close: Vec<f64>, period: usize) -> PyResul
 }
 
 #[pyfunction]
-fn elder_ray(high: Vec<f64>, low: Vec<f64>, close: Vec<f64>, period: usize) -> PyResult<(Vec<f64>, Vec<f64>)> {
+fn elder_ray(
+    high: Vec<f64>,
+    low: Vec<f64>,
+    close: Vec<f64>,
+    period: usize,
+) -> PyResult<(Vec<f64>, Vec<f64>)> {
     validate_period(period)?;
     Ok(ta_engine::trend::elder_ray(&high, &low, &close, period))
 }

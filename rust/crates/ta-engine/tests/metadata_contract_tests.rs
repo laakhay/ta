@@ -74,4 +74,3 @@ fn outputs_have_names_and_descriptions() {
         }
     }
 }
-
