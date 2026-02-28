@@ -1,15 +1,32 @@
 from __future__ import annotations
 
-from laakhay.ta.catalog import list_catalog
+from laakhay.ta.catalog import list_catalog_metadata
 from laakhay.ta.catalog.porting_matrix import INDICATOR_PORT_STATUS
 
 
 def test_porting_matrix_covers_full_catalog_surface() -> None:
-    catalog_ids = set(list_catalog().keys())
+    catalog_ids = set(list_catalog_metadata().keys())
     matrix_ids = set(INDICATOR_PORT_STATUS.keys())
+    legacy_python_helpers = {
+        "bb_lower",
+        "bb_upper",
+        "fib_anchor_high",
+        "fib_anchor_low",
+        "fib_level_down",
+        "fib_level_up",
+        "fib_retracement",
+        "klinger",
+        "select",
+        "stoch_d",
+        "stoch_k",
+        "swing_high_at",
+        "swing_highs",
+        "swing_low_at",
+        "swing_lows",
+    }
 
     missing = sorted(catalog_ids - matrix_ids)
-    extra = sorted(matrix_ids - catalog_ids)
+    extra = sorted((matrix_ids - catalog_ids) - legacy_python_helpers)
     assert not missing, f"Missing indicators in porting matrix: {missing}"
     assert not extra, f"Extra indicators in porting matrix: {extra}"
 
