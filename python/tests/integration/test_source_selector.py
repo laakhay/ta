@@ -59,5 +59,5 @@ def test_source_selects_field():
 def test_source_missing_field_raises():
     dataset = make_dataset()
     unknown = ta.source("volume")
-    with pytest.raises(ValueError):
+    with pytest.raises(RuntimeError):
         unknown.run(dataset)
