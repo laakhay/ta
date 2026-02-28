@@ -3,12 +3,10 @@
 from __future__ import annotations
 
 import ta_py
-from decimal import Decimal
 
 from ...core import Series
 from ...core.series import Series as CoreSeries
 from ...core.types import Price
-from ...primitives.kernels.psar import PSARKernel
 from ...registry.models import SeriesContext
 from ...registry.registry import register
 from ...registry.schemas import (
@@ -52,61 +50,20 @@ def psar(
 
     Returns (sar, direction).
     """
-    if hasattr(ta_py, "psar"):
-        sar_vals, dir_vals = ta_py.psar(
-            [float(v) for v in ctx.high.values],
-            [float(v) for v in ctx.low.values],
-            [float(v) for v in ctx.close.values],
-            af_start,
-            af_increment,
-            af_max,
-        )
-        return (
-            results_to_series(sar_vals, ctx.close, value_class=Price),
-            results_to_series(dir_vals, ctx.close, value_class=Price),
-        )
-
-    # Temporary fallback while ta_py upgrades.
-    kernel = PSARKernel()
     n = len(ctx.close)
-
     if n == 0:
         empty = CoreSeries[Price](timestamps=(), values=(), symbol=ctx.close.symbol, timeframe=ctx.close.timeframe)
         return empty, empty
 
-    # Standard approach for multi-output kernels in this library
-    h = ctx.high
-    l = ctx.low
-    c = ctx.close
-
-    xs = [(Decimal(str(h.values[i])), Decimal(str(l.values[i])), Decimal(str(c.values[i]))) for i in range(n)]
-
-    out_sar = []
-    out_dir = []
-
-    # Initialize with first bar
-    state = kernel.initialize(xs[:0], af_start=af_start, af_increment=af_increment, af_max=af_max)
-
-    for i in range(n):
-        state, (sar_val, dir_val) = kernel.step(state, xs[i])
-        out_sar.append(sar_val)
-        out_dir.append(dir_val)
-
-    stamps = ctx.close.timestamps
-
+    sar_vals, dir_vals = ta_py.psar(
+        [float(v) for v in ctx.high.values],
+        [float(v) for v in ctx.low.values],
+        [float(v) for v in ctx.close.values],
+        af_start,
+        af_increment,
+        af_max,
+    )
     return (
-        CoreSeries[Price](
-            timestamps=stamps,
-            values=tuple(Price(v) for v in out_sar),
-            symbol=ctx.close.symbol,
-            timeframe=ctx.close.timeframe,
-            availability_mask=tuple(True for _ in out_sar),
-        ),
-        CoreSeries[Price](
-            timestamps=stamps,
-            values=tuple(Price(v) for v in out_dir),
-            symbol=ctx.close.symbol,
-            timeframe=ctx.close.timeframe,
-            availability_mask=tuple(True for _ in out_dir),
-        ),
+        results_to_series(sar_vals, ctx.close, value_class=Price),
+        results_to_series(dir_vals, ctx.close, value_class=Price),
     )

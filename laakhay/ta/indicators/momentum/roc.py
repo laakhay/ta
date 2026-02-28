@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import ta_py
-from decimal import Decimal
 
 from ...core import Series
 from ...core.types import Price
@@ -41,11 +40,5 @@ def roc(ctx: SeriesContext, period: int = 12) -> Series[Price]:
     if period <= 0:
         raise ValueError("ROC period must be positive")
 
-    if hasattr(ta_py, "roc"):
-        out = ta_py.roc([float(v) for v in ctx.close.values], period)
-        return results_to_series(out, ctx.close, value_class=Price)
-
-    # Temporary fallback while environments upgrade ta_py.
-    c = ctx.close
-    c_prev = c.shift(period)
-    return ((c - c_prev) / c_prev) * Decimal("100")
+    out = ta_py.roc([float(v) for v in ctx.close.values], period)
+    return results_to_series(out, ctx.close, value_class=Price)

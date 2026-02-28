@@ -6,7 +6,6 @@ import ta_py
 
 from ...core import Series
 from ...core.types import Price
-from ...primitives.rolling_ops import rolling_ema
 from ...registry.models import SeriesContext
 from ...registry.registry import register
 from ...registry.schemas import (
@@ -46,22 +45,13 @@ def elder_ray(ctx: SeriesContext, period: int = 13) -> tuple[Series[Price], Seri
     if period <= 0:
         raise ValueError("Elder Ray period must be positive")
 
-    if hasattr(ta_py, "elder_ray"):
-        bull_vals, bear_vals = ta_py.elder_ray(
-            [float(v) for v in ctx.high.values],
-            [float(v) for v in ctx.low.values],
-            [float(v) for v in ctx.close.values],
-            period,
-        )
-        return (
-            results_to_series(bull_vals, ctx.close, value_class=Price),
-            results_to_series(bear_vals, ctx.close, value_class=Price),
-        )
-
-    # Temporary fallback while ta_py upgrades.
-    ema = rolling_ema(ctx, period=period)
-
-    bull_power = ctx.high - ema
-    bear_power = ctx.low - ema
-
-    return bull_power, bear_power
+    bull_vals, bear_vals = ta_py.elder_ray(
+        [float(v) for v in ctx.high.values],
+        [float(v) for v in ctx.low.values],
+        [float(v) for v in ctx.close.values],
+        period,
+    )
+    return (
+        results_to_series(bull_vals, ctx.close, value_class=Price),
+        results_to_series(bear_vals, ctx.close, value_class=Price),
+    )
