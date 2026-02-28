@@ -93,4 +93,4 @@ jobs:
         run: make install-dev
 
       - name: Enforce backend resolver and drift guards
-        run: uv run --python 3.12 --with pytest python -m pytest tests/unit/expr/execution/test_backend_resolution.py tests/unit/expr/execution/test_drift_guard.py -q
+        run: cd python && uv run --python 3.12 --with pytest python -m pytest tests/unit/expr/execution/test_backend_resolution.py tests/unit/expr/execution/test_drift_guard.py -q
