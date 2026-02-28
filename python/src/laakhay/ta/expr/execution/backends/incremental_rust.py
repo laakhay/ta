@@ -166,10 +166,7 @@ class IncrementalRustBackend(ExecutionBackend):
                 field = getattr(node, "field", None)
                 if field is None:
                     return False
-                if any(
-                    getattr(node, attr, None) is not None
-                    for attr in ("symbol", "exchange", "timeframe")
-                ):
+                if any(getattr(node, attr, None) is not None for attr in ("symbol", "exchange", "timeframe")):
                     return False
                 continue
             if type(node).__name__ == "LiteralNode":

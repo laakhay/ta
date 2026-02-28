@@ -19,4 +19,5 @@ def resolve_execution_mode(mode: str | None = None) -> ExecutionMode:
 def resolve_backend(mode: str | None = None):
     _ = resolve_execution_mode(mode)
     from .backends.incremental_rust import IncrementalRustBackend
+
     return IncrementalRustBackend()

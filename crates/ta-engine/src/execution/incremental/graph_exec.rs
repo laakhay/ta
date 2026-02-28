@@ -85,12 +85,10 @@ pub(crate) fn execute_plan_graph_payload(
                                     .map(IncrementalValue::Number)
                                     .collect()
                             })
-                            .ok_or_else(|| {
-                                ExecutePlanError::MissingOhlcv {
-                                    symbol: partition_key.symbol.clone(),
-                                    timeframe: partition_key.timeframe.clone(),
-                                    data_source: partition_key.source.clone(),
-                                }
+                            .ok_or_else(|| ExecutePlanError::MissingOhlcv {
+                                symbol: partition_key.symbol.clone(),
+                                timeframe: partition_key.timeframe.clone(),
+                                data_source: partition_key.source.clone(),
                             })?,
                         "high" => partition
                             .ohlcv
@@ -103,12 +101,10 @@ pub(crate) fn execute_plan_graph_payload(
                                     .map(IncrementalValue::Number)
                                     .collect()
                             })
-                            .ok_or_else(|| {
-                                ExecutePlanError::MissingOhlcv {
-                                    symbol: partition_key.symbol.clone(),
-                                    timeframe: partition_key.timeframe.clone(),
-                                    data_source: partition_key.source.clone(),
-                                }
+                            .ok_or_else(|| ExecutePlanError::MissingOhlcv {
+                                symbol: partition_key.symbol.clone(),
+                                timeframe: partition_key.timeframe.clone(),
+                                data_source: partition_key.source.clone(),
                             })?,
                         "low" => partition
                             .ohlcv
@@ -121,12 +117,10 @@ pub(crate) fn execute_plan_graph_payload(
                                     .map(IncrementalValue::Number)
                                     .collect()
                             })
-                            .ok_or_else(|| {
-                                ExecutePlanError::MissingOhlcv {
-                                    symbol: partition_key.symbol.clone(),
-                                    timeframe: partition_key.timeframe.clone(),
-                                    data_source: partition_key.source.clone(),
-                                }
+                            .ok_or_else(|| ExecutePlanError::MissingOhlcv {
+                                symbol: partition_key.symbol.clone(),
+                                timeframe: partition_key.timeframe.clone(),
+                                data_source: partition_key.source.clone(),
                             })?,
                         "volume" => partition
                             .ohlcv
@@ -139,12 +133,10 @@ pub(crate) fn execute_plan_graph_payload(
                                     .map(IncrementalValue::Number)
                                     .collect()
                             })
-                            .ok_or_else(|| {
-                                ExecutePlanError::MissingOhlcv {
-                                    symbol: partition_key.symbol.clone(),
-                                    timeframe: partition_key.timeframe.clone(),
-                                    data_source: partition_key.source.clone(),
-                                }
+                            .ok_or_else(|| ExecutePlanError::MissingOhlcv {
+                                symbol: partition_key.symbol.clone(),
+                                timeframe: partition_key.timeframe.clone(),
+                                data_source: partition_key.source.clone(),
                             })?,
                         _ => partition
                             .ohlcv
@@ -157,12 +149,10 @@ pub(crate) fn execute_plan_graph_payload(
                                     .map(IncrementalValue::Number)
                                     .collect()
                             })
-                            .ok_or_else(|| {
-                                ExecutePlanError::MissingOhlcv {
-                                    symbol: partition_key.symbol.clone(),
-                                    timeframe: partition_key.timeframe.clone(),
-                                    data_source: partition_key.source.clone(),
-                                }
+                            .ok_or_else(|| ExecutePlanError::MissingOhlcv {
+                                symbol: partition_key.symbol.clone(),
+                                timeframe: partition_key.timeframe.clone(),
+                                data_source: partition_key.source.clone(),
                             })?,
                     }
                 }
@@ -207,36 +197,36 @@ pub(crate) fn execute_plan_graph_payload(
                         )));
                     }
                 } else {
-                let child_series = child_ids
-                    .iter()
-                    .map(|input_id| {
-                        let child_kind = payload
-                            .graph
-                            .nodes
-                            .get(input_id)
-                            .and_then(|n| n.get("kind"))
-                            .cloned()
-                            .unwrap_or_default();
-                        if child_kind == "literal" {
-                            Ok(
-                                partition
+                    let child_series = child_ids
+                        .iter()
+                        .map(|input_id| {
+                            let child_kind = payload
+                                .graph
+                                .nodes
+                                .get(input_id)
+                                .and_then(|n| n.get("kind"))
+                                .cloned()
+                                .unwrap_or_default();
+                            if child_kind == "literal" {
+                                Ok(partition
                                     .ohlcv
                                     .as_ref()
                                     .map(|v| v.close.clone())
-                                    .or_else(|| partition.series.values().next().map(|s| s.values.clone()))
-                                    .unwrap_or_default(),
-                            )
-                        } else {
-                            let input_values = outputs.get(input_id).ok_or_else(|| {
-                                ExecutePlanError::InvalidPayload(format!(
-                                    "missing input output for node {input_id}"
-                                ))
-                            })?;
-                            Ok(to_f64_vec(input_values))
-                        }
-                    })
-                    .collect::<Result<Vec<Vec<f64>>, ExecutePlanError>>()?;
-                dispatch_call_node(&name, meta, &child_series, partition.ohlcv.as_ref())?
+                                    .or_else(|| {
+                                        partition.series.values().next().map(|s| s.values.clone())
+                                    })
+                                    .unwrap_or_default())
+                            } else {
+                                let input_values = outputs.get(input_id).ok_or_else(|| {
+                                    ExecutePlanError::InvalidPayload(format!(
+                                        "missing input output for node {input_id}"
+                                    ))
+                                })?;
+                                Ok(to_f64_vec(input_values))
+                            }
+                        })
+                        .collect::<Result<Vec<Vec<f64>>, ExecutePlanError>>()?;
+                    dispatch_call_node(&name, meta, &child_series, partition.ohlcv.as_ref())?
                 }
             }
             "time_shift" => {
@@ -251,8 +241,12 @@ pub(crate) fn execute_plan_graph_payload(
                         child_ids[0]
                     ))
                 })?;
-                let steps = parse_shift_steps(meta.get("shift").map(|s| s.as_str()).unwrap_or("1")).max(1);
-                let operation = meta.get("operation").map(|s| s.as_str()).unwrap_or("change");
+                let steps =
+                    parse_shift_steps(meta.get("shift").map(|s| s.as_str()).unwrap_or("1")).max(1);
+                let operation = meta
+                    .get("operation")
+                    .map(|s| s.as_str())
+                    .unwrap_or("change");
                 apply_time_shift_op(base, steps, operation)
             }
             "binary_op" => {
@@ -466,7 +460,11 @@ fn parse_shift_steps(shift: &str) -> usize {
     digits.parse::<usize>().unwrap_or(1)
 }
 
-fn apply_time_shift_op(base: &[IncrementalValue], steps: usize, operation: &str) -> Vec<IncrementalValue> {
+fn apply_time_shift_op(
+    base: &[IncrementalValue],
+    steps: usize,
+    operation: &str,
+) -> Vec<IncrementalValue> {
     let mut out = vec![IncrementalValue::Null; base.len()];
     for i in steps..base.len() {
         let cur = as_number(&base[i]);
@@ -501,7 +499,10 @@ fn dispatch_call_node(
     let name = normalized.as_str();
     let selected_output = meta.get("output").map(|v| v.as_str());
     let default_close = ohlcv.map(|v| v.close.clone()).unwrap_or_default();
-    let close = child_series.first().cloned().unwrap_or_else(|| default_close.clone());
+    let close = child_series
+        .first()
+        .cloned()
+        .unwrap_or_else(|| default_close.clone());
     let second = child_series
         .get(1)
         .cloned()
@@ -528,17 +529,48 @@ fn dispatch_call_node(
                         "select could not resolve source field '{field}'"
                     )));
                 }
-                return Ok(close.iter().copied().map(IncrementalValue::Number).collect());
+                return Ok(close
+                    .iter()
+                    .copied()
+                    .map(IncrementalValue::Number)
+                    .collect());
             }
             match (field, ohlcv) {
-                ("open", Some(v)) => v.open.iter().copied().map(IncrementalValue::Number).collect(),
-                ("high", Some(v)) => v.high.iter().copied().map(IncrementalValue::Number).collect(),
-                ("low", Some(v)) => v.low.iter().copied().map(IncrementalValue::Number).collect(),
-                ("volume", Some(v)) => v.volume.iter().copied().map(IncrementalValue::Number).collect(),
-                ("close", Some(v)) | ("price", Some(v)) => {
-                    v.close.iter().copied().map(IncrementalValue::Number).collect()
-                }
-                _ => close.iter().copied().map(IncrementalValue::Number).collect(),
+                ("open", Some(v)) => v
+                    .open
+                    .iter()
+                    .copied()
+                    .map(IncrementalValue::Number)
+                    .collect(),
+                ("high", Some(v)) => v
+                    .high
+                    .iter()
+                    .copied()
+                    .map(IncrementalValue::Number)
+                    .collect(),
+                ("low", Some(v)) => v
+                    .low
+                    .iter()
+                    .copied()
+                    .map(IncrementalValue::Number)
+                    .collect(),
+                ("volume", Some(v)) => v
+                    .volume
+                    .iter()
+                    .copied()
+                    .map(IncrementalValue::Number)
+                    .collect(),
+                ("close", Some(v)) | ("price", Some(v)) => v
+                    .close
+                    .iter()
+                    .copied()
+                    .map(IncrementalValue::Number)
+                    .collect(),
+                _ => close
+                    .iter()
+                    .copied()
+                    .map(IncrementalValue::Number)
+                    .collect(),
             }
         }
         "sma" | "mean" | "rolling_mean" => {
@@ -573,7 +605,9 @@ fn dispatch_call_node(
             let wma_period = get_usize(meta, "wma_period", "arg_0", 10);
             let fast_roc = get_usize(meta, "fast_roc", "arg_1", 11);
             let slow_roc = get_usize(meta, "slow_roc", "arg_2", 14);
-            to_num(crate::momentum::coppock(&close, wma_period, fast_roc, slow_roc))
+            to_num(crate::momentum::coppock(
+                &close, wma_period, fast_roc, slow_roc,
+            ))
         }
         "cmo" => {
             let period = get_usize(meta, "period", "arg_0", 14);
@@ -597,7 +631,8 @@ fn dispatch_call_node(
                 ExecutePlanError::InvalidPayload("vortex requires ohlcv data".to_string())
             })?;
             let period = get_usize(meta, "period", "arg_0", 14);
-            let (plus, minus) = crate::momentum::vortex(&ohlcv.high, &ohlcv.low, &ohlcv.close, period);
+            let (plus, minus) =
+                crate::momentum::vortex(&ohlcv.high, &ohlcv.low, &ohlcv.close, period);
             match selected_output {
                 Some("minus") => to_num(minus),
                 _ => to_num(plus),
@@ -630,7 +665,8 @@ fn dispatch_call_node(
                 ExecutePlanError::InvalidPayload("donchian requires ohlcv data".to_string())
             })?;
             let period = get_usize(meta, "period", "arg_0", 20);
-            let (upper, _middle, _lower) = crate::volatility::donchian(&ohlcv.high, &ohlcv.low, period);
+            let (upper, _middle, _lower) =
+                crate::volatility::donchian(&ohlcv.high, &ohlcv.low, period);
             to_num(upper)
         }
         "keltner" => {
@@ -657,8 +693,14 @@ fn dispatch_call_node(
             let k_period = get_usize(meta, "k_period", "arg_0", 14);
             let d_period = get_usize(meta, "d_period", "arg_1", 3);
             let smooth = get_usize(meta, "smooth", "arg_2", 1);
-            let (k, d) =
-                crate::momentum::stochastic_kd(&ohlcv.high, &ohlcv.low, &ohlcv.close, k_period, d_period, smooth);
+            let (k, d) = crate::momentum::stochastic_kd(
+                &ohlcv.high,
+                &ohlcv.low,
+                &ohlcv.close,
+                k_period,
+                d_period,
+                smooth,
+            );
             match name {
                 "stoch_d" => to_num(d),
                 _ => to_num(k),
@@ -688,7 +730,8 @@ fn dispatch_call_node(
                 ExecutePlanError::InvalidPayload("elder_ray requires ohlcv data".to_string())
             })?;
             let period = get_usize(meta, "period", "arg_0", 13);
-            let (bull, bear) = crate::trend::elder_ray(&ohlcv.high, &ohlcv.low, &ohlcv.close, period);
+            let (bull, bear) =
+                crate::trend::elder_ray(&ohlcv.high, &ohlcv.low, &ohlcv.close, period);
             match selected_output {
                 Some("bear") => to_num(bear),
                 _ => to_num(bull),
@@ -737,8 +780,14 @@ fn dispatch_call_node(
             let af_start = get_f64(meta, "af_start", "arg_0", 0.02);
             let af_increment = get_f64(meta, "af_increment", "arg_1", 0.02);
             let af_max = get_f64(meta, "af_max", "arg_2", 0.2);
-            let (sar, direction) =
-                crate::trend::psar(&ohlcv.high, &ohlcv.low, &ohlcv.close, af_start, af_increment, af_max);
+            let (sar, direction) = crate::trend::psar(
+                &ohlcv.high,
+                &ohlcv.low,
+                &ohlcv.close,
+                af_start,
+                af_increment,
+                af_max,
+            );
             match selected_output {
                 Some("direction") => to_num(direction),
                 _ => to_num(sar),
