@@ -8,9 +8,7 @@ import ta_py
 from ....core.dataset import Dataset
 from ....core.ohlcv import OHLCV
 from ....core.series import Series
-from ...algebra.operators import Expression
 from ...ir.nodes import CallNode
-from ...planner.evaluator import Evaluator
 from ...planner.manifest import build_rust_execution_payload
 from ...planner.types import PlanResult
 from .base import ExecutionBackend
@@ -35,17 +33,19 @@ class IncrementalRustBackend(ExecutionBackend):
         symbol: str | None = None,
         timeframe: str | None = None,
         **options: Any,
-    ) -> Series[Any] | dict[tuple[str, str, str], Series[Any]]:
-        if options.get("return_all_outputs", False):
-            return self._evaluate_with_evaluator(plan, dataset, **options)
+    ) -> Any:
+        return_all_outputs = bool(options.get("return_all_outputs", False))
         if not isinstance(dataset, Dataset):
-            return self._evaluate_with_evaluator(plan, dataset, **options)
+            raise RuntimeError("IncrementalRustBackend requires Dataset input")
         if not self._can_execute_plan(plan):
-            return self._evaluate_with_evaluator(plan, dataset, **options)
-        try:
-            return self._evaluate_with_execute_plan(plan, dataset, symbol=symbol, timeframe=timeframe)
-        except RuntimeError:
-            return self._evaluate_with_evaluator(plan, dataset, **options)
+            raise RuntimeError("plan contains unsupported nodes for rust graph execution backend")
+        return self._evaluate_with_execute_plan(
+            plan,
+            dataset,
+            symbol=symbol,
+            timeframe=timeframe,
+            return_all_outputs=return_all_outputs,
+        )
 
     def initialize(
         self,
@@ -118,9 +118,12 @@ class IncrementalRustBackend(ExecutionBackend):
     @staticmethod
     def _can_execute_plan(plan: PlanResult) -> bool:
         allowed_calls = {
+            "select",
             "sma",
             "mean",
             "rolling_mean",
+            "rolling_median",
+            "median",
             "ema",
             "rolling_ema",
             "wma",
@@ -139,6 +142,11 @@ class IncrementalRustBackend(ExecutionBackend):
             "stoch_d",
             "adx",
             "macd",
+            "swing_high_at",
+            "swing_low_at",
+            "fib_level_down",
+            "fib_level_up",
+            "fib_down",
             "crossup",
             "crossdown",
             "cross",
@@ -151,13 +159,12 @@ class IncrementalRustBackend(ExecutionBackend):
             "enter",
             "exit",
         }
-        allowed_binary = {"gt", "lt", "eq", "and", "or", "add", "sub", "mul", "div"}
-        seen_call = False
+        allowed_binary = {"gt", "gte", "lt", "lte", "eq", "neq", "and", "or", "add", "sub", "mul", "div", "mod", "pow"}
         for graph_node in plan.graph.nodes.values():
             node = graph_node.node
             if type(node).__name__ == "SourceRefNode":
                 field = getattr(node, "field", None)
-                if field not in {"close", "open", "high", "low", "volume"}:
+                if field is None:
                     return False
                 if any(
                     getattr(node, attr, None) is not None
@@ -167,31 +174,37 @@ class IncrementalRustBackend(ExecutionBackend):
                 continue
             if type(node).__name__ == "LiteralNode":
                 value = getattr(node, "value", None)
-                if isinstance(value, str):
+                if not isinstance(value, int | float | bool | str):
                     return False
                 continue
             if type(node).__name__ == "CallNode":
                 if not isinstance(node, CallNode) or node.name not in allowed_calls:
                     return False
-                seen_call = True
                 continue
             if type(node).__name__ == "BinaryOpNode":
                 op = getattr(node, "operator", None)
                 if op not in allowed_binary:
                     return False
                 continue
+            if type(node).__name__ == "UnaryOpNode":
+                op = getattr(node, "operator", None)
+                if op not in {"not", "neg", "pos"}:
+                    return False
+                continue
+            if type(node).__name__ == "TimeShiftNode":
+                op = getattr(node, "operation", None)
+                if op not in {None, "change", "change_pct"}:
+                    return False
+                continue
+            if type(node).__name__ == "FilterNode":
+                continue
+            if type(node).__name__ == "AggregateNode":
+                op = getattr(node, "operation", None)
+                if op not in {"count", "sum", "avg", "max", "min"}:
+                    return False
+                continue
             return False
-        return seen_call
-
-    @staticmethod
-    def _evaluate_with_evaluator(
-        plan: PlanResult,
-        dataset: Dataset | dict[str, Series[Any]] | Series[Any],
-        **options: Any,
-    ) -> Series[Any] | dict[tuple[str, str, str], Series[Any]]:
-        expr = Expression(plan.graph.nodes[plan.graph.root_id].node)
-        expr._plan_cache = plan
-        return Evaluator().evaluate(expr=expr, data=dataset, return_all_outputs=options.get("return_all_outputs", False))
+        return True
 
     def _evaluate_with_execute_plan(
         self,
@@ -199,8 +212,14 @@ class IncrementalRustBackend(ExecutionBackend):
         dataset: Dataset,
         symbol: str | None,
         timeframe: str | None,
-    ) -> dict[tuple[str, str, str], Series[Any]]:
-        selected_symbol, selected_timeframe, selected_source = self._resolve_partition(dataset, symbol, timeframe)
+        return_all_outputs: bool,
+    ) -> Any:
+        selected_symbol, selected_timeframe, selected_source = self._resolve_partition(
+            plan,
+            dataset,
+            symbol,
+            timeframe,
+        )
         payload = build_rust_execution_payload(
             plan,
             dataset_id=dataset.rust_dataset_id,
@@ -217,52 +236,108 @@ class IncrementalRustBackend(ExecutionBackend):
             raise RuntimeError(f"execute_plan did not return output for root node {root_id}")
 
         series_obj = dataset.series(selected_symbol, selected_timeframe, selected_source)
-        if not isinstance(series_obj, OHLCV):
-            raise RuntimeError(
-                "execute_plan currently requires OHLCV partition in dataset for selected symbol/timeframe/source"
-            )
+        if isinstance(series_obj, OHLCV):
+            timestamps = series_obj.timestamps
+        elif isinstance(series_obj, Series):
+            timestamps = series_obj.timestamps
+        else:
+            raise RuntimeError("execute_plan could not resolve timestamps for selected partition")
 
         warmup = 0
         if plan.requirements.data_requirements:
             warmup = max(int(req.min_lookback) for req in plan.requirements.data_requirements) - 1
             warmup = max(warmup, 0)
 
-        normalized_values: list[Any] = []
-        for value in root_values:
-            if isinstance(value, bool):
-                normalized_values.append(value)
-                continue
-            if value is None:
-                normalized_values.append(None)
-                continue
-            number = float(value)
-            normalized_values.append(None if math.isnan(number) else number)
-        values = tuple(normalized_values)
-        availability_mask = [v is not None for v in values]
-        if warmup > 0:
-            for i in range(min(warmup, len(availability_mask))):
-                availability_mask[i] = False
-        series = Series[Any](
-            timestamps=series_obj.timestamps,
-            values=values,
-            symbol=selected_symbol,
-            timeframe=selected_timeframe,
-            availability_mask=tuple(availability_mask),
-        )
-        output_source = "default" if selected_source in {"ohlcv", "default"} else selected_source
-        return {(selected_symbol, selected_timeframe, output_source): series}
+        def _to_series(raw_values: list[Any]) -> Series[Any]:
+            normalized_values: list[Any] = []
+            for value in raw_values:
+                if isinstance(value, bool):
+                    normalized_values.append(value)
+                    continue
+                if isinstance(value, str):
+                    normalized_values.append(value)
+                    continue
+                if value is None:
+                    normalized_values.append(None)
+                    continue
+                number = float(value)
+                normalized_values.append(None if math.isnan(number) else number)
+            values = tuple(normalized_values)
+            availability_mask = [v is not None for v in values]
+            if warmup > 0:
+                for i in range(min(warmup, len(availability_mask))):
+                    availability_mask[i] = False
+            return Series[Any](
+                timestamps=timestamps,
+                values=values,
+                symbol=selected_symbol,
+                timeframe=selected_timeframe,
+                availability_mask=tuple(availability_mask),
+            )
+
+        series = _to_series(root_values)
+        results = {(selected_symbol, selected_timeframe, "default"): series}
+        if not return_all_outputs:
+            return results
+        node_outputs = {int(node_id): _to_series(node_values) for node_id, node_values in outputs.items()}
+        return results, node_outputs
 
     @staticmethod
-    def _resolve_partition(dataset: Dataset, symbol: str | None, timeframe: str | None) -> tuple[str, str, str]:
+    def _resolve_partition(
+        plan: PlanResult,
+        dataset: Dataset,
+        symbol: str | None,
+        timeframe: str | None,
+    ) -> tuple[str, str, str]:
+        referenced_sources = {
+            str(getattr(graph_node.node, "source", "")).strip()
+            for graph_node in plan.graph.nodes.values()
+            if type(graph_node.node).__name__ == "SourceRefNode" and getattr(graph_node.node, "source", None)
+        }
+        referenced_fields = {
+            str(getattr(graph_node.node, "field", "")).strip()
+            for graph_node in plan.graph.nodes.values()
+            if type(graph_node.node).__name__ == "SourceRefNode" and getattr(graph_node.node, "field", None)
+        }
+        for graph_node in plan.graph.nodes.values():
+            node = graph_node.node
+            if not isinstance(node, CallNode) or node.name != "select":
+                continue
+            if not graph_node.children:
+                continue
+            first_child = plan.graph.nodes.get(graph_node.children[0])
+            value = getattr(getattr(first_child, "node", None), "value", None)
+            if isinstance(value, str) and value:
+                referenced_fields.add(value)
+        preferred_sources = [source for source in referenced_sources if source and source != "ohlcv"]
+        preferred_source = preferred_sources[0] if len(preferred_sources) == 1 else None
+        if preferred_source is None and len(referenced_fields) == 1:
+            field_source = next(iter(referenced_fields))
+            if any(key.source == field_source for key in dataset.keys):
+                preferred_source = field_source
+            elif not any(key.source == "ohlcv" for key in dataset.keys):
+                raise RuntimeError(f"dataset does not contain required source field partition: {field_source}")
+
         if symbol and timeframe:
+            if preferred_source:
+                explicit = dataset.series(symbol, timeframe, preferred_source)
+                if isinstance(explicit, OHLCV | Series):
+                    return symbol, timeframe, preferred_source
             explicit = dataset.series(symbol, timeframe, "ohlcv")
-            if isinstance(explicit, OHLCV):
+            if isinstance(explicit, OHLCV | Series):
                 return symbol, timeframe, "ohlcv"
-            raise RuntimeError(f"dataset does not contain OHLCV source for symbol={symbol} timeframe={timeframe}")
+            raise RuntimeError(f"dataset does not contain symbol={symbol} timeframe={timeframe}")
 
         for key in dataset.keys:
+            if preferred_source and key.source != preferred_source:
+                continue
             series_obj = dataset.series(key.symbol, key.timeframe, key.source)
-            if isinstance(series_obj, OHLCV):
+            if isinstance(series_obj, OHLCV | Series):
                 return str(key.symbol), key.timeframe, key.source
 
-        raise RuntimeError("dataset must contain at least one OHLCV partition for execute_plan")
+        if preferred_source:
+            raise RuntimeError(f"dataset must contain at least one partition for source={preferred_source}")
+        if referenced_fields:
+            fields = ",".join(sorted(referenced_fields))
+            raise RuntimeError(f"dataset does not contain required source field partitions: {fields}")
+        raise RuntimeError("dataset must contain at least one partition for execute_plan")
