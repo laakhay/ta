@@ -17,7 +17,10 @@ fn ta_py(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(api::dataset::series_upsample_ffill, m)?)?;
     m.add_function(wrap_pyfunction!(api::dataset::series_sync_timeframe, m)?)?;
     m.add_function(wrap_pyfunction!(api::dataset::indicator_catalog, m)?)?;
-    m.add_function(wrap_pyfunction!(api::dataset::indicator_catalog_contract, m)?)?;
+    m.add_function(wrap_pyfunction!(
+        api::dataset::indicator_catalog_contract,
+        m
+    )?)?;
     m.add_function(wrap_pyfunction!(api::dataset::indicator_meta, m)?)?;
 
     m.add_function(wrap_pyfunction!(api::indicators::rolling_sum, m)?)?;
