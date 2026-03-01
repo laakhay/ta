@@ -53,6 +53,20 @@ pub enum OutputVisualPrimitive {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PlotCapability {
+    Plot,
+    EventOnly,
+    NonPlot,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ComputeCapability {
+    Ohlcv,
+    SeriesGraph,
+    Mixed,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum StrokePattern {
     Solid,
     Dashed,
@@ -1108,4 +1122,23 @@ pub fn find_indicator_meta(id: &str) -> Option<&'static IndicatorMeta> {
                 .iter()
                 .any(|alias| alias.eq_ignore_ascii_case(id))
     })
+}
+
+pub fn plot_capability(meta: &IndicatorMeta) -> PlotCapability {
+    if meta.visual.output_visuals.is_empty() {
+        return PlotCapability::NonPlot;
+    }
+    if meta
+        .visual
+        .output_visuals
+        .iter()
+        .all(|out| out.primitive == OutputVisualPrimitive::SignalFlag)
+    {
+        return PlotCapability::EventOnly;
+    }
+    PlotCapability::Plot
+}
+
+pub fn compute_capability(_meta: &IndicatorMeta) -> ComputeCapability {
+    ComputeCapability::Ohlcv
 }
