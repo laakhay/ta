@@ -1,6 +1,6 @@
 use super::*;
 
-pub const ENTRIES: &[IndicatorMeta] = &[IndicatorMeta {
+pub const META: IndicatorMeta = IndicatorMeta {
     id: "swing_points",
     display_name: "Swing Points",
     category: "pattern",
@@ -34,4 +34,4 @@ pub const ENTRIES: &[IndicatorMeta] = &[IndicatorMeta {
     },
     visual: VIS_SWING_POINTS,
     runtime_binding: "swing_points_raw",
-}];
+};
