@@ -3,7 +3,7 @@ use std::fmt;
 use serde_json::Value;
 
 use crate::core::metadata::{
-    ComputeCapability, IndicatorMeta, IndicatorVisualMeta, PlotCapability,
+    ComputeCapability, IndicatorMeta, IndicatorParamKind, IndicatorVisualMeta, PlotCapability,
 };
 
 #[derive(Debug, Clone, PartialEq)]
@@ -62,16 +62,35 @@ pub struct ComputeIndicatorResponse {
     pub normalized_params: Value,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct RuntimeCatalogEntry {
     pub id: String,
     pub display_name: String,
     pub category: String,
     pub aliases: Vec<String>,
     pub runtime_binding: String,
+    pub params: Vec<RuntimeParamMeta>,
+    pub outputs: Vec<RuntimeOutputMeta>,
+    pub visual: IndicatorVisualMeta,
     pub plot_capability: PlotCapability,
     pub compute_capability: ComputeCapability,
     pub input_requirements: Vec<String>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct RuntimeParamMeta {
+    pub name: String,
+    pub kind: IndicatorParamKind,
+    pub required: bool,
+    pub default: Option<String>,
+    pub min: Option<f64>,
+    pub max: Option<f64>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RuntimeOutputMeta {
+    pub name: String,
+    pub kind: String,
 }
 
 impl RuntimeCatalogEntry {
@@ -82,6 +101,27 @@ impl RuntimeCatalogEntry {
             category: meta.category.to_string(),
             aliases: meta.aliases.iter().map(|v| (*v).to_string()).collect(),
             runtime_binding: meta.runtime_binding.to_string(),
+            params: meta
+                .params
+                .iter()
+                .map(|param| RuntimeParamMeta {
+                    name: param.name.to_string(),
+                    kind: param.kind,
+                    required: param.required,
+                    default: param.default.map(|v| v.to_string()),
+                    min: param.min,
+                    max: param.max,
+                })
+                .collect(),
+            outputs: meta
+                .outputs
+                .iter()
+                .map(|output| RuntimeOutputMeta {
+                    name: output.name.to_string(),
+                    kind: output.kind.to_string(),
+                })
+                .collect(),
+            visual: meta.visual,
             plot_capability: crate::core::metadata::plot_capability(meta),
             compute_capability: crate::core::metadata::compute_capability(meta),
             input_requirements: meta
