@@ -117,3 +117,51 @@ fn parameter_aliases_reference_existing_params() {
         }
     }
 }
+
+#[test]
+fn visual_contract_is_present_for_all_indicators() {
+    for indicator in indicator_catalog() {
+        assert!(
+            !indicator.visual.output_visuals.is_empty(),
+            "indicator '{}' must define output_visuals",
+            indicator.id
+        );
+        assert!(
+            !indicator.visual.style_slots.is_empty(),
+            "indicator '{}' must define style_slots",
+            indicator.id
+        );
+    }
+}
+
+#[test]
+fn multi_output_indicators_have_explicit_visual_mappings() {
+    let bbands = indicator_catalog()
+        .iter()
+        .find(|meta| meta.id == "bbands")
+        .expect("bbands metadata must exist");
+    let bbands_outputs: Vec<&str> = bbands
+        .visual
+        .output_visuals
+        .iter()
+        .map(|v| v.output)
+        .collect();
+    assert!(bbands_outputs.contains(&"upper"));
+    assert!(bbands_outputs.contains(&"middle"));
+    assert!(bbands_outputs.contains(&"lower"));
+    assert!(bbands_outputs.contains(&"upper|lower"));
+
+    let macd = indicator_catalog()
+        .iter()
+        .find(|meta| meta.id == "macd")
+        .expect("macd metadata must exist");
+    let macd_outputs: Vec<&str> = macd
+        .visual
+        .output_visuals
+        .iter()
+        .map(|v| v.output)
+        .collect();
+    assert!(macd_outputs.contains(&"macd"));
+    assert!(macd_outputs.contains(&"signal"));
+    assert!(macd_outputs.contains(&"histogram"));
+}
