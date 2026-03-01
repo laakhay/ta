@@ -33,3 +33,7 @@ Validation:
 - Period parameters must be `> 0`.
 - Invalid period returns `ERR_PERIOD_INVALID`.
 - Mismatched series lengths return `ERR_LENGTH_MISMATCH`.
+
+Parity harness:
+- Fixture-driven parity checks live in `test/fixtures/parity_cases.json`.
+- Tests compare wrapper outputs against direct `ta-engine` computations.
