@@ -8,10 +8,12 @@ Bootstrapped as a `napi-rs` addon crate. Direct indicator endpoints are added in
 
 Current direct endpoints:
 - `engineVersion`
-- `sma`, `ema`, `wma`, `hma`
-- `rsi`, `roc`, `cmo`
-- `macd` (object output)
-- `bbands` (object output)
+- `sma`, `ema`, `rma`, `wma`, `hma`
+- `rsi`, `roc`, `cmo`, `ao`, `coppock`, `williamsR`, `mfi`, `cci`
+- `atr`, `atrFromTr`
+- `obv`, `vwap`, `cmf`, `klingerVf`
+- `macd`, `bbands`, `stochastic`, `adx`, `ichimoku`, `supertrend`, `psar`
+- `swingPointsRaw`, `vortex`, `elderRay`, `fisher`, `donchian`, `keltner`, `klinger`
 
 ## Principles
 
@@ -23,9 +25,11 @@ Current direct endpoints:
 
 ```bash
 cargo check -p ta-node
+cargo clippy -p ta-node --all-targets -- -D warnings
 cargo test -p ta-node
 ```
 
 Validation:
 - Period parameters must be `> 0`.
 - Invalid period returns `ERR_PERIOD_INVALID`.
+- Mismatched series lengths return `ERR_LENGTH_MISMATCH`.

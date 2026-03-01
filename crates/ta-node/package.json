@@ -5,7 +5,9 @@
   "description": "Node bindings for laakhay ta-engine",
   "types": "index.d.ts",
   "scripts": {
-    "build": "echo 'Build via cargo for now: cargo build -p ta-node'",
-    "test": "echo 'Node test harness will be added with direct indicator endpoints'"
+    "build": "cargo build -p ta-node",
+    "check": "cargo check -p ta-node",
+    "lint": "cargo clippy -p ta-node --all-targets -- -D warnings",
+    "test": "cargo test -p ta-node"
   }
 }
