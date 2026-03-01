@@ -245,5 +245,67 @@ pub(crate) fn indicator_meta_to_pydict(
     semantics.set_item("warmup_policy", meta.semantics.warmup_policy)?;
     d.set_item("semantics", semantics)?;
 
+    let visual = PyDict::new(py);
+    let pane_hint = match meta.visual.pane_hint {
+        ta_engine::metadata::IndicatorPaneHint::PriceOverlay => "price_overlay",
+        ta_engine::metadata::IndicatorPaneHint::SeparatePane => "separate_pane",
+        ta_engine::metadata::IndicatorPaneHint::VolumeOverlay => "volume_overlay",
+        ta_engine::metadata::IndicatorPaneHint::Auto => "auto",
+    };
+    visual.set_item("pane_hint", pane_hint)?;
+    let scale_group = match meta.visual.scale_group {
+        ta_engine::metadata::IndicatorScaleGroup::Price => "price",
+        ta_engine::metadata::IndicatorScaleGroup::Oscillator => "oscillator",
+        ta_engine::metadata::IndicatorScaleGroup::Volume => "volume",
+        ta_engine::metadata::IndicatorScaleGroup::Normalized => "normalized",
+        ta_engine::metadata::IndicatorScaleGroup::Binary => "binary",
+    };
+    visual.set_item("scale_group", scale_group)?;
+
+    let output_visuals = PyList::empty(py);
+    for output_visual in meta.visual.output_visuals {
+        let o = PyDict::new(py);
+        o.set_item("output", output_visual.output)?;
+        let primitive = match output_visual.primitive {
+            ta_engine::metadata::OutputVisualPrimitive::Line => "line",
+            ta_engine::metadata::OutputVisualPrimitive::Histogram => "histogram",
+            ta_engine::metadata::OutputVisualPrimitive::BandFill => "band_fill",
+            ta_engine::metadata::OutputVisualPrimitive::Markers => "markers",
+            ta_engine::metadata::OutputVisualPrimitive::SignalFlag => "signal_flag",
+        };
+        o.set_item("primitive", primitive)?;
+        o.set_item("style_slot", output_visual.style_slot)?;
+        o.set_item("z_index", output_visual.z_index)?;
+        output_visuals.append(o)?;
+    }
+    visual.set_item("output_visuals", output_visuals)?;
+
+    let style_slots = PyList::empty(py);
+    for style_slot in meta.visual.style_slots {
+        let s = PyDict::new(py);
+        s.set_item("slot", style_slot.slot)?;
+        let slot_type = match style_slot.kind {
+            ta_engine::metadata::StyleSlotType::Stroke => "stroke",
+            ta_engine::metadata::StyleSlotType::Fill => "fill",
+        };
+        s.set_item("type", slot_type)?;
+
+        let default = PyDict::new(py);
+        default.set_item("color", style_slot.default.color)?;
+        default.set_item("width", style_slot.default.width)?;
+        default.set_item("opacity", style_slot.default.opacity)?;
+        let pattern = match style_slot.default.pattern {
+            Some(ta_engine::metadata::StrokePattern::Solid) => Some("solid"),
+            Some(ta_engine::metadata::StrokePattern::Dashed) => Some("dashed"),
+            Some(ta_engine::metadata::StrokePattern::Dotted) => Some("dotted"),
+            None => None,
+        };
+        default.set_item("pattern", pattern)?;
+        s.set_item("default", default)?;
+        style_slots.append(s)?;
+    }
+    visual.set_item("style_slots", style_slots)?;
+    d.set_item("visual", visual)?;
+
     Ok(d.into_any().unbind())
 }
