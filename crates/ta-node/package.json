@@ -1,0 +1,11 @@
+{
+  "name": "@laakhay/ta-node",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Node bindings for laakhay ta-engine",
+  "types": "index.d.ts",
+  "scripts": {
+    "build": "echo 'Build via cargo for now: cargo build -p ta-node'",
+    "test": "echo 'Node test harness will be added with direct indicator endpoints'"
+  }
+}
