@@ -1,0 +1,13 @@
+{
+  "name": "@laakhay/ta-node",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Node bindings for laakhay ta-engine",
+  "types": "index.d.ts",
+  "scripts": {
+    "build": "cargo build -p ta-node",
+    "check": "cargo check -p ta-node",
+    "lint": "cargo clippy -p ta-node --all-targets -- -D warnings",
+    "test": "cargo test -p ta-node"
+  }
+}

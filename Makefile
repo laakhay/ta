@@ -76,6 +76,10 @@ check-rs: ## Run cargo check for Rust workspace
 	cargo check --workspace --manifest-path $(RUST_WORKSPACE)/Cargo.toml
 
 ci-quick: format-check-rs lint-rs lint-py ## Fast local CI guard
+node-ci: ## Run ta-node quality checks
+	cargo check -p ta-node --manifest-path $(RUST_WORKSPACE)/Cargo.toml
+	cargo clippy -p ta-node --manifest-path $(RUST_WORKSPACE)/Cargo.toml --all-targets -- -D warnings
+	cargo test -p ta-node --manifest-path $(RUST_WORKSPACE)/Cargo.toml
 
 # Compatibility aliases (can be removed later)
 rust-check: check-rs ## Alias for check-rs

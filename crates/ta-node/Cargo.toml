@@ -3,8 +3,20 @@ name = "ta-node"
 version = "0.1.0"
 edition = "2021"
 license = "MIT"
-description = "Node bindings scaffold for ta-engine"
+description = "Node bindings for ta-engine direct indicator calls"
 repository = "https://github.com/laakhay/ta"
 
+[lib]
+crate-type = ["cdylib", "rlib"]
+
 [dependencies]
+napi = { version = "2", default-features = false, features = ["napi8"] }
+napi-derive = "2"
 ta-engine = { path = "../ta-engine" }
+
+[build-dependencies]
+napi-build = "2"
+
+[dev-dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"

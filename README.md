@@ -13,8 +13,9 @@ Rust-first technical analysis engine with a Python ergonomics layer.
 - `crates/ta-engine` - core Rust compute engine (dataset ops, indicators, execution runtime)
 - `crates/ta-py` - PyO3 bindings exposing Rust runtime to Python
 - `crates/ta-ffi` - C ABI surface for non-Python integrations
-- `crates/ta-node` - Node-facing Rust crate scaffold
+- `crates/ta-node` - Node native bindings for direct indicator calls
 - `python/` - Python package (`laakhay-ta`), DSL/planner, tests, and tooling
+- `typescript/` - TypeScript package over `@laakhay/ta-node` direct indicators
 - `tests/` - cross-runtime parity/golden-test scaffold (repo-level)
 - `docs/` - architecture and reference docs
 
