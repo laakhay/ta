@@ -59,6 +59,30 @@ def _normalize_entry(entry: Mapping[str, Any]) -> dict[str, Any]:
         "default_lookback": semantics_raw.get("default_lookback"),
         "warmup_policy": str(semantics_raw.get("warmup_policy", "")),
     }
+    visual_raw = entry.get("visual", {}) or {}
+    output_visuals = tuple(
+        {
+            "output": str(v.get("output", "")),
+            "primitive": str(v.get("primitive", "line")),
+            "style_slot": str(v.get("style_slot", "")),
+            "z_index": int(v.get("z_index", 0)),
+        }
+        for v in visual_raw.get("output_visuals", [])
+    )
+    style_slots = tuple(
+        {
+            "slot": str(v.get("slot", "")),
+            "type": str(v.get("type", "stroke")),
+            "default": dict(v.get("default", {}) or {}),
+        }
+        for v in visual_raw.get("style_slots", [])
+    )
+    visual = {
+        "pane_hint": str(visual_raw.get("pane_hint", "auto")),
+        "scale_group": str(visual_raw.get("scale_group", "price")),
+        "output_visuals": output_visuals,
+        "style_slots": style_slots,
+    }
     return {
         "id": str(entry.get("id", "")),
         "display_name": str(entry.get("display_name", "")),
@@ -69,6 +93,7 @@ def _normalize_entry(entry: Mapping[str, Any]) -> dict[str, Any]:
         "params": params,
         "outputs": outputs,
         "semantics": semantics,
+        "visual": visual,
         "source": "rust",
     }
 

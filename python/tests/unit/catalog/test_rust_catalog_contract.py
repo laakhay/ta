@@ -13,3 +13,5 @@ def test_rust_catalog_contract_shape():
     indicators = contract.get("indicators")
     assert isinstance(indicators, list)
     assert len(indicators) > 0
+    first = indicators[0]
+    assert isinstance(first.get("visual"), dict)

@@ -126,10 +126,18 @@ class CatalogBuilder:
         return params
 
     @staticmethod
-    def _build_outputs(outputs_meta: tuple[dict[str, Any], ...]) -> tuple[list[OutputDefinition], tuple[str, ...]]:
+    def _build_outputs(
+        outputs_meta: tuple[dict[str, Any], ...],
+        visual_meta: Mapping[str, Any] | None = None,
+    ) -> tuple[list[OutputDefinition], tuple[str, ...]]:
         outputs: list[OutputDefinition] = []
         aliases: list[str] = []
         output_names = {str(output.get("name", "result")) for output in outputs_meta}
+        visual_map: dict[str, dict[str, Any]] = {}
+        for visual in (visual_meta or {}).get("output_visuals", ()):
+            output_key = str(visual.get("output", ""))
+            if output_key:
+                visual_map[output_key] = dict(visual)
         for output in outputs_meta:
             output_name = str(output.get("name", "result"))
             kind = str(output.get("kind", "line"))
@@ -139,6 +147,8 @@ class CatalogBuilder:
                 metadata["area_pair"] = "lower"
             if output_name == "lower" and "upper" in output_names:
                 metadata["area_pair"] = "upper"
+            if output_name in visual_map:
+                metadata["visual"] = visual_map[output_name]
             outputs.append(
                 OutputDefinition(
                     name=output_name,
@@ -156,7 +166,7 @@ class CatalogBuilder:
         handle: IndicatorHandle | None,
     ) -> IndicatorDescriptor:
         parameters = self._build_parameter_definitions(meta.get("params", ()))
-        outputs, aliases = self._build_outputs(meta.get("outputs", ()))
+        outputs, aliases = self._build_outputs(meta.get("outputs", ()), meta.get("visual", {}))
         return IndicatorDescriptor(
             name=indicator_id,
             description=str(meta.get("display_name") or indicator_id),
